@@ -1,4 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { getCustomerProfile } from '../api/client'
+import { LiveVsFinal } from '../components/orchestration/LiveVsFinal'
+import type { CustomerProfile } from '../types'
 import { OrchestratorCanvas } from '../components/orchestration/OrchestratorCanvas'
 import { useRecommendationStream } from '../hooks/useRecommendationStream'
 
@@ -10,6 +13,11 @@ interface Props {
 export function OrchestrationScreen({ customerId, onBack }: Props) {
   const { runId, steps, runFailed, start } = useRecommendationStream()
   const startedFor = useRef<string | null>(null)
+  const [profile, setProfile] = useState<CustomerProfile | null>(null)
+
+  useEffect(() => {
+    getCustomerProfile(customerId).then(setProfile).catch(() => setProfile(null))
+  }, [customerId])
 
   useEffect(() => {
     if (startedFor.current === customerId) return
@@ -24,6 +32,8 @@ export function OrchestrationScreen({ customerId, onBack }: Props) {
       <button className="back-btn" onClick={onBack}>
         &larr; New conversation
       </button>
+
+      <LiveVsFinal live={profile?.liveInsights ?? null} steps={steps} />
 
       <OrchestratorCanvas runId={runId} steps={steps} />
 

@@ -12,6 +12,7 @@ export interface CustomerProfile {
   budgetNotes?: string | null
   notes?: string | null
   rawTranscript?: string | null
+  liveInsights?: { latest: CopilotInsights; history: SignalPoint[] } | null
   createdAt?: string
   updatedAt?: string
 }
@@ -152,4 +153,24 @@ export interface RecommendationRunView {
   status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED'
   steps: AgentStepView[]
   errorMessage: string | null
+}
+
+export interface CopilotNeed {
+  label: string
+  strength: number
+}
+
+export interface CopilotInsights {
+  needs: CopilotNeed[]
+  sentiment: { score: number; label: string; emotion: string }
+  buyingSignal: { score: number; level: string; signals: string[] }
+  nextQuestions: string[]
+  complianceFlags: { severity: string; statement: string; advice: string }[]
+  productMatches: { productName: string; fitScore: number; evidence: string; source: string }[]
+}
+
+/** One point on the live sentiment / buying-signal timeline. */
+export interface SignalPoint {
+  sentiment: number
+  buying: number
 }

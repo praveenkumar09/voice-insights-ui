@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { wsVoiceUrl } from '../api/client'
-import type { CustomerProfile } from '../types'
+import type { CopilotInsights, CustomerProfile, SignalPoint } from '../types'
 
 export type VoiceCaptureStatus = 'idle' | 'connecting' | 'listening' | 'stopping' | 'stopped' | 'error'
 
@@ -19,6 +19,8 @@ export function useVoiceCapture() {
   const [partialText, setPartialText] = useState('')
   const [finalSegments, setFinalSegments] = useState<string[]>([])
   const [profile, setProfile] = useState<CustomerProfile | null>(null)
+  const [copilot, setCopilot] = useState<CopilotInsights | null>(null)
+  const [signalHistory, setSignalHistory] = useState<SignalPoint[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -44,6 +46,8 @@ export function useVoiceCapture() {
     setPartialText('')
     setFinalSegments([])
     setProfile(null)
+    setCopilot(null)
+    setSignalHistory([])
     setStatus('connecting')
 
     try {
@@ -53,6 +57,9 @@ export function useVoiceCapture() {
       const AudioContextCtor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       const audioContext = new AudioContextCtor()
       audioContextRef.current = audioContext
+      // Chrome can leave a context created after an awaited permission prompt in
+      // 'suspended' — onaudioprocess then never fires and no audio is ever sent.
+      if (audioContext.state === 'suspended') await audioContext.resume()
 
       const ws = new WebSocket(wsVoiceUrl())
       ws.binaryType = 'arraybuffer'
@@ -74,6 +81,12 @@ export function useVoiceCapture() {
           case 'profile':
             setProfile(msg.profile as CustomerProfile)
             break
+          case 'copilot': {
+            const c = msg.copilot as CopilotInsights
+            setCopilot(c)
+            setSignalHistory((h) => [...h, { sentiment: c.sentiment.score, buying: c.buyingSignal.score }])
+            break
+          }
           case 'session_ended':
             setStatus('stopped')
             ws.close()
@@ -132,7 +145,7 @@ export function useVoiceCapture() {
     }
   }, [cleanupAudio])
 
-  return { status, amplitude, partialText, finalSegments, profile, errorMessage, start, stop }
+  return { status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage, start, stop }
 }
 
 function downsampleTo16k(input: Float32Array, inputRate: number, targetRate: number): Float32Array {

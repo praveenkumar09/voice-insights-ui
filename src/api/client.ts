@@ -104,6 +104,12 @@ export async function saveCustomerProfile(profile: CustomerProfile): Promise<Cus
   return res.json()
 }
 
+export async function getCustomerProfile(customerId: string): Promise<CustomerProfile> {
+  const res = await fetch(`${API_BASE}/api/customers/${customerId}`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to fetch customer profile (${res.status})`))
+  return res.json()
+}
+
 export async function startRecommendations(customerId: string): Promise<{ runId: string }> {
   const res = await fetch(`${API_BASE}/api/customers/${customerId}/recommendations`, {
     method: 'POST',

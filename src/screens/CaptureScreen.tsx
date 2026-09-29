@@ -2,15 +2,18 @@ import { useState } from 'react'
 import { saveCustomerProfile } from '../api/client'
 import { CustomerProfileCard } from '../components/CustomerProfileCard'
 import { TranscriptPanel } from '../components/TranscriptPanel'
+import { ComplianceWatch, NeedTags, NextQuestions, ProductMatches } from '../components/copilot/CopilotPanels'
+import { SignalGauges } from '../components/copilot/SignalGauges'
 import { VoiceOrb } from '../components/VoiceOrb'
 import { useVoiceCapture } from '../hooks/useVoiceCapture'
+import { printMeetingBrief } from '../utils/meetingBrief'
 
 interface Props {
   onReady: (customerId: string) => void
 }
 
 export function CaptureScreen({ onReady }: Props) {
-  const { status, amplitude, partialText, finalSegments, profile, errorMessage, start, stop } = useVoiceCapture()
+  const { status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage, start, stop } = useVoiceCapture()
   const [advancing, setAdvancing] = useState(false)
 
   const listening = status === 'listening' || status === 'connecting'
@@ -82,6 +85,11 @@ export function CaptureScreen({ onReady }: Props) {
             {status === 'error' && (errorMessage ?? 'Something went wrong')}
           </p>
         </div>
+        {status === 'stopped' && (
+          <button className="ghost-btn" onClick={() => printMeetingBrief(profile, copilot)}>
+            Download brief (PDF)
+          </button>
+        )}
         {canRecommend && (
           <button className="cta-btn" onClick={handleGetRecommendations} disabled={advancing}>
             {advancing ? 'Preparing…' : 'Get Recommendations'}
@@ -89,9 +97,19 @@ export function CaptureScreen({ onReady }: Props) {
         )}
       </div>
 
-      <div className="capture-screen__side">
-        <TranscriptPanel partialText={partialText} finalSegments={finalSegments} isListening={status === 'listening'} />
-        <CustomerProfileCard profile={profile} />
+      <NextQuestions questions={copilot?.nextQuestions ?? []} />
+
+      <div className="capture-grid">
+        <div className="capture-grid__col">
+          <TranscriptPanel partialText={partialText} finalSegments={finalSegments} isListening={status === 'listening'} />
+          <ProductMatches matches={copilot?.productMatches ?? []} />
+        </div>
+        <div className="capture-grid__col">
+          <SignalGauges copilot={copilot} history={signalHistory} />
+          <NeedTags needs={copilot?.needs ?? []} />
+          <ComplianceWatch flags={copilot?.complianceFlags ?? []} active={!!copilot} />
+          <CustomerProfileCard profile={profile} />
+        </div>
       </div>
     </section>
   )

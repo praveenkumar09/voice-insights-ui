@@ -1,0 +1,26 @@
+services:
+
+  # ── AIA Voice Insights UI ────────────────────────────────────────────────────
+  voice-insights-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_VOICE_API_BASE_URL: ${VITE_VOICE_API_BASE_URL:-http://localhost:8084}
+    container_name: voice_insights_ui
+    ports:
+      - "3002:80"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listCustomers } from '../api/client'
+import { AnalyticsDashboard } from '../components/insights/AnalyticsDashboard'
 import type { CustomerSummary } from '../types'
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 const PAGE_SIZE = 10
 
 export function AdminScreen({ onBack, onViewRun }: Props) {
+  const [tab, setTab] = useState<'dashboard' | 'sessions'>('dashboard')
   const [page, setPage] = useState(0)
   const [items, setItems] = useState<CustomerSummary[]>([])
   const [total, setTotal] = useState(0)
@@ -44,7 +46,19 @@ export function AdminScreen({ onBack, onViewRun }: Props) {
       <button className="back-btn" onClick={onBack}>
         &larr; Back
       </button>
-      <h2 className="admin-screen__title">Voice Sessions</h2>
+      <h2 className="admin-screen__title">Admin</h2>
+      <div className="admin-tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'dashboard'} className={tab === 'dashboard' ? 'is-active' : ''} onClick={() => setTab('dashboard')}>
+          Dashboard
+        </button>
+        <button role="tab" aria-selected={tab === 'sessions'} className={tab === 'sessions' ? 'is-active' : ''} onClick={() => setTab('sessions')}>
+          Voice sessions
+        </button>
+      </div>
+
+      {tab === 'dashboard' && <AnalyticsDashboard onViewRun={onViewRun} />}
+
+      {tab === 'sessions' && <>
       <p className="admin-screen__subtitle">Every captured conversation and its recommendation run.</p>
 
       {loading && <p className="admin-screen__status">Loading&hellip;</p>}
@@ -109,6 +123,7 @@ export function AdminScreen({ onBack, onViewRun }: Props) {
           </div>
         </>
       )}
+      </>}
     </section>
   )
 }

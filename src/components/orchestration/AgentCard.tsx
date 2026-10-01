@@ -287,7 +287,7 @@ function AgentResultView({ agentKey, result, runId }: { agentKey: AgentKey; resu
       return (
         <div className="agent-card__result">
           <p className="agent-card__premium">{r.title}</p>
-          <p className="agent-card__rationale agent-card__rationale--report">{r.reportMarkdown.slice(0, 320)}&hellip;</p>
+          <p className="agent-card__rationale agent-card__rationale--report">{reportPreview(r.reportMarkdown)}</p>
           {runId && (
             <a className="agent-card__download-btn" href={recommendationReportUrl(runId)} download>
               <DownloadIcon /> Download full report
@@ -299,6 +299,13 @@ function AgentResultView({ agentKey, result, runId }: { agentKey: AgentKey; resu
     default:
       return null
   }
+}
+
+/** Leads with the recommended products — the part of the report the reader actually wants — rather than the header. */
+function reportPreview(md: string): string {
+  const m = md.match(/## Recommended Products\n([\s\S]*?)(?=\n## |$)/)
+  const text = (m ? m[1] : md).replace(/\*\*/g, '').replace(/\*/g, '').trim()
+  return text.length > 420 ? `${text.slice(0, 420)}…` : text
 }
 
 function Section({ title, items }: { title: string; items: string[] }) {

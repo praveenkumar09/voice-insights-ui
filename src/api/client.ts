@@ -1,4 +1,4 @@
-import type { CustomerProfile, CustomerSummary, PageResult, RecommendationRunView } from '../types'
+import type { AnalyticsResult, CopilotInsights, CustomerProfile, LifeMapData, ProposalResult, ProtectionStory, CustomerSummary, PageResult, RecommendationRunView } from '../types'
 
 const API_BASE = (import.meta.env.VITE_VOICE_API_BASE_URL as string | undefined) ?? 'http://localhost:8084'
 const WS_BASE = API_BASE.replace(/^http/, 'ws')
@@ -51,8 +51,8 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   }
 }
 
-export function wsVoiceUrl(): string {
-  return `${WS_BASE}/ws/voice`
+export function wsVoiceUrl(mode: 'live' | 'debrief' = 'live'): string {
+  return `${WS_BASE}/ws/voice${mode === 'debrief' ? '?mode=debrief' : ''}`
 }
 
 export async function signup(email: string, password: string): Promise<{ token: string; email: string }> {
@@ -104,6 +104,19 @@ export async function saveCustomerProfile(profile: CustomerProfile): Promise<Cus
   return res.json()
 }
 
+export async function updateTranscript(
+  customerId: string,
+  transcript: string,
+): Promise<{ profile: CustomerProfile; copilot: CopilotInsights | null }> {
+  const res = await fetch(`${API_BASE}/api/customers/${customerId}/transcript`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ transcript }),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to save transcript (${res.status})`))
+  return res.json()
+}
+
 export async function getCustomerProfile(customerId: string): Promise<CustomerProfile> {
   const res = await fetch(`${API_BASE}/api/customers/${customerId}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await errorMessage(res, `Failed to fetch customer profile (${res.status})`))
@@ -136,5 +149,36 @@ export function recommendationReportUrl(runId: string): string {
 export async function listCustomers(page: number, size: number): Promise<PageResult<CustomerSummary>> {
   const res = await fetch(`${API_BASE}/api/admin/customers?page=${page}&size=${size}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await errorMessage(res, `Failed to list customers (${res.status})`))
+  return res.json()
+}
+
+export async function generateProposal(runId: string, language: string): Promise<ProposalResult> {
+  const res = await fetch(`${API_BASE}/api/recommendations/${runId}/proposal?language=${encodeURIComponent(language)}`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to generate proposal (${res.status})`))
+  return res.json()
+}
+
+export async function getAnalytics(days: number): Promise<AnalyticsResult> {
+  const res = await fetch(`${API_BASE}/api/admin/analytics?days=${days}`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to load analytics (${res.status})`))
+  return res.json()
+}
+
+export async function generateStory(runId: string): Promise<ProtectionStory> {
+  const res = await fetch(`${API_BASE}/api/recommendations/${runId}/story`, { method: 'POST', headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to generate the story (${res.status})`))
+  return res.json()
+}
+
+export async function updateLifeMap(customerId: string, map: LifeMapData): Promise<CopilotInsights> {
+  const res = await fetch(`${API_BASE}/api/customers/${customerId}/lifemap`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(map),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to save the Life Map (${res.status})`))
   return res.json()
 }

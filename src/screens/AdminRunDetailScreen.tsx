@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { getRecommendationRun } from '../api/client'
-import { OrchestratorCanvas } from '../components/orchestration/OrchestratorCanvas'
+import { getCustomerProfile, getRecommendationRun } from '../api/client'
+import { RunWorkspace } from '../components/workspace/RunWorkspace'
 import { PIPELINE_ORDER } from '../hooks/useRecommendationStream'
 import type { AgentState } from '../hooks/useRecommendationStream'
-import type { AgentKey, RecommendationRunView } from '../types'
+import type { AgentKey, CustomerProfile, RecommendationRunView } from '../types'
 
 interface Props {
   runId: string
@@ -13,12 +13,15 @@ interface Props {
 export function AdminRunDetailScreen({ runId, onBack }: Props) {
   const [run, setRun] = useState<RecommendationRunView | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [profile, setProfile] = useState<CustomerProfile | null>(null)
 
   useEffect(() => {
     let cancelled = false
     getRecommendationRun(runId)
       .then((r) => {
-        if (!cancelled) setRun(r)
+        if (cancelled) return
+        setRun(r)
+        getCustomerProfile(r.customerProfileId).then((p) => !cancelled && setProfile(p)).catch(() => {})
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load recommendation run')
@@ -39,13 +42,7 @@ export function AdminRunDetailScreen({ runId, onBack }: Props) {
 
       {run && (
         <>
-          <div className="admin-run-detail__meta glass-card">
-            <span className="glass-card__label">Run</span>
-            <code className="admin-run-detail__run-id">{run.runId}</code>
-            <span className={`status-pill status-pill--${run.status.toLowerCase()}`}>{run.status}</span>
-          </div>
-          <OrchestratorCanvas runId={run.runId} steps={toSteps(run)} />
-          {run.errorMessage && <p className="orchestration-screen__error">Run failed: {run.errorMessage}</p>}
+          <RunWorkspace runId={run.runId} steps={toSteps(run)} profile={profile} initialTab="report" runFailed={run.status === 'FAILED' ? run.errorMessage ?? 'Run failed' : null} />
         </>
       )}
     </section>

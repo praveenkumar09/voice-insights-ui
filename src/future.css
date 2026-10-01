@@ -1,0 +1,73 @@
+/* ── Family Future ─────────────────────────────────────────────────────── */
+
+.ff { display: flex; flex-direction: column; gap: 20px; }
+.ff-kicker { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--aia-red); }
+
+.ff-hero { padding: 34px 38px; position: relative; overflow: hidden; }
+.ff-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(600px 240px at 90% 0%, rgba(211, 17, 69, 0.12), transparent 70%); pointer-events: none; }
+.ff-headline { margin: 10px 0 12px; font-size: clamp(1.6rem, 3.2vw, 2.3rem); line-height: 1.2; letter-spacing: -0.03em; max-width: 24ch; }
+.ff-opening { margin: 0; font-size: 1.1rem; line-height: 1.6; color: var(--ink-soft); max-width: 62ch; }
+
+.ff-quotes__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.ff-quote { margin: 0; position: relative; padding: 26px 26px 20px; border-radius: 18px; background: linear-gradient(160deg, rgba(211, 17, 69, 0.09), rgba(var(--glass-rgb), 0.7)); border: 1px solid rgba(211, 17, 69, 0.18); }
+.ff-quote__mark { position: absolute; top: 2px; left: 16px; font-size: 4rem; line-height: 1; color: rgba(211, 17, 69, 0.28); font-family: Georgia, serif; }
+.ff-quote blockquote { margin: 14px 0 12px; font-size: 1.2rem; line-height: 1.5; font-weight: 550; letter-spacing: -0.01em; }
+.ff-quote figcaption { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--aia-red); }
+
+.ff-runway { padding: 26px 30px; }
+.ff-runway__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.ff-scenario { margin: 4px 0 0; font-size: 1.02rem; line-height: 1.5; max-width: 60ch; }
+.ff-play { padding: 12px 26px; }
+
+.ff-lanes { display: grid; gap: 22px; padding-bottom: 34px; position: relative; }
+.ff-lane__label { font-size: 0.82rem; font-weight: 650; margin-bottom: 8px; color: var(--ink-soft); }
+.ff-lane__track { position: relative; height: 34px; border-radius: 10px; background: rgba(var(--tint-rgb), 0.06); }
+.ff-lane__bar { height: 100%; border-radius: 10px; transition: none; }
+.ff-lane--bad .ff-lane__bar { background: linear-gradient(90deg, #f59e6b, var(--c-neg)); }
+.ff-lane--good .ff-lane__bar { background: linear-gradient(90deg, #5fd8a8, var(--c-pos)); }
+.ff-lane__end { position: absolute; top: 50%; transform: translate(10px, -50%); white-space: nowrap; font-size: 0.82rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--surface-solid); border: 1px solid var(--hairline); box-shadow: 0 6px 16px rgba(var(--shadow-rgb), 0.12); }
+.ff-lane--bad .ff-lane__end { color: #b3471d; }
+.ff-lane--good .ff-lane__end { color: #0f7a55; }
+:root[data-theme='dark'] .ff-lane--bad .ff-lane__end { color: #ff9a6f; }
+:root[data-theme='dark'] .ff-lane--good .ff-lane__end { color: #5fd8a8; }
+.ff-axis { position: relative; height: 16px; }
+.ff-axis span { position: absolute; transform: translateX(-50%); font-size: 0.7rem; color: var(--ink-faint); white-space: nowrap; }
+.ff-axis span:first-child { transform: none; }
+
+.ff-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 6px; }
+.ff-stat { padding: 16px 18px; border-radius: 14px; border: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 4px; }
+.ff-stat span { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); }
+.ff-stat b { font-size: 1.7rem; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.ff-stat--bad b { color: #c2410c; }
+.ff-stat--good b { color: #0f7a55; }
+.ff-stat--accent { background: rgba(211, 17, 69, 0.07); border-color: rgba(211, 17, 69, 0.25); }
+.ff-stat--accent b { color: var(--aia-red); }
+:root[data-theme='dark'] .ff-stat--bad b { color: #ff9a6f; }
+:root[data-theme='dark'] .ff-stat--good b { color: #5fd8a8; }
+
+.ff-inputs__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.ff-inputs__head .glass-card__label { margin: 0; }
+.ff-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.ff-field { display: flex; flex-direction: column; gap: 6px; }
+.ff-field label { font-size: 0.78rem; font-weight: 700; color: var(--ink-soft); }
+.ff-field small { font-size: 0.72rem; color: var(--ink-faint); }
+.ff-number-row { display: flex; align-items: center; gap: 8px; }
+.ff-number-row em { font-style: normal; font-size: 0.8rem; color: var(--ink-faint); }
+.ff-number { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 10px; background: rgba(var(--glass-rgb), 0.9); flex: 1; }
+.ff-number:focus-within { border-color: var(--aia-red); box-shadow: 0 0 0 3px rgba(211, 17, 69, 0.14); }
+.ff-number span { color: var(--ink-faint); font-weight: 600; }
+.ff-number input { border: none; outline: none; background: transparent; font: inherit; font-weight: 650; color: var(--ink); width: 100%; font-variant-numeric: tabular-nums; }
+.ff-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.ff-choices button { border: 1px solid var(--hairline); background: rgba(var(--tint-rgb), 0.04); color: var(--ink); font-size: 0.78rem; font-weight: 600; padding: 7px 12px; border-radius: 999px; cursor: pointer; }
+.ff-choices button.is-active { background: var(--aia-red); border-color: var(--aia-red); color: #fff; }
+
+.ff-close { text-align: center; padding: 30px; }
+.ff-closing { margin: 0 0 18px; font-size: 1.2rem; font-weight: 550; line-height: 1.5; max-width: 52ch; margin-inline: auto; }
+.ff-close .proposal__actions { justify-content: center; }
+.ff-disclaimer { margin: 18px auto 0; font-size: 0.72rem; color: var(--ink-faint); max-width: 70ch; }
+
+.ff-empty { text-align: center; padding: 48px 28px; display: grid; gap: 10px; justify-items: center; }
+.ff-empty h3 { margin: 0; font-size: 1.5rem; letter-spacing: -0.02em; }
+.ff-empty p { margin: 0; color: var(--ink-soft); max-width: 52ch; }
+
+@media (max-width: 760px) { .ff-stats { grid-template-columns: 1fr; } .ff-hero { padding: 24px; } }

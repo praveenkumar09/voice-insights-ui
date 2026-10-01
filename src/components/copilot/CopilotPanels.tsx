@@ -1,21 +1,37 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import type { CopilotInsights } from '../../types'
 
+const enter = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 } }
+
+/** The agent's eyes are on the customer, so the single best next question is shown large; the rest are quiet chips. */
 export function NextQuestions({ questions }: { questions: string[] }) {
+  const [primary, ...rest] = questions
   return (
     <div className="glass-card ask-strip">
       <div className="glass-card__label">
         Ask next <span className="live-tag">Copilot</span>
       </div>
-      {questions.length === 0 ? (
+      {!primary ? (
         <p className="panel-empty">Suggested questions will appear as the conversation unfolds.</p>
       ) : (
-        <div className="ask-strip__chips">
-          {questions.map((q) => (
-            <span className="ask-chip" key={q}>
-              {q}
-            </span>
-          ))}
-        </div>
+        <>
+          <AnimatePresence mode="wait">
+            <motion.p className="ask-strip__primary" key={primary} {...enter} transition={{ duration: 0.35 }}>
+              {primary}
+            </motion.p>
+          </AnimatePresence>
+          {rest.length > 0 && (
+            <div className="ask-strip__chips">
+              <AnimatePresence initial={false}>
+                {rest.map((q) => (
+                  <motion.span className="ask-chip" key={q} layout {...enter} transition={{ duration: 0.3 }}>
+                    {q}
+                  </motion.span>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -29,17 +45,19 @@ export function NeedTags({ needs }: { needs: CopilotInsights['needs'] }) {
         <p className="panel-empty">Needs light up as the customer describes their situation.</p>
       ) : (
         <ul className="need-list">
-          {needs.map((n) => (
-            <li className="need-list__item" key={n.label}>
-              <div className="need-list__row">
-                <span>{n.label}</span>
-                <span className="need-list__pct">{n.strength}%</span>
-              </div>
-              <div className="need-list__bar">
-                <span style={{ width: `${Math.max(4, Math.min(100, n.strength))}%` }} />
-              </div>
-            </li>
-          ))}
+          <AnimatePresence initial={false}>
+            {needs.map((n) => (
+              <motion.li className="need-list__item" key={n.label} layout {...enter} transition={{ duration: 0.3 }}>
+                <div className="need-list__row">
+                  <span>{n.label}</span>
+                  <span className="need-list__pct">{n.strength}%</span>
+                </div>
+                <div className="need-list__bar">
+                  <span style={{ width: `${Math.max(4, Math.min(100, n.strength))}%` }} />
+                </div>
+              </motion.li>
+            ))}
+          </AnimatePresence>
         </ul>
       )}
     </div>
@@ -56,20 +74,28 @@ export function ProductMatches({ matches }: { matches: CopilotInsights['productM
         <p className="panel-empty">Candidate products form and re-rank as needs emerge.</p>
       ) : (
         <ul className="match-list">
-          {matches.map((m, i) => (
-            <li className="match-card" key={m.productName}>
-              <div className="match-card__rank">{i + 1}</div>
-              <div className="match-card__body">
-                <div className="match-card__name">{m.productName}</div>
-                <p className="match-card__evidence">“{m.evidence}”</p>
-                <span className="match-card__source">{m.source}</span>
-              </div>
-              <div className="match-card__fit" style={{ ['--fit' as string]: m.fitScore }}>
-                <span>{m.fitScore}</span>
-                <small>fit</small>
-              </div>
-            </li>
-          ))}
+          <AnimatePresence initial={false}>
+            {matches.map((m, i) => (
+              <motion.li
+                className="match-card"
+                key={m.productName}
+                layout
+                {...enter}
+                transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+              >
+                <div className="match-card__rank">{i + 1}</div>
+                <div className="match-card__body">
+                  <div className="match-card__name">{m.productName}</div>
+                  <p className="match-card__evidence">“{m.evidence}”</p>
+                  <span className="match-card__source">{m.source}</span>
+                </div>
+                <div className="match-card__fit" style={{ ['--fit' as string]: m.fitScore }}>
+                  <span>{m.fitScore}</span>
+                  <small>fit</small>
+                </div>
+              </motion.li>
+            ))}
+          </AnimatePresence>
         </ul>
       )}
     </div>
@@ -87,15 +113,17 @@ export function ComplianceWatch({ flags, active }: { flags: CopilotInsights['com
           <span className="compliance-card__tick">✓</span> No risky statements detected
         </p>
       )}
-      {flags.map((f, i) => (
-        <div className={`flag flag--${f.severity}`} key={i}>
-          <div className="flag__head">
-            <span className="flag__sev">{f.severity === 'high' ? 'High risk' : 'Caution'}</span>
-            <span className="flag__quote">“{f.statement}”</span>
-          </div>
-          <p className="flag__advice">{f.advice}</p>
-        </div>
-      ))}
+      <AnimatePresence initial={false}>
+        {flags.map((f, i) => (
+          <motion.div className={`flag flag--${f.severity}`} key={`${f.statement}-${i}`} {...enter}>
+            <div className="flag__head">
+              <span className="flag__sev">{f.severity === 'high' ? 'High risk' : 'Caution'}</span>
+              <span className="flag__quote">“{f.statement}”</span>
+            </div>
+            <p className="flag__advice">{f.advice}</p>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   )
 }

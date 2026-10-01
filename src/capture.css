@@ -1,0 +1,342 @@
+/* ── Home / Capture — "live stage" polish (loaded after index.css) ─────── */
+
+.capture-screen {
+  position: relative;
+  gap: 18px;
+}
+
+/* Soft aurora behind the page. */
+.capture-screen::before {
+  content: '';
+  position: absolute;
+  inset: -60px -40px auto -40px;
+  height: 380px;
+  background:
+    radial-gradient(520px 220px at 18% 0%, rgba(211, 17, 69, 0.1), transparent 70%),
+    radial-gradient(480px 200px at 82% 10%, rgba(211, 17, 69, 0.06), transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Staggered entrance for the whole screen. */
+.capture-screen > * {
+  animation: stage-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.capture-screen > *:nth-child(2) { animation-delay: 0.06s; }
+.capture-screen > *:nth-child(3) { animation-delay: 0.12s; }
+.capture-screen > *:nth-child(4) { animation-delay: 0.18s; }
+@keyframes stage-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+.capture-hero__title {
+  font-size: 1.85rem;
+  background: linear-gradient(90deg, var(--ink) 40%, var(--aia-red) 130%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Console: orb + status + live waveform ──────────────────────────── */
+
+.capture-console {
+  gap: 22px;
+  padding: 20px 26px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.4s ease, border-color 0.4s ease;
+}
+.capture-console::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--aia-red), transparent);
+  opacity: 0;
+  transform: scaleX(0.3);
+  transition: opacity 0.4s ease, transform 0.6s ease;
+}
+.capture-console.is-live {
+  border-color: rgba(211, 17, 69, 0.28);
+  box-shadow: 0 18px 44px rgba(211, 17, 69, 0.16), inset 0 1px 0 var(--glass-sheen);
+}
+.capture-console.is-live::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.capture-console .voice-orb {
+  width: 76px;
+  height: 76px;
+}
+.capture-console__info {
+  flex: 0 0 auto;
+  min-width: 210px;
+  max-width: 260px;
+}
+.capture-console__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.capture-console__timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.live-waveform {
+  flex: 1;
+  min-width: 140px;
+  height: 64px;
+}
+
+/* ── Transcript: the hero — big, legible from across a desk ───────────── */
+
+.transcript-panel {
+  padding: 20px 24px 16px;
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+.transcript-panel.is-live {
+  border-color: rgba(211, 17, 69, 0.22);
+}
+.transcript-panel__body {
+  min-height: 300px;
+  max-height: 460px;
+  gap: 14px;
+  padding-right: 6px;
+}
+.transcript-panel__empty {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: auto 0;
+  text-align: center;
+  color: var(--ink-faint);
+}
+.transcript-panel__segment {
+  font-size: 1.12rem;
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+  color: var(--ink-soft);
+  animation: none;
+  transition: color 0.4s ease;
+}
+.transcript-panel__segment.is-latest {
+  color: var(--ink);
+  font-weight: 500;
+}
+.transcript-panel__segment--partial {
+  color: var(--aia-red);
+  font-style: normal;
+  font-weight: 500;
+}
+.transcript-panel__caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  background: var(--aia-red);
+  animation: caret-blink 0.9s steps(1) infinite;
+}
+@keyframes caret-blink {
+  50% { opacity: 0; }
+}
+
+/* ── Ask next: the one question to ask, large ────────────────────────── */
+
+.ask-strip__primary {
+  margin: 2px 0 12px;
+  font-size: 1.3rem;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  padding-left: 14px;
+  border-left: 3px solid var(--aia-red);
+}
+
+/* ── Cards: lift + smoother bars ─────────────────────────────────────── */
+
+.capture-grid {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+.capture-grid .glass-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.capture-grid .glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 42px rgba(var(--shadow-rgb), 0.13), inset 0 1px 0 var(--glass-sheen);
+}
+.need-list__bar span {
+  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gauge__fill {
+  transition: stroke-dashoffset 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (max-width: 900px) {
+  .capture-console {
+    flex-wrap: wrap;
+  }
+  .live-waveform {
+    flex-basis: 100%;
+  }
+  .capture-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capture-screen > *,
+  .transcript-panel__caret {
+    animation: none;
+  }
+}
+
+/* ── Transcript editing ───────────────────────────────────────────────── */
+
+.transcript-panel__edit-btn {
+  margin-left: auto;
+  border: 1px solid rgba(211, 17, 69, 0.3);
+  background: rgba(211, 17, 69, 0.07);
+  color: var(--aia-red);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.transcript-panel__edit-btn:hover {
+  background: rgba(211, 17, 69, 0.14);
+  transform: translateY(-1px);
+}
+.transcript-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: stage-in 0.3s ease both;
+}
+.transcript-edit__area {
+  width: 100%;
+  min-height: 300px;
+  max-height: 460px;
+  resize: vertical;
+  padding: 14px 16px;
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--ink);
+  background: rgba(var(--glass-rgb), 0.9);
+  border: 1px solid rgba(211, 17, 69, 0.35);
+  border-radius: 12px;
+  outline: none;
+}
+.transcript-edit__area:focus {
+  border-color: var(--aia-red);
+  box-shadow: 0 0 0 3px rgba(211, 17, 69, 0.14);
+}
+.transcript-edit__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+.transcript-edit__error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--aia-red);
+  font-weight: 600;
+}
+.transcript-edit__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.transcript-edit__save {
+  padding: 10px 22px;
+  font-size: 0.85rem;
+}
+
+/* ── Home: one aligned stack ──────────────────────────────────────────────
+   Same 18px rhythm between every block, hero controls grouped on one side, and the two dashboard columns
+   stretched so their bottom edges line up. */
+
+.capture-hero {
+  align-items: center;
+}
+.capture-hero__controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.capture-hero__controls .safe-toggle button {
+  width: 100%;
+  border-radius: 16px;
+}
+.capture-hero__controls .mode-switch {
+  align-self: stretch;
+}
+.capture-hero__controls .mode-switch button {
+  flex: 1;
+}
+
+.capture-grid,
+.capture-grid__col {
+  gap: 18px;
+}
+.capture-grid {
+  align-items: stretch;
+}
+.capture-grid__col > .glass-card:last-child {
+  flex: 1 1 auto;
+}
+
+/* ── Recommend dock: keeps "Get Recommendations" in reach once the console has scrolled away ── */
+
+.recommend-dock {
+  position: sticky;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px 12px 22px;
+  border-radius: 18px;
+  background: rgba(var(--glass-rgb), 0.92);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  border: 1px solid rgba(211, 17, 69, 0.3);
+  box-shadow: 0 18px 44px rgba(211, 17, 69, 0.2), inset 0 1px 0 var(--glass-sheen);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+.recommend-dock strong {
+  color: var(--ink);
+}
+.recommend-dock .cta-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .capture-hero__controls {
+    width: 100%;
+  }
+  .recommend-dock {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+}
+
+.capture-hero__controls .mode-switch button {
+  white-space: nowrap;
+}

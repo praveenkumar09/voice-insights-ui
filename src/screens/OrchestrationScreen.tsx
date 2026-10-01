@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getCustomerProfile } from '../api/client'
-import { LiveVsFinal } from '../components/orchestration/LiveVsFinal'
+import { RunWorkspace } from '../components/workspace/RunWorkspace'
 import type { CustomerProfile } from '../types'
-import { OrchestratorCanvas } from '../components/orchestration/OrchestratorCanvas'
 import { useRecommendationStream } from '../hooks/useRecommendationStream'
 
 interface Props {
@@ -33,11 +32,7 @@ export function OrchestrationScreen({ customerId, onBack }: Props) {
         &larr; New conversation
       </button>
 
-      <LiveVsFinal live={profile?.liveInsights ?? null} steps={steps} />
-
-      <OrchestratorCanvas runId={runId} steps={steps} />
-
-      {runFailed && <p className="orchestration-screen__error">Run failed: {runFailed}</p>}
+      <RunWorkspace runId={runId} steps={steps} profile={profile} initialTab="agents" runFailed={runFailed} />
     </section>
   )
 }

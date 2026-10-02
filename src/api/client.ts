@@ -1,4 +1,4 @@
-import type { AnalyticsResult, CopilotInsights, CustomerProfile, LifeMapData, ProposalResult, ProtectionStory, CustomerSummary, PageResult, RecommendationRunView } from '../types'
+import type { AdvicePack, AdvicePackSection, AdvicePackView, AnalyticsResult, CopilotInsights, CustomerProfile, LifeMapData, ProposalResult, ProtectionStory, CustomerSummary, PageResult, RecommendationRunView } from '../types'
 
 const API_BASE = (import.meta.env.VITE_VOICE_API_BASE_URL as string | undefined) ?? 'http://localhost:8084'
 const WS_BASE = API_BASE.replace(/^http/, 'ws')
@@ -180,5 +180,44 @@ export async function updateLifeMap(customerId: string, map: LifeMapData): Promi
     body: JSON.stringify(map),
   })
   if (!res.ok) throw new Error(await errorMessage(res, `Failed to save the Life Map (${res.status})`))
+  return res.json()
+}
+
+// ── Advice pack ─────────────────────────────────────────────────────────
+
+const advicePackUrl = (runId: string) => `${API_BASE}/api/recommendations/${runId}/advice-pack`
+
+export async function getAdvicePack(runId: string): Promise<AdvicePackView> {
+  const res = await fetch(advicePackUrl(runId), { headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to load the advice pack (${res.status})`))
+  return res.json()
+}
+
+export async function generateAdvicePack(runId: string, tone = 'warm'): Promise<AdvicePack> {
+  const res = await fetch(`${advicePackUrl(runId)}?tone=${encodeURIComponent(tone)}`, { method: 'POST', headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to generate the advice pack (${res.status})`))
+  return res.json()
+}
+
+export async function regenerateAdviceSection(runId: string, section: AdvicePackSection, tone?: string): Promise<AdvicePack> {
+  const q = tone ? `?tone=${encodeURIComponent(tone)}` : ''
+  const res = await fetch(`${advicePackUrl(runId)}/section/${section}${q}`, { method: 'POST', headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to regenerate this section (${res.status})`))
+  return res.json()
+}
+
+export async function saveAdvicePack(runId: string, pack: AdvicePack): Promise<AdvicePack> {
+  const res = await fetch(advicePackUrl(runId), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(pack),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to save your changes (${res.status})`))
+  return res.json()
+}
+
+export async function reviewAdvicePack(runId: string): Promise<AdvicePack> {
+  const res = await fetch(`${advicePackUrl(runId)}/review`, { method: 'POST', headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to record the sign-off (${res.status})`))
   return res.json()
 }

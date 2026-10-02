@@ -17,6 +17,8 @@ import type {
   SalesReportResult,
 } from '../../types'
 import { AGENT_META } from './agentMeta'
+import { AgentIcon } from './agentIcons'
+import { agentHeadline } from './agentHeadline'
 import { CheckIcon, ChevronIcon, DownloadIcon, SpinnerIcon } from '../icons'
 
 interface Props {
@@ -30,10 +32,11 @@ export function AgentCard({ agentKey, state, index, runId }: Props) {
   const [open, setOpen] = useState(false)
   const [showRaw, setShowRaw] = useState(false)
   const meta = AGENT_META[agentKey]
+  const headline = state.status === 'done' ? agentHeadline(agentKey, state.result) : null
 
   return (
     <motion.div
-      className={`agent-card agent-card--${state.status}`}
+      className={`agent-card agent-card--${state.status}${open ? ' is-open' : ''}`}
       data-agent={agentKey}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -41,11 +44,14 @@ export function AgentCard({ agentKey, state, index, runId }: Props) {
     >
       <div className="agent-card__inner">
         <button className="agent-card__header" onClick={() => setOpen((o) => !o)}>
-          <StatusDot status={state.status} />
+          <span className="agent-card__icon"><AgentIcon agent={agentKey} /></span>
           <div className="agent-card__titles">
             <span className="agent-card__label">{meta.label}</span>
-            <span className="agent-card__description">To answer: {meta.question}</span>
+            <span className="agent-card__description">{meta.question}</span>
+            {state.status === 'done' && headline && <span className="agent-card__headline">{headline}</span>}
+            {state.status === 'running' && <span className="agent-card__headline agent-card__headline--busy">Working on it…</span>}
           </div>
+          <StatusDot status={state.status} />
           <span className={`agent-card__chevron ${open ? 'is-open' : ''}`}>
             <ChevronIcon />
           </span>

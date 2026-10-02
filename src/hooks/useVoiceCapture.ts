@@ -7,6 +7,30 @@ export type VoiceCaptureStatus = 'idle' | 'connecting' | 'listening' | 'paused' 
 /** live: the customer is speaking. debrief: the advisor dictates a summary after the meeting. */
 export type CaptureMode = 'live' | 'debrief'
 
+/** How firmly background sound (a TV, other conversations) is kept out: off, normal, or strong. */
+export type NoiseFilter = 'off' | 'normal' | 'strong'
+const FILTER_KEY = 'vi_noise_filter'
+const REF_KEY = 'vi_voice_level'
+
+function storedLevel(): number | null {
+  try {
+    const v = parseFloat(localStorage.getItem(REF_KEY) ?? '')
+    return Number.isFinite(v) && v > 0 ? v : null
+  } catch {
+    return null
+  }
+}
+const FILTER_RATIO: Record<NoiseFilter, number> = { off: 0, normal: 0.35, strong: 0.5 }
+
+function storedFilter(): NoiseFilter {
+  try {
+    const v = localStorage.getItem(FILTER_KEY)
+    return v === 'off' || v === 'strong' ? v : 'normal'
+  } catch {
+    return 'normal'
+  }
+}
+
 interface VoiceMessage {
   type: string
   [key: string]: unknown
@@ -26,6 +50,12 @@ export function useVoiceCapture() {
   const [copilot, setCopilot] = useState<CopilotInsights | null>(null)
   const [signalHistory, setSignalHistory] = useState<SignalPoint[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [noiseFilter, setNoiseFilterState] = useState<NoiseFilter>(storedFilter)
+  const [backgroundIgnored, setBackgroundIgnored] = useState(false)
+  const noiseFilterRef = useRef<NoiseFilter>(noiseFilter)
+  noiseFilterRef.current = noiseFilter
+  const gatedRun = useRef(0)
+  const lastSavedLevel = useRef(0)
 
   const wsRef = useRef<WebSocket | null>(null)
   const statusRef = useRef<VoiceCaptureStatus>('idle')
@@ -42,6 +72,8 @@ export function useVoiceCapture() {
     sourceRef.current?.disconnect()
     sinkRef.current?.disconnect()
     sinkRef.current = null
+    gatedRun.current = 0
+    setBackgroundIgnored(false)
     streamRef.current?.getTracks().forEach((t) => t.stop())
     audioContextRef.current?.close().catch(() => {})
     processorRef.current = null
@@ -58,7 +90,9 @@ export function useVoiceCapture() {
       // noise and cut them. Keep echo cancellation (agent may use speakers) and
       // auto-gain (lifts quiet voices) but turn noise suppression off.
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: false, autoGainControl: true },
+        // Browser auto-gain is off: it lifts a quiet TV exactly when nobody is speaking, which defeats the background
+        // filter. The audio worklet applies its own gentle gain (after the filter has judged the raw level).
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: false, autoGainControl: false },
       })
       streamRef.current = stream
 
@@ -74,15 +108,28 @@ export function useVoiceCapture() {
       // 'suspended' — onaudioprocess then never fires and no audio is ever sent.
       if (audioContext.state === 'suspended') await audioContext.resume()
 
-      await audioContext.audioWorklet.addModule('/pcm-worklet.js')
+      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=3')
       const source = audioContext.createMediaStreamSource(stream)
       sourceRef.current = source
       const worklet = new AudioWorkletNode(audioContext, 'pcm-worklet', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 })
       processorRef.current = worklet
 
-      worklet.port.onmessage = (e: MessageEvent<{ pcm: ArrayBuffer; amp: number }>) => {
+      worklet.port.postMessage({ gate: noiseFilterRef.current !== 'off', ratio: FILTER_RATIO[noiseFilterRef.current] || 0.35, ref: storedLevel() ?? undefined })
+      worklet.port.onmessage = (e: MessageEvent<{ pcm?: ArrayBuffer; amp: number; gated?: boolean; ref?: number }>) => {
         setAmplitude(e.data.amp)
-        if (ws.readyState === WebSocket.OPEN) ws.send(e.data.pcm)
+        // Remember how loud this advisor typically speaks, so the next session starts calibrated to them.
+        if (e.data.ref && Date.now() - lastSavedLevel.current > 4000) {
+          lastSavedLevel.current = Date.now()
+          try {
+            localStorage.setItem(REF_KEY, String(e.data.ref))
+          } catch {
+            // Not remembering is fine.
+          }
+        }
+        // Say so when background is being ignored for a while, so a quiet speaker can tell the filter is acting.
+        gatedRun.current = e.data.gated ? gatedRun.current + 1 : 0
+        setBackgroundIgnored((was) => (gatedRun.current >= 12 ? true : gatedRun.current === 0 ? false : was))
+        if (e.data.pcm && ws.readyState === WebSocket.OPEN) ws.send(e.data.pcm)
       }
 
       // Some browsers only pull audio through nodes that reach the destination;
@@ -96,6 +143,16 @@ export function useVoiceCapture() {
     },
     [],
   )
+
+  const setNoiseFilter = useCallback((next: NoiseFilter) => {
+    setNoiseFilterState(next)
+    try {
+      localStorage.setItem(FILTER_KEY, next)
+    } catch {
+      // Not remembering the choice is fine.
+    }
+    processorRef.current?.port.postMessage({ gate: next !== 'off', ratio: FILTER_RATIO[next] || 0.35 })
+  }, [])
 
   const start = useCallback(
     async (mode: CaptureMode = 'live') => {
@@ -266,6 +323,7 @@ export function useVoiceCapture() {
 
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
+    noiseFilter, setNoiseFilter, backgroundIgnored,
     start, stop, pause, resume, reset, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

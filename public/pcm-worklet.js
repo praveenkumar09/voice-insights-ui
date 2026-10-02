@@ -8,11 +8,12 @@
 // context can't run at 24kHz natively, (3) accumulates ~100ms of PCM16 and
 // posts it to the main thread together with a level reading for the waveform.
 //
-// NOTE: a "speech gate" (send silence unless the level beats the room's noise
-// floor) was tried to stop the speech model inventing text from room noise. It
-// cut real, quiet speech — the voice and the noise floor are too close in an
-// ordinary room — so it was removed. Do not reintroduce a level gate without
-// testing on quiet and fast speakers.
+// BACKGROUND FILTER. An earlier absolute "speech gate" (silence below a fixed level) cut real, quiet speech — the
+// voice and the room's noise floor are too close for a fixed number to work — so it was removed. This one is
+// RELATIVE: a chunk is background only when it is far quieter than the speaker's own typical level, which adapts to
+// loud and quiet speakers alike. It is deliberately forgiving: it keeps a half-second after any speech (so soft word
+// endings survive), releases the chunk before speech starts (so soft first syllables survive), and can be turned off
+// or made stronger from the screen. Decisions use the RAW level, before the gain below lifts quiet sounds.
 const TARGET_RATE = 24000
 const CHUNK_SAMPLES = 2400 // 100ms at 24kHz
 const TARGET_LEVEL = 0.12
@@ -21,6 +22,13 @@ const GATE = 0.004 // below this the signal is background noise — don't amplif
 // The click of pressing the record button lands in the first moments of the stream, and the speech model can
 // mishear it as a stray word or phrase. Silence the first 400ms (still sent, as zeros, to keep timing).
 const WARMUP_SAMPLES = TARGET_RATE * 0.4
+
+const ABS_MIN = 0.01 // raw level below which a chunk is always treated as room noise
+const REF_START = 0.07 // typical raw level of a voice close to the microphone, until the real speaker is heard
+const REF_MIN = 0.03 // the speaker reference never decays below this, so background can't become "the speaker"
+const REF_DECAY = 0.9985 // per 100ms chunk: forgets a louder past slowly (about a minute)
+const HANG_CHUNKS = 5 // keep passing audio for 500ms after the last speech
+const MAX_SILENT_RUN = 3 // send at most 300ms of silence in a row; the rest is dropped so the model never sees long dead stretches
 
 class PcmWorklet extends AudioWorkletProcessor {
   constructor() {
@@ -34,6 +42,57 @@ class PcmWorklet extends AudioWorkletProcessor {
     this.pos = 0 // fractional read position when resampling
     this.carry = 0 // last sample of the previous block, for interpolation across blocks
     this.warmup = WARMUP_SAMPLES
+    this.gateOn = true
+    this.gateRatio = 0.28
+    this.ref = REF_START
+    this.hang = 0
+    this.prevRms = 0
+    this.silentRun = 0
+    this.speakerLevel = 0 // the reference as it stood when speech was last heard — what the page remembers for next time
+    this.pending = null // previous chunk, held one step so it can still be released if speech begins right after it
+    this.port.onmessage = (e) => {
+      const d = e.data || {}
+      if (typeof d.gate === 'boolean') this.gateOn = d.gate
+      if (typeof d.ratio === 'number') this.gateRatio = d.ratio
+      if (typeof d.ref === 'number') this.ref = Math.max(REF_MIN, Math.min(0.3, d.ref)) // a remembered voice level from earlier sessions
+    }
+  }
+
+  /** Is this 100ms chunk foreground (speech) rather than background? Also tracks the speaker's typical level. */
+  decide(rms) {
+    if (!this.gateOn) return true
+    // Speech opens the gate only if it stays loud for two chunks (200ms): a short burst from a TV or a slammed door
+    // is not an utterance. (Once open, the half-second hangover bridges the natural dips inside real speech.)
+    const sustained = Math.min(rms, this.prevRms)
+    this.prevRms = rms
+    const loud = sustained >= Math.max(ABS_MIN, this.gateRatio * this.ref)
+    if (loud) {
+      this.ref += (rms - this.ref) * (rms > this.ref ? 0.3 : 0.05)
+      this.speakerLevel = this.ref
+      this.hang = HANG_CHUNKS
+    } else if (this.hang > 0) {
+      this.hang--
+    }
+    this.ref = Math.max(REF_MIN, this.ref * REF_DECAY)
+    return loud || this.hang > 0
+  }
+
+  release(prev, nextOpen) {
+    const pass = !this.gateOn || prev.open || nextOpen
+    if (pass) {
+      this.silentRun = 0
+      this.port.postMessage({ pcm: prev.buf.buffer, amp: prev.amp, gated: false, ref: this.speakerLevel }, [prev.buf.buffer])
+      return
+    }
+    // Background: a short stretch is sent as silence (so the server still finds the gap between utterances);
+    // beyond that nothing is sent at all.
+    this.silentRun++
+    if (this.silentRun > MAX_SILENT_RUN) {
+      this.port.postMessage({ amp: prev.amp, gated: true, ref: this.speakerLevel })
+      return
+    }
+    prev.buf.fill(0)
+    this.port.postMessage({ pcm: prev.buf.buffer, amp: prev.amp, gated: true, ref: this.speakerLevel }, [prev.buf.buffer])
   }
 
   push(sample) {
@@ -45,7 +104,10 @@ class PcmWorklet extends AudioWorkletProcessor {
     this.buf[this.len++] = s < 0 ? s * 0x8000 : s * 0x7fff
     if (this.len === CHUNK_SAMPLES) {
       const rms = Math.sqrt(this.levelSum / Math.max(1, this.levelCount))
-      this.port.postMessage({ pcm: this.buf.buffer, amp: Math.min(1, rms * 4) }, [this.buf.buffer])
+      const open = this.warmup > 0 ? true : this.decide(rms)
+      const prev = this.pending
+      this.pending = { buf: this.buf, open, amp: Math.min(1, rms * 4) }
+      if (prev) this.release(prev, open)
       this.buf = new Int16Array(CHUNK_SAMPLES)
       this.len = 0
       this.levelSum = 0

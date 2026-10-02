@@ -40,7 +40,7 @@ export default function App() {
               {inAdmin ? '← Back to Home' : 'Admin'}
             </button>
             <button className="app-header__admin-link" onClick={auth.logout}>
-              Log out ({auth.email})
+              Log out<span className="app-header__email"> ({auth.email})</span>
             </button>
           </div>
         )}

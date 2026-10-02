@@ -260,3 +260,78 @@ export interface SignalPoint {
   sentiment: number
   buying: number
 }
+
+// ── Advice pack ─────────────────────────────────────────────────────────
+
+/** customer: backed by a quote · profile: extracted from the conversation · advisor: typed in · missing: not mentioned. */
+export type FactSource = 'customer' | 'profile' | 'advisor' | 'missing'
+
+export interface FactFindField {
+  key: string
+  label: string
+  value: string
+  source: FactSource
+  quote: string | null
+}
+
+export interface FactFindSection {
+  title: string
+  fields: FactFindField[]
+}
+
+export interface AdviceItem {
+  productName: string
+  fitScore: number
+  need: string
+  rationale: string
+  customerQuotes: string[]
+  evidence: { source: string; excerpt: string }[]
+  existingCoverNote: string
+  risksToDisclose: string[]
+  matchReasons: string[]
+  concerns: string[]
+}
+
+export interface RecordOfAdvice {
+  needsSummary: string
+  items: AdviceItem[]
+  checks: { check: string; passed: boolean; note: string }[]
+  conductFlags: { severity: string; statement: string; advice: string }[]
+  disclosures: string[]
+  compliant: boolean
+}
+
+export interface AdviceTask {
+  title: string
+  reason: string
+  priority: 'high' | 'medium' | 'low'
+  dueInDays: number
+  dueDate: string
+  done: boolean
+}
+
+export interface AdvicePack {
+  version: number
+  generatedAt: string
+  tone: 'warm' | 'professional' | 'brief'
+  factFind: FactFindSection[] | null
+  recordOfAdvice: RecordOfAdvice | null
+  followUp: { whatsapp: string; emailSubject: string; emailBody: string } | null
+  crm: { caseNote: string; tasks: AdviceTask[] } | null
+  nextMeeting: {
+    objective: string
+    questionsToAsk: string[]
+    gapsToFill: string[]
+    likelyObjections: { objection: string; response: string }[]
+    talkingPoints: string[]
+  } | null
+  review: { reviewedBy: string; reviewedAt: string } | null
+  failedSections: string[]
+}
+
+export type AdvicePackSection = 'factFind' | 'recordOfAdvice' | 'followUp' | 'crm' | 'nextMeeting'
+
+export interface AdvicePackView {
+  status: 'READY' | 'GENERATING' | 'NONE'
+  pack: AdvicePack | null
+}

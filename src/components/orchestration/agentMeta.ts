@@ -85,3 +85,19 @@ export const POST_MERGE_AGENTS: AgentKey[] = [
   'summary',
   'salesReport',
 ]
+
+/** The pipeline as four phases — how the 11 agents are explained to an audience. */
+export interface Phase {
+  id: string
+  n: number
+  title: string
+  blurb: string
+  agents: AgentKey[]
+}
+
+export const PHASES: Phase[] = [
+  { id: 'understand', n: 1, title: 'Understand', blurb: 'Three specialists read the customer at the same time', agents: ['need', 'risk', 'affordability'] },
+  { id: 'decide', n: 2, title: 'Decide', blurb: 'Combine the picture, segment the customer, rank every product', agents: ['merge', 'persona', 'productScoring', 'productShortlist'] },
+  { id: 'verify', n: 3, title: 'Verify', blurb: 'Check each claim against product documents and compliance rules', agents: ['ragValidation', 'complianceCheck'] },
+  { id: 'communicate', n: 4, title: 'Communicate', blurb: 'Turn the analysis into words an advisor can use', agents: ['summary', 'salesReport'] },
+]

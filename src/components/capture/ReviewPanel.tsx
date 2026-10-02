@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { saveCustomerProfile } from '../../api/client'
 import type { CopilotInsights, CustomerProfile, LifeMapConcern, LifeMapData, LifeMapPerson } from '../../types'
+import { forLabel } from '../../utils/names'
 
 const RELATIONS = ['Wife', 'Husband', 'Partner', 'Daughter', 'Son', 'Child', 'Mother', 'Father', 'Parent', 'Sibling', 'Other']
 const ADDED = 'Added by the advisor'
@@ -190,7 +191,7 @@ function LifeMapEditor({ map, onSave }: { map: LifeMapData | null; onSave: (m: L
         <div className="lme__group lme__group--dream">
           <h5><i>✦</i>Hopes<b>{draft.dreams.length}</b></h5>
           <ul>
-            {draft.dreams.map((c: LifeMapConcern, i) => chip(c.label, c.forRelation !== 'Self' ? `for ${c.forRelation.toLowerCase()}` : undefined, () => change({ ...draft, dreams: draft.dreams.filter((_, j) => j !== i) })))}
+            {draft.dreams.map((c: LifeMapConcern, i) => chip(c.label, c.forRelation !== 'Self' ? `for ${forLabel(c.forRelation)}` : undefined, () => change({ ...draft, dreams: draft.dreams.filter((_, j) => j !== i) })))}
             {draft.dreams.length === 0 && <li className="lme__none">None yet</li>}
           </ul>
           <div className="lme__add">
@@ -203,7 +204,7 @@ function LifeMapEditor({ map, onSave }: { map: LifeMapData | null; onSave: (m: L
         <div className="lme__group lme__group--worry">
           <h5><i>!</i>Concerns<b>{draft.worries.length}</b></h5>
           <ul>
-            {draft.worries.map((c: LifeMapConcern, i) => chip(c.label, c.forRelation !== 'Self' ? `for ${c.forRelation.toLowerCase()}` : undefined, () => change({ ...draft, worries: draft.worries.filter((_, j) => j !== i) })))}
+            {draft.worries.map((c: LifeMapConcern, i) => chip(c.label, c.forRelation !== 'Self' ? `for ${forLabel(c.forRelation)}` : undefined, () => change({ ...draft, worries: draft.worries.filter((_, j) => j !== i) })))}
             {draft.worries.length === 0 && <li className="lme__none">None yet</li>}
           </ul>
           <div className="lme__add">

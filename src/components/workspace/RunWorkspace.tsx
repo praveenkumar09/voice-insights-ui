@@ -4,14 +4,19 @@ import { recommendationReportUrl } from '../../api/client'
 import type { AgentState } from '../../hooks/useRecommendationStream'
 import { PIPELINE_ORDER } from '../../hooks/useRecommendationStream'
 import type { AgentKey, CustomerProfile, SalesReportResult } from '../../types'
+import { AdvicePackPanel } from '../advicepack/AdvicePackPanel'
 import { DownloadIcon } from '../icons'
 import { GoalsPlan } from '../future/GoalsPlan'
 import { LiveVsFinal } from '../orchestration/LiveVsFinal'
 import { OrchestratorCanvas } from '../orchestration/OrchestratorCanvas'
 import { ProposalPanel } from '../proposal/ProposalPanel'
 import { MarkdownLite } from '../report/MarkdownLite'
+import { JourneyNav, type JourneyId, type JourneyStep } from './JourneyNav'
+import { ReportSpotlight } from './ReportSpotlight'
+import { RunHero } from './RunHero'
+import { StageIntro } from './StageIntro'
 
-type Tab = 'live' | 'agents' | 'report' | 'future'
+type Tab = JourneyId
 type ReportView = 'advisory' | 'proposal'
 
 interface Props {
@@ -24,17 +29,19 @@ interface Props {
 }
 
 /**
- * The recommendation page, organised as three deliberate stages instead of one
- * long scroll: (1) Live vs final analysis — what the copilot thought during the
- * call versus what the agents concluded; (2) Agent orchestration — the pipeline
- * itself; (3) Final report — the report agent's advisory report and the
- * customer proposal. A fresh run opens on the pipeline so you can watch it
- * work, then moves to the report when it lands.
+ * The recommendation page, as a five-stage journey: (1) Agent orchestration — the pipeline doing its work;
+ * (2) Live vs final — what the copilot thought during the call set against what those agents concluded (so it
+ * can only follow the pipeline); (3) Final report — the advisory report and the customer proposal;
+ * (4) Goals & plan — the warm customer conversation page; (5) Advice pack — the advisor's after-meeting admin.
+ * A hero up top carries the customer and the headline results as they land.
  */
 export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab)
   const [reportView, setReportView] = useState<ReportView>('advisory')
   const userPicked = useRef(false)
+  const watched = initialTab === 'agents'
+  const startedAt = useRef(Date.now())
+  const [elapsed, setElapsed] = useState(0)
 
   const doneCount = PIPELINE_ORDER.filter((k) => steps[k].status === 'done').length
   const total = PIPELINE_ORDER.length
@@ -44,12 +51,22 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
   const running = !reportReady && !runFailed && PIPELINE_ORDER.some((k) => steps[k].status === 'running')
   const failedAgent = PIPELINE_ORDER.find((k) => steps[k].status === 'failed')
 
-  // When a watched run finishes, bring the user to the outcome — unless they've already chosen where to look.
+  // Time to insight, for a run being watched live.
+  useEffect(() => {
+    if (!watched || reportReady) return
+    const t = setInterval(() => setElapsed(Math.round((Date.now() - startedAt.current) / 1000)), 1000)
+    return () => clearInterval(t)
+  }, [watched, reportReady])
+  useEffect(() => {
+    if (watched && reportReady) setElapsed(Math.max(1, Math.round((Date.now() - startedAt.current) / 1000)))
+  }, [watched, reportReady])
+
+  // When a watched run finishes, move on to the next stage — unless they've already chosen where to look.
   useEffect(() => {
     if (!reportReady || userPicked.current || initialTab !== 'agents') return
-    const t = setTimeout(() => !userPicked.current && setTab('report'), 1400)
+    const t = setTimeout(() => !userPicked.current && setTab(profile?.liveInsights?.latest ? 'live' : 'report'), 1600)
     return () => clearTimeout(t)
-  }, [reportReady, initialTab])
+  }, [reportReady, initialTab, profile?.liveInsights?.latest])
 
   function pick(next: Tab) {
     userPicked.current = true
@@ -59,72 +76,69 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
   const status = runFailed ? 'failed' : reportReady ? 'complete' : running || doneCount > 0 ? 'running' : 'pending'
   const name = profile?.customerName
 
+  const journey: JourneyStep[] = [
+    { id: 'agents', title: 'Agent orchestration', hint: '11 agents · 4 phases', state: reportReady ? 'done' : running || doneCount > 0 ? 'running' : 'idle', chip: reportReady ? 'Complete' : `${doneCount}/${total}` },
+    { id: 'live', title: 'Live vs final', hint: 'Copilot vs the agents', state: finalReady ? 'done' : 'idle', chip: finalReady ? 'Compare' : 'Waiting' },
+    { id: 'report', title: 'Final report', hint: 'Advisory report & proposal', state: reportReady ? 'done' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
+    { id: 'future', title: 'Goals & plan', hint: 'Customer conversation page', state: reportReady ? 'new' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
+    { id: 'advice', title: 'Advice pack', hint: 'After-meeting admin, done', state: reportReady ? 'new' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
+  ]
+
   return (
     <div className="ws">
-      <header className="glass-card ws__summary">
-        <div className="ws__who">
-          <span className="ws__avatar">{(name ?? '?').charAt(0).toUpperCase()}</span>
-          <div>
-            <h2>Recommendation for {name ?? 'the customer'}</h2>
-            <p>
-              {profile?.occupation ? `${profile.occupation} · ` : ''}
-              {runId ? `Run ${runId.slice(0, 8)}` : 'Starting run…'}
-            </p>
-          </div>
-        </div>
-        <div className="ws__progress">
-          <div className="ws__progress-top">
-            <span className={`ws__status ws__status--${status}`}>
-              {status === 'complete' ? '✓ Complete' : status === 'failed' ? 'Failed' : status === 'running' ? 'Analysing' : 'Starting'}
-            </span>
-            <span className="ws__count">
-              {doneCount} / {total} agents
-            </span>
-          </div>
-          <div className="ws__bar">
-            <motion.span animate={{ width: `${(100 * doneCount) / total}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
-          </div>
-        </div>
-      </header>
+      <RunHero runId={runId} steps={steps} profile={profile} status={status} doneCount={doneCount} total={total} elapsed={watched ? elapsed : null} />
 
       {(runFailed || failedAgent) && (
         <p className="orchestration-screen__error">
-          {runFailed ? `Run failed: ${runFailed}` : `The ${failedAgent} agent failed — see the Agent orchestration tab for details.`}
+          {runFailed ? `Run failed: ${runFailed}` : `The ${failedAgent} agent failed — see the Agent orchestration stage for details.`}
         </p>
       )}
 
-      <nav className="ws__tabs" role="tablist" aria-label="Recommendation stages">
-        <TabButton n={1} active={tab === 'live'} onClick={() => pick('live')} title="Live vs final analysis" hint="Copilot vs agents"
-          chip={finalReady ? 'Compare' : 'Waiting'} chipState={finalReady ? 'ok' : 'idle'} />
-        <TabButton n={2} active={tab === 'agents'} onClick={() => pick('agents')} title="Agent orchestration" hint="The 11-agent pipeline"
-          chip={`${doneCount}/${total}`} chipState={reportReady ? 'ok' : running ? 'busy' : 'idle'} />
-        <TabButton n={3} active={tab === 'report'} onClick={() => pick('report')} title="Final report" hint="Advisory report & proposal"
-          chip={reportReady ? 'Ready' : 'Pending'} chipState={reportReady ? 'ok' : 'idle'} pulse={reportReady && tab !== 'report'} />
-        <TabButton n={4} active={tab === 'future'} onClick={() => pick('future')} title="Goals & plan" hint="What matters to them, and how we help"
-          chip={reportReady ? 'New' : 'Pending'} chipState={reportReady ? 'accent' : 'idle'} />
-      </nav>
+      <JourneyNav steps={journey} active={tab} onPick={pick} />
 
       <AnimatePresence mode="wait">
-        <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}>
-          {tab === 'live' && <LiveStage profile={profile} steps={steps} finalReady={finalReady} />}
+        <motion.div key={tab} className="ws__stage" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}>
+          {tab === 'agents' && (
+            <>
+              <StageIntro title="Watch the agents work" text="Eleven specialist AI agents analyse the conversation in four phases. Every card shows its one-line conclusion — open it for the full reasoning." audience={[{ label: 'Behind the scenes', kind: 'internal' }]} />
+              <OrchestratorCanvas runId={runId} steps={steps} />
+            </>
+          )}
 
-          {tab === 'agents' && <OrchestratorCanvas runId={runId} steps={steps} />}
+          {tab === 'live' && (
+            <>
+              <StageIntro title="Live vs final analysis" text="What the copilot suggested during the conversation, set against what the full agent analysis concluded. The agents’ answer is the recommendation of record." audience={[{ label: 'For the advisor · internal', kind: 'internal' }]} />
+              <LiveStage profile={profile} steps={steps} finalReady={finalReady} />
+            </>
+          )}
 
-          {tab === 'future' &&
-            (report && runId ? (
-              <GoalsPlan runId={runId} report={report} customerName={name} />
-            ) : (
-              <div className="glass-card ws__waiting">
-                <span className="proposal__spinner" />
-                <div>
-                  <strong>The Goals and plan view is prepared with the report</strong>
-                  <p>It appears here as soon as the report agent finishes.</p>
+          {tab === 'future' && (
+            <>
+              <StageIntro title="Goals & plan" text="A warm, positive page to talk through with the customer: what matters to them, in their own words, and how the recommendation helps with each goal." audience={[{ label: 'Customer-facing · for the conversation', kind: 'customer' }]} />
+              {report && runId ? (
+                <GoalsPlan runId={runId} report={report} customerName={name} />
+              ) : (
+                <div className="glass-card ws__waiting">
+                  <span className="proposal__spinner" />
+                  <div>
+                    <strong>The Goals and plan view is prepared with the report</strong>
+                    <p>It appears here as soon as the report agent finishes.</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )}
+            </>
+          )}
+
+          {tab === 'advice' && (
+            <>
+              <StageIntro title="Advice pack" text="The paperwork an advisor normally does after a meeting — fact-find, record of advice, follow-up message, CRM note and next-meeting brief — drafted for review and sign-off." audience={[{ label: 'For the advisor · internal', kind: 'internal' }]} />
+              {runId && <AdvicePackPanel runId={runId} customerName={name} ready={reportReady} />}
+            </>
+          )}
 
           {tab === 'report' && (
             <div className="ws__report">
+              <StageIntro title="Two documents from one analysis" text="The advisory report is the advisor’s own briefing. The customer proposal is the take-home version, in the customer’s language, with its own compliance check." audience={[{ label: 'Advisory report · internal', kind: 'internal' }, { label: 'Customer proposal · customer-facing', kind: 'customer' }]} />
               {!report ? (
                 <div className="glass-card ws__waiting">
                   <span className="proposal__spinner" />
@@ -135,13 +149,14 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
                 </div>
               ) : (
                 <>
+                  <ReportSpotlight steps={steps} />
                   <div className="ws__report-bar">
-                    <div className="ws__seg" role="tablist" aria-label="Report view">
+                    <div className="ws__seg ws__seg--docs" role="tablist" aria-label="Report view">
                       <button role="tab" aria-selected={reportView === 'advisory'} className={reportView === 'advisory' ? 'is-active' : ''} onClick={() => setReportView('advisory')}>
-                        Advisory report
+                        Advisory report <small>Internal</small>
                       </button>
                       <button role="tab" aria-selected={reportView === 'proposal'} className={reportView === 'proposal' ? 'is-active' : ''} onClick={() => setReportView('proposal')}>
-                        Customer proposal
+                        Customer proposal <small>Customer-facing</small>
                       </button>
                     </div>
                     {reportView === 'advisory' && runId && (
@@ -193,27 +208,5 @@ function LiveStage({ profile, steps, finalReady }: { profile: CustomerProfile | 
       </div>
     )
   }
-  return <LiveVsFinal live={live} steps={steps} />
-}
-
-function TabButton(props: {
-  n: number
-  active: boolean
-  onClick: () => void
-  title: string
-  hint: string
-  chip: string
-  chipState: 'ok' | 'busy' | 'idle' | 'accent'
-  pulse?: boolean
-}) {
-  return (
-    <button role="tab" aria-selected={props.active} className={`ws__tab${props.active ? ' is-active' : ''}${props.pulse ? ' is-pulse' : ''}`} onClick={props.onClick}>
-      <span className="ws__tab-n">{props.n}</span>
-      <span className="ws__tab-text">
-        <strong>{props.title}</strong>
-        <small>{props.hint}</small>
-      </span>
-      <span className={`ws__chip ws__chip--${props.chipState}`}>{props.chip}</span>
-    </button>
-  )
+  return <LiveVsFinal live={live} steps={steps} showBuying={profile?.captureMode !== 'DEBRIEF'} />
 }

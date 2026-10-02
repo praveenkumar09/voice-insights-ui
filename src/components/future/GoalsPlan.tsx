@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { generateStory } from '../../api/client'
 import type { ProtectionStory, SalesReportResult } from '../../types'
 import { printGoalsPlan } from '../../utils/goalsPlanPdf'
+import { forLabel } from '../../utils/names'
 
 const sgd = (n: number) => `S$${Math.round(n).toLocaleString('en-SG')}`
 
@@ -110,7 +111,7 @@ export function GoalsPlan({ runId, report, customerName }: Props) {
                 <span className="gp-goal__tick" aria-hidden>✓</span>
                 <div>
                   <h4>{g.label}</h4>
-                  {g.forRelation && g.forRelation !== 'Self' && <small>for {g.forRelation.toLowerCase()}</small>}
+                  {g.forRelation && g.forRelation !== 'Self' && <small>for {forLabel(g.forRelation)}</small>}
                 </div>
               </header>
               {g.said && <q className="gp-goal__said">{g.said}</q>}

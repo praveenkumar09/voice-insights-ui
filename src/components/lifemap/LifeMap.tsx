@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LifeMapConcern, LifeMapData, LifeMapPerson } from '../../types'
+import { forLabel } from '../../utils/names'
 
 interface Props {
   customerName?: string | null
@@ -98,7 +99,7 @@ export function layout(map: LifeMapData): Placed[] {
     }
     const node: Placed = {
       key: `${kind}:${c.label.toLowerCase()}`, kind, x: 50, y: 50, label: c.label,
-      sub: anchor !== undefined ? `for ${c.forRelation.toLowerCase()}` : undefined, said: c.said, idea: c.idea,
+      sub: anchor !== undefined ? `for ${forLabel(c.forRelation)}` : undefined, said: c.said, idea: c.idea,
     }
     const costAt = (x: number, y: number) => {
       node.x = x

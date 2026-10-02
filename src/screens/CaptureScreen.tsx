@@ -186,6 +186,17 @@ export function CaptureScreen({ onReady }: Props) {
             {debrief && (status === 'listening' || status === 'paused') && <span className="capture-console__take">Take {take}</span>}
           </div>
           <p className="capture-screen__hint">{hint}</p>
+          <div className="noise-filter" role="group" aria-label="Background audio filter">
+            <span className="noise-filter__label">Background filter</span>
+            <div className="noise-filter__seg">
+              {(['off', 'normal', 'strong'] as const).map((f) => (
+                <button key={f} className={voice.noiseFilter === f ? 'is-active' : ''} aria-pressed={voice.noiseFilter === f} onClick={() => voice.setNoiseFilter(f)}>
+                  {f === 'off' ? 'Off' : f === 'normal' ? 'Normal' : 'Strong'}
+                </button>
+              ))}
+            </div>
+            {voice.backgroundIgnored && listening && <span className="noise-filter__live">Ignoring background audio</span>}
+          </div>
         </div>
         <LiveWaveform amplitude={amplitude} active={status === 'listening'} />
 

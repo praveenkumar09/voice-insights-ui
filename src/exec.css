@@ -261,3 +261,7 @@
 
 /* Older browsers without overflow: clip: hide the sideways overflow instead (the sticky bar degrades, nothing breaks) */
 @supports not (overflow: clip) { .app-main { overflow-x: hidden; } }
+
+/* A stage fades and rises in as soon as it is chosen — pure CSS, so it never depends on frame timing. */
+.ws__stage--in { animation: stage-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) { .ws__stage--in { animation: none; } }

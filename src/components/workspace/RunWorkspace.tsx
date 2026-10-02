@@ -1,4 +1,3 @@
-import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { recommendationReportUrl } from '../../api/client'
 import type { AgentState } from '../../hooks/useRecommendationStream'
@@ -96,8 +95,9 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
 
       <JourneyNav steps={journey} active={tab} onPick={pick} />
 
-      <AnimatePresence mode="wait">
-        <motion.div key={tab} className="ws__stage" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}>
+      {/* No exit animation: the next stage must never wait on the previous one finishing, or a throttled window looks frozen. */}
+      <div key={tab} className="ws__stage ws__stage--in">
+        <div>
           {tab === 'agents' && (
             <>
               <StageIntro title="Watch the agents work" text="Eleven specialist AI agents analyse the conversation in four phases. Every card shows its one-line conclusion — open it for the full reasoning." audience={[{ label: 'Behind the scenes', kind: 'internal' }]} />
@@ -179,8 +179,8 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
               )}
             </div>
           )}
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      </div>
     </div>
   )
 }

@@ -180,6 +180,12 @@ export interface AnalyticsResult {
   agents: { agent: string; conversations: number; avgBuyingSignal: number; hotLeads: number; complianceFlags: number }[]
   leadsToFollowUp: { profileId: string; customerName: string | null; buyingSignal: number; topNeed: string | null; latestRunId: string | null; capturedAt: string }[]
   takeaways: string[]
+  /** Operational figures; absent when talking to an older API. */
+  ops?: { avgAnalysisSeconds: number; medianAnalysisSeconds: number; packsGenerated: number; packsReviewed: number; liveCount: number; debriefCount: number }
+  /** The same headline figures for the equal-length period just before this one. */
+  previous?: { conversations: number; analysed: number; hot: number; recommendations: number; avgBuyingSignal: number }
+  /** Conversations by weekday (Monday first) and hour: 168 values, index = weekday * 24 + hour, Singapore time. */
+  activity?: number[]
 }
 
 /** Every LangGraph4j pipeline node, in execution order. 'merge' is the fan-in synthesis step. */

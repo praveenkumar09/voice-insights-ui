@@ -10,6 +10,7 @@ import './lifemap.css'
 import './modes.css'
 import './advicepack.css'
 import './exec.css'
+import './admin.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

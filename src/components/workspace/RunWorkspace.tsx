@@ -14,6 +14,7 @@ import { JourneyNav, type JourneyId, type JourneyStep } from './JourneyNav'
 import { ReportSpotlight } from './ReportSpotlight'
 import { RunHero } from './RunHero'
 import { StageIntro } from './StageIntro'
+import { AGENT_NAME } from '../../brand'
 
 type Tab = JourneyId
 type ReportView = 'advisory' | 'proposal'
@@ -76,7 +77,7 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
   const name = profile?.customerName
 
   const journey: JourneyStep[] = [
-    { id: 'agents', title: 'Agent orchestration', hint: '11 agents · 4 phases', state: reportReady ? 'done' : running || doneCount > 0 ? 'running' : 'idle', chip: reportReady ? 'Complete' : `${doneCount}/${total}` },
+    { id: 'agents', title: AGENT_NAME, hint: 'Agent orchestration · 11 agents', state: reportReady ? 'done' : running || doneCount > 0 ? 'running' : 'idle', chip: reportReady ? 'Complete' : `${doneCount}/${total}` },
     { id: 'live', title: 'Live vs final', hint: 'Copilot vs the agents', state: finalReady ? 'done' : 'idle', chip: finalReady ? 'Compare' : 'Waiting' },
     { id: 'report', title: 'Final report', hint: 'Advisory report & proposal', state: reportReady ? 'done' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
     { id: 'future', title: 'Goals & plan', hint: 'Customer conversation page', state: reportReady ? 'new' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
@@ -89,7 +90,7 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
 
       {(runFailed || failedAgent) && (
         <p className="orchestration-screen__error">
-          {runFailed ? `Run failed: ${runFailed}` : `The ${failedAgent} agent failed — see the Agent orchestration stage for details.`}
+          {runFailed ? `Run failed: ${runFailed}` : `The ${failedAgent} agent failed — see the ${AGENT_NAME} stage for details.`}
         </p>
       )}
 
@@ -100,7 +101,7 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
         <div>
           {tab === 'agents' && (
             <>
-              <StageIntro title="Watch the agents work" text="Eleven specialist AI agents analyse the conversation in four phases. Every card shows its one-line conclusion — open it for the full reasoning." audience={[{ label: 'Behind the scenes', kind: 'internal' }]} />
+              <StageIntro title={`Meet ${AGENT_NAME}`} text={`${AGENT_NAME} is the orchestration behind every recommendation: eleven specialist AI agents analyse the conversation in four phases. Every card shows its one-line conclusion — open it for the full reasoning.`} audience={[{ label: 'Behind the scenes', kind: 'internal' }]} />
               <OrchestratorCanvas runId={runId} steps={steps} />
             </>
           )}
@@ -203,7 +204,7 @@ function LiveStage({ profile, steps, finalReady }: { profile: CustomerProfile | 
         <span className="proposal__spinner" />
         <div>
           <strong>Waiting for the agents’ final analysis</strong>
-          <p>The comparison appears as soon as the need and product agents finish — open Agent orchestration to watch them work.</p>
+          <p>The comparison appears as soon as the need and product agents finish — open {AGENT_NAME} to watch them work.</p>
         </div>
       </div>
     )

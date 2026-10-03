@@ -1,4 +1,4 @@
-export type HomeMode = 'debrief' | 'live'
+export type HomeMode = 'debrief' | 'live' | 'juno'
 
 interface Props {
   mode: HomeMode
@@ -17,6 +17,10 @@ export function ModeSwitch({ mode, onChange, disabled }: Props) {
       <button role="tab" aria-selected={mode === 'live'} className={mode === 'live' ? 'is-active' : ''} onClick={() => onChange('live')} disabled={disabled}>
         <strong>With the customer</strong>
         <small>Live conversation</small>
+      </button>
+      <button role="tab" aria-selected={mode === 'juno'} className={`mode-switch__juno${mode === 'juno' ? ' is-active' : ''}`} onClick={() => onChange('juno')} disabled={disabled}>
+        <strong>Juno <i>AI host</i></strong>
+        <small>Juno talks with the customer</small>
       </button>
     </div>
   )

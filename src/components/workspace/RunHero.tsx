@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import type { AgentState } from '../../hooks/useRecommendationStream'
 import type { AgentKey, ComplianceCheckResult, CustomerPersonaResult, CustomerProfile, ProductScoringResult, ProductShortlistResult } from '../../types'
+import { AGENT_NAME } from '../../brand'
 
 interface Props {
   runId: string | null
@@ -37,7 +38,7 @@ export function RunHero({ runId, steps, profile, status, doneCount, total, elaps
         <div className="hero__who">
           <span className="hero__avatar">{(name ?? '?').charAt(0).toUpperCase()}</span>
           <div>
-            <span className="hero__eyebrow">AI recommendation for</span>
+            <span className="hero__eyebrow">{AGENT_NAME} recommendation for</span>
             <h2>{name ?? 'the customer'}</h2>
             <p>
               {profile?.occupation ?? 'Customer'}
@@ -68,7 +69,7 @@ export function RunHero({ runId, steps, profile, status, doneCount, total, elaps
 
       <div className="hero__status">
         <span className={`hero__pill hero__pill--${status}`}>
-          {status === 'complete' ? 'Analysis complete' : status === 'failed' ? 'Run failed' : status === 'running' ? 'Agents are analysing' : 'Starting'}
+          {status === 'complete' ? 'Analysis complete' : status === 'failed' ? 'Run failed' : status === 'running' ? `${AGENT_NAME} is analysing` : 'Starting'}
         </span>
         {elapsed != null && elapsed > 0 && <span className="hero__time">{status === 'complete' ? `Analysed in ${elapsed}s` : `${elapsed}s elapsed`}</span>}
       </div>

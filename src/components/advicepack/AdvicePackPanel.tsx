@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { generateAdvicePack, getAdvicePack, regenerateAdviceSection, reviewAdvicePack, saveAdvicePack } from '../../api/client'
 import type { AdviceTask, AdvicePack, AdvicePackSection, AdvicePackView, FactFindField, FactSource } from '../../types'
 import { printAdvicePack } from '../../utils/advicePackPdf'
+import { AGENT_NAME } from '../../brand'
 
 type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting'
 type Tone = 'warm' | 'professional' | 'brief'
@@ -132,7 +133,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
         <span className="proposal__spinner" />
         <div>
           <strong>The advice pack is built from the finished recommendation</strong>
-          <p>It starts automatically as soon as the agents complete.</p>
+          <p>It starts automatically as soon as {AGENT_NAME} completes.</p>
         </div>
       </div>
     )

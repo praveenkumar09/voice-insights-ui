@@ -3,6 +3,8 @@ import { saveCustomerProfile } from '../api/client'
 import { CoverageCues } from '../components/capture/CoverageCues'
 import { LiveWaveform } from '../components/capture/LiveWaveform'
 import { ModeSwitch, type HomeMode } from '../components/capture/ModeSwitch'
+import { JunoStage, JunoTranscript } from '../components/juno/JunoStage'
+import { useJuno } from '../hooks/useJuno'
 import { ReviewPanel } from '../components/capture/ReviewPanel'
 import { useElapsed } from '../components/capture/useElapsed'
 import { CustomerProfileCard } from '../components/CustomerProfileCard'
@@ -22,7 +24,8 @@ const MODE_KEY = 'vi_home_mode'
 
 function storedMode(): HomeMode {
   try {
-    return localStorage.getItem(MODE_KEY) === 'live' ? 'live' : 'debrief'
+    const v = localStorage.getItem(MODE_KEY)
+    return v === 'live' || v === 'juno' ? v : 'debrief'
   } catch {
     return 'debrief'
   }
@@ -30,6 +33,7 @@ function storedMode(): HomeMode {
 
 export function CaptureScreen({ onReady }: Props) {
   const voice = useVoiceCapture()
+  const juno = useJuno(voice)
   const { status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage } = voice
   const [advancing, setAdvancing] = useState(false)
   const [mode, setMode] = useState<HomeMode>(storedMode)
@@ -43,8 +47,9 @@ export function CaptureScreen({ onReady }: Props) {
   const [consoleVisible, setConsoleVisible] = useState(true)
 
   const debrief = mode === 'debrief'
+  const hosted = mode === 'juno'
   const listening = status === 'listening' || status === 'connecting'
-  const busy = listening || status === 'paused' || status === 'stopping'
+  const busy = listening || status === 'paused' || status === 'stopping' || (hosted && juno.stage !== 'idle' && juno.stage !== 'finished')
   const elapsed = useElapsed(status === 'listening', debrief, session)
   const canRecommend = status === 'stopped' && !!profile?.id
   const safe = safeView && !debrief
@@ -61,6 +66,7 @@ export function CaptureScreen({ onReady }: Props) {
   function changeMode(next: HomeMode) {
     if (busy || next === mode) return
     voice.reset()
+    juno.reset()
     setMode(next)
     setSafeView(false)
     setTake(1)
@@ -134,7 +140,8 @@ export function CaptureScreen({ onReady }: Props) {
       }[status]
 
   const recommendCta = canRecommend && (
-    <button className="cta-btn" onClick={handleGetRecommendations} disabled={advancing}>
+    // In a Juno conversation only a real press by a person counts: a scripted click is ignored.
+    <button className="cta-btn" onClick={(e) => { if (hosted && !e.isTrusted) return; void handleGetRecommendations() }} disabled={advancing}>
       {advancing ? 'Preparing…' : 'Get Recommendations'}
     </button>
   )
@@ -143,11 +150,13 @@ export function CaptureScreen({ onReady }: Props) {
     <section className="capture-screen">
       <div className="capture-hero">
         <div>
-          <h2 className="capture-hero__title">{debrief ? 'Debrief the meeting' : 'Customer Conversation Intelligence'}</h2>
+          <h2 className="capture-hero__title">{debrief ? 'Debrief the meeting' : hosted ? 'Let Juno host the conversation' : 'Customer Conversation Intelligence'}</h2>
           <p className="capture-hero__sub">
             {debrief
-              ? 'Dictate what you learned once the customer has left. The agents turn your summary into recommendations, a report and a proposal.'
-              : 'Capture the conversation, let specialised agents analyse it, and walk into the next meeting equipped.'}
+              ? 'Dictate what you learned once the customer has left. Juno turns your summary into recommendations, a report and a proposal.'
+              : hosted
+                ? 'Juno greets the customer, asks their permission and has the first conversation by itself. You step in at the end and start the analysis.'
+                : 'Capture the conversation, let Juno and its specialist agents analyse it, and walk into the next meeting equipped.'}
           </p>
         </div>
         <div className="capture-hero__controls">
@@ -166,7 +175,22 @@ export function CaptureScreen({ onReady }: Props) {
         </div>
       </div>
 
-      <div ref={consoleRef} className={`glass-card capture-console${status === 'listening' ? ' is-live' : ''}`}>
+      {hosted && (
+        <JunoStage
+          k={juno}
+          amplitude={amplitude}
+          partialText={partialText}
+          profile={profile}
+          copilot={copilot}
+          canRecommend={canRecommend}
+          advancing={advancing}
+          onRecommend={handleGetRecommendations}
+          onBrief={() => printMeetingBrief(profile, copilot)}
+          noVoice={typeof speechSynthesis === 'undefined'}
+        />
+      )}
+
+      {!hosted && <div ref={consoleRef} className={`glass-card capture-console${status === 'listening' ? ' is-live' : ''}`}>
         <VoiceOrb
           listening={status === 'listening' || status === 'connecting'}
           amplitude={amplitude}
@@ -210,7 +234,7 @@ export function CaptureScreen({ onReady }: Props) {
           <button className="ghost-btn" onClick={() => printMeetingBrief(profile, copilot)}>Download brief (PDF)</button>
         )}
         {!safe && recommendCta}
-      </div>
+      </div>}
 
       {safe && (
         <div className="safe-banner">
@@ -219,7 +243,7 @@ export function CaptureScreen({ onReady }: Props) {
         </div>
       )}
 
-      {!debrief && !safe && <NextQuestions questions={copilot?.nextQuestions ?? []} />}
+      {!debrief && !hosted && !safe && <NextQuestions questions={copilot?.nextQuestions ?? []} context={copilot?.askContext} />}
 
       <LifeMap
         customerName={profile?.customerName}
@@ -232,12 +256,16 @@ export function CaptureScreen({ onReady }: Props) {
 
       <div className={safe ? 'capture-safe' : 'capture-grid'}>
         <div className="capture-grid__col">
-          <TranscriptPanel
-            partialText={partialText}
-            finalSegments={finalSegments}
-            isListening={status === 'listening' || status === 'connecting' || status === 'stopping'}
-            onSaveEdit={status === 'stopped' ? voice.saveTranscriptEdit : undefined}
-          />
+          {hosted ? (
+            <JunoTranscript turns={juno.turns} />
+          ) : (
+            <TranscriptPanel
+              partialText={partialText}
+              finalSegments={finalSegments}
+              isListening={status === 'listening' || status === 'connecting' || status === 'stopping'}
+              onSaveEdit={status === 'stopped' ? voice.saveTranscriptEdit : undefined}
+            />
+          )}
           {!debrief && !safe && <ProductMatches matches={copilot?.productMatches ?? []} />}
         </div>
         {!safe && (
@@ -259,7 +287,7 @@ export function CaptureScreen({ onReady }: Props) {
         )}
       </div>
 
-      {debrief && status === 'stopped' && profile?.id && (
+      {(debrief || hosted) && status === 'stopped' && profile?.id && (
         <>
           <ReviewPanel
             profile={profile}

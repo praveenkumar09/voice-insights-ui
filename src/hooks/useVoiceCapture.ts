@@ -5,7 +5,7 @@ import type { CopilotInsights, CustomerProfile, LifeMapData, SignalPoint } from 
 export type VoiceCaptureStatus = 'idle' | 'connecting' | 'listening' | 'paused' | 'stopping' | 'stopped' | 'error'
 
 /** live: the customer is speaking. debrief: the advisor dictates a summary after the meeting. */
-export type CaptureMode = 'live' | 'debrief'
+export type CaptureMode = 'live' | 'debrief' | 'juno'
 
 /** How firmly background sound (a TV, other conversations) is kept out: off, normal, or strong. */
 export type NoiseFilter = 'off' | 'normal' | 'strong'
@@ -55,6 +55,10 @@ export function useVoiceCapture() {
   const noiseFilterRef = useRef<NoiseFilter>(noiseFilter)
   noiseFilterRef.current = noiseFilter
   const gatedRun = useRef(0)
+  // While Juno is speaking aloud the microphone must not feed its own voice back into the transcript.
+  const mutedRef = useRef(false)
+  // In a Juno conversation the filter is more forgiving: a customer's soft first and last words matter more than a TV.
+  const hostedRef = useRef(false)
   const lastSavedLevel = useRef(0)
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -108,15 +112,15 @@ export function useVoiceCapture() {
       // 'suspended' — onaudioprocess then never fires and no audio is ever sent.
       if (audioContext.state === 'suspended') await audioContext.resume()
 
-      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=3')
+      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=6')
       const source = audioContext.createMediaStreamSource(stream)
       sourceRef.current = source
       const worklet = new AudioWorkletNode(audioContext, 'pcm-worklet', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 })
       processorRef.current = worklet
 
-      worklet.port.postMessage({ gate: noiseFilterRef.current !== 'off', ratio: FILTER_RATIO[noiseFilterRef.current] || 0.35, ref: storedLevel() ?? undefined })
+      worklet.port.postMessage({ gate: noiseFilterRef.current !== 'off', ratio: hostedRef.current ? 0.2 : FILTER_RATIO[noiseFilterRef.current] || 0.35, hang: hostedRef.current ? 8 : 5, ref: storedLevel() ?? undefined })
       worklet.port.onmessage = (e: MessageEvent<{ pcm?: ArrayBuffer; amp: number; gated?: boolean; ref?: number }>) => {
-        setAmplitude(e.data.amp)
+        setAmplitude(mutedRef.current ? 0 : e.data.amp)
         // Remember how loud this advisor typically speaks, so the next session starts calibrated to them.
         if (e.data.ref && Date.now() - lastSavedLevel.current > 4000) {
           lastSavedLevel.current = Date.now()
@@ -129,7 +133,7 @@ export function useVoiceCapture() {
         // Say so when background is being ignored for a while, so a quiet speaker can tell the filter is acting.
         gatedRun.current = e.data.gated ? gatedRun.current + 1 : 0
         setBackgroundIgnored((was) => (gatedRun.current >= 12 ? true : gatedRun.current === 0 ? false : was))
-        if (e.data.pcm && ws.readyState === WebSocket.OPEN) ws.send(e.data.pcm)
+        if (e.data.pcm && !mutedRef.current && ws.readyState === WebSocket.OPEN) ws.send(e.data.pcm)
       }
 
       // Some browsers only pull audio through nodes that reach the destination;
@@ -144,6 +148,31 @@ export function useVoiceCapture() {
     [],
   )
 
+  /** Stops (or resumes) sending the microphone to the server — used so Juno never transcribes its own voice. */
+  const setMicMuted = useCallback((muted: boolean) => {
+    mutedRef.current = muted
+    if (muted) setAmplitude(0)
+    // Freeze the background filter's learning while Juno speaks (its voice reaches the mic through the speakers).
+    processorRef.current?.port.postMessage({ freeze: muted })
+  }, [])
+
+  /** Stops the background filter learning the speaker's level (while something other than the customer is playing). */
+  const setLearning = useCallback((on: boolean) => {
+    processorRef.current?.port.postMessage({ learn: on })
+  }, [])
+
+  /** Tells the server what Juno just said, so it sits in the transcript beside the customer's answer. */
+  const sendAgentSay = useCallback((text: string) => {
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'agent_say', text }))
+  }, [])
+
+  /** Ask the server to finalise whatever speech it has buffered (so nothing leaks into the next turn). */
+  const commitNow = useCallback(() => {
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'commit' }))
+  }, [])
+
   const setNoiseFilter = useCallback((next: NoiseFilter) => {
     setNoiseFilterState(next)
     try {
@@ -156,6 +185,7 @@ export function useVoiceCapture() {
 
   const start = useCallback(
     async (mode: CaptureMode = 'live') => {
+      hostedRef.current = mode === 'juno'
       setErrorMessage(null)
       setPartialText('')
       setFinalSegments([])
@@ -178,7 +208,7 @@ export function useVoiceCapture() {
               if (statusRef.current === 'connecting') setStatus('listening')
               break
             case 'session_started':
-              setProfile((p) => ({ ...(p ?? {}), id: msg.customerProfileId as string, captureMode: mode === 'debrief' ? 'DEBRIEF' : 'LIVE' }))
+              setProfile((p) => ({ ...(p ?? {}), id: msg.customerProfileId as string, captureMode: mode === 'debrief' ? 'DEBRIEF' : mode === 'juno' ? 'JUNO' : 'LIVE' }))
               break
             case 'partial_transcript':
               setPartialText(msg.text as string)
@@ -239,6 +269,7 @@ export function useVoiceCapture() {
   /** Back to a clean slate (e.g. when the advisor switches mode): releases the mic, closes the session, clears the screen. */
   const reset = useCallback(() => {
     statusRef.current = 'idle'
+    mutedRef.current = false
     cleanupAudio()
     const ws = wsRef.current
     wsRef.current = null
@@ -324,6 +355,6 @@ export function useVoiceCapture() {
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
     noiseFilter, setNoiseFilter, backgroundIgnored,
-    start, stop, pause, resume, reset, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
+    start, stop, pause, resume, reset, setMicMuted, setLearning, sendAgentSay, commitNow, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

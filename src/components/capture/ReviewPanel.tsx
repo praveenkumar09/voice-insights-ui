@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { saveCustomerProfile } from '../../api/client'
 import type { CopilotInsights, CustomerProfile, LifeMapConcern, LifeMapData, LifeMapPerson } from '../../types'
 import { forLabel } from '../../utils/names'
+import { AGENT_NAME } from '../../brand'
 
 const RELATIONS = ['Wife', 'Husband', 'Partner', 'Daughter', 'Son', 'Child', 'Mother', 'Father', 'Parent', 'Sibling', 'Other']
 const ADDED = 'Added by the advisor'
@@ -97,7 +98,7 @@ function DetailsForm({ profile, onSaved }: { profile: CustomerProfile; onSaved: 
 
   return (
     <div className="glass-card review__card">
-      <CardHead step={1} title="Customer details" hint="What the agents understood about them" />
+      <CardHead step={1} title="Customer details" hint={`What ${AGENT_NAME} understood about them`} />
       <div className="review__fields">
         {field('Name', 'customerName')}
         {field('Age', 'age', { type: 'number' })}
@@ -109,7 +110,7 @@ function DetailsForm({ profile, onSaved }: { profile: CustomerProfile; onSaved: 
       </div>
       <div className="review__tip">
         <b>Why it matters</b>
-        Age, budget and existing cover are what let the agents size the cover and avoid recommending what the customer already has.
+        Age, budget and existing cover are what let {AGENT_NAME} size the cover and avoid recommending what the customer already has.
       </div>
       <div className="review__actions">
         <span className="review__note">Optional — blanks are fine</span>
@@ -216,7 +217,7 @@ function LifeMapEditor({ map, onSave }: { map: LifeMapData | null; onSave: (m: L
       </div>
 
       <div className="review__actions">
-        {error ? <span className="review__msg">{error}</span> : <span className="review__note">{dirty ? 'You have unsaved changes' : 'Matches what the agents will use'}</span>}
+        {error ? <span className="review__msg">{error}</span> : <span className="review__note">{dirty ? 'You have unsaved changes' : `Matches what ${AGENT_NAME} will use`}</span>}
         <button className={dirty ? 'cta-btn review__save' : 'ghost-btn'} onClick={save} disabled={!dirty || saving}>
           {saving ? 'Saving…' : dirty ? 'Save map changes' : 'Map is up to date'}
         </button>

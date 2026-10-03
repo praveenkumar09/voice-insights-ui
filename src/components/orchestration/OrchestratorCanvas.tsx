@@ -4,6 +4,7 @@ import type { AgentKey } from '../../types'
 import { PHASES } from './agentMeta'
 import { AgentCard } from './AgentCard'
 import { CheckIcon, SpinnerIcon } from '../icons'
+import { AGENT_NAME } from '../../brand'
 
 interface Props {
   runId?: string | null
@@ -31,8 +32,8 @@ export function OrchestratorCanvas({ runId, steps }: Props) {
       <div className={`phases__conductor is-${done === total ? 'done' : done > 0 || states.includes('running') ? 'running' : 'idle'}`}>
         <span className="phases__conductor-icon">{done === total ? <CheckIcon /> : done > 0 || states.includes('running') ? <SpinnerIcon /> : <span />}</span>
         <div>
-          <strong>Orchestrator</strong>
-          <small>{done === total ? 'All 11 agents have reported back' : done > 0 || states.includes('running') ? `Coordinating 11 specialist agents · ${done} complete` : 'Ready to dispatch 11 specialist agents'}</small>
+          <strong>{AGENT_NAME}</strong>
+          <small>{done === total ? 'Orchestrator · all 11 agents have reported back' : done > 0 || states.includes('running') ? `Orchestrator · coordinating 11 specialist agents · ${done} complete` : 'Orchestrator · ready to dispatch 11 specialist agents'}</small>
         </div>
       </div>
 

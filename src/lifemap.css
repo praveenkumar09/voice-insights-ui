@@ -88,3 +88,26 @@
 .lifemap__idea-for--dream i { color: #b8860b; }
 .lifemap__idea-for--worry { border: 1px solid rgba(235, 104, 52, 0.6); }
 .lifemap__idea-for--worry i { color: #d9531e; }
+
+/* Phone / narrow card: a stacked map — nothing is positioned, so nothing can overlap. */
+.lifemap__stack { display: flex; flex-direction: column; gap: 16px; padding: 10px 0 6px; }
+.lifemap__center--stack { position: relative; transform: none; align-self: center; }
+.lifemap__center--stack .lifemap__center-core { width: 68px; height: 68px; font-size: 1.6rem; }
+.lifemap__center--stack .lifemap__center-ring { width: 68px; height: 68px; }
+.lifemap__empty--stack { position: static; transform: none; width: auto; align-self: center; }
+.lifemap__group-title { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); margin-bottom: 8px; }
+.lifemap__people { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+.lifemap__person-card { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--surface-solid); box-shadow: 0 4px 14px rgba(var(--shadow-rgb), 0.1); }
+.lifemap__person-card .lifemap__person { width: 40px; height: 40px; }
+.lifemap__person-card.is-child .lifemap__person { width: 36px; height: 36px; }
+.lifemap__person-card .lifemap__label { align-items: flex-start; background: none; padding: 0; }
+.lifemap__stack-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.lifemap__node-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 12px; border-radius: 14px; background: rgba(var(--glass-rgb), 0.6); border: 1px solid var(--hairline); transition: opacity 0.25s ease; }
+.lifemap__node-row.is-dim { opacity: 0.35; }
+.lifemap__node-row.is-linked { border-color: rgba(27, 175, 122, 0.6); }
+.lifemap__node-row .lifemap__chip { white-space: normal; box-shadow: none; max-width: 100%; flex-wrap: wrap; }
+.lifemap__node-row .lifemap__sub { font-weight: 500; }
+.lifemap__row-said { font-size: 0.78rem; font-style: italic; color: var(--ink-soft); }
+.lifemap__node-row .lifemap__product > span { max-width: none; overflow: visible; white-space: normal; }
+.lifemap.is-compact { padding: 16px 14px 14px; }
+.lifemap.is-compact .lifemap__ideas ul { grid-template-columns: 1fr; }

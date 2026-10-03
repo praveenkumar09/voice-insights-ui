@@ -4,6 +4,7 @@ import type { AnalyticsResult } from '../../types'
 import { ChartCard, Funnel, HBarList, Heatmap, Meter, Sparkline, SplitBar, TrendChart } from './AdminCharts'
 import { delta, initials, shortDate, shortName, timeAgo, type Delta, WEEKDAYS } from './format'
 import { useCountUp } from './useCountUp'
+import { AGENT_NAME } from '../../brand'
 
 const RANGES = [7, 30, 90]
 
@@ -164,7 +165,7 @@ function Body({ data, days, onViewRun }: { data: AnalyticsResult; days: number; 
     () => [
       { label: 'Conversations captured', value: t.conversations, note: 'Every voice session started in this period' },
       { label: 'Analysed live', value: t.analysed, note: 'Sessions that produced a transcript and live insights' },
-      { label: 'Recommendation run', value: t.recommendations, note: 'Taken through the 11 AI agents' },
+      { label: 'Recommendation run', value: t.recommendations, note: `Analysed by ${AGENT_NAME}, the 11-agent team` },
       { label: 'Advice pack drafted', value: ops?.packsGenerated ?? 0, note: 'Fact-find, record of advice, follow-up and CRM note built' },
       { label: 'Signed off by the advisor', value: ops?.packsReviewed ?? 0, note: 'Reviewed and confirmed by the advisor' },
     ],
@@ -186,7 +187,7 @@ function Body({ data, days, onViewRun }: { data: AnalyticsResult; days: number; 
         <Tile index={1} label="Average buying signal" value={t.avgBuyingSignal} decimals={1} suffix=" / 100" delta={prev && prev.analysed > 0 ? delta(t.avgBuyingSignal, prev.avgBuyingSignal) : undefined} deltaLabel={vs} />
         <Tile index={2} label="Recommendations run" value={t.recommendations} delta={prev ? delta(t.recommendations, prev.recommendations) : undefined} deltaLabel={vs} />
         {ops && ops.avgAnalysisSeconds > 0 && (
-          <Tile index={3} label="Time to recommendation" value={ops.avgAnalysisSeconds} suffix=" s" sub={`Median ${Math.round(ops.medianAnalysisSeconds)} s · eleven agents, start to finish`} />
+          <Tile index={3} label="Time to recommendation" value={ops.avgAnalysisSeconds} suffix=" s" sub={`Median ${Math.round(ops.medianAnalysisSeconds)} s · ${AGENT_NAME}, start to finish`} />
         )}
         {complianceRate != null && (
           <Tile index={4} label="Compliance pass rate" value={complianceRate} suffix="%" meter={{ value: complianceRate, tone: complianceTone }}
@@ -214,11 +215,11 @@ function Body({ data, days, onViewRun }: { data: AnalyticsResult; days: number; 
           <TrendChart points={data.trend.filter((d) => d.conversations > 0).map((d) => ({ x: d.date, y: d.avgBuyingSignal }))} unit="buying signal" yMax={100} decimals={1} height={190} />
         </ChartCard>
 
-        <ChartCard className="span-4" title="Pipeline and sentiment" subtitle="How warm, and how positive"
+        <ChartCard className="span-4" title="Pipeline and sentiment" subtitle="Hot, warm or cold as the advisor saw it live (hot 70+, warm 35–69)"
           table={{
             head: ['Measure', 'Value', 'Count'],
             rows: [
-              ['Buying signal', 'Hot (70+)', data.pipeline.hot], ['Buying signal', 'Warm (40–69)', data.pipeline.warm], ['Buying signal', 'Cold (<40)', data.pipeline.cold],
+              ['Buying signal', 'Hot', data.pipeline.hot], ['Buying signal', 'Warm', data.pipeline.warm], ['Buying signal', 'Cold', data.pipeline.cold],
               ['Sentiment', 'Positive', data.sentiment.positive], ['Sentiment', 'Neutral', data.sentiment.neutral], ['Sentiment', 'Negative', data.sentiment.negative],
               ...(ops ? [['Captured', 'Live conversation', ops.liveCount], ['Captured', 'Dictated debrief', ops.debriefCount]] : []),
             ],
@@ -227,9 +228,9 @@ function Body({ data, days, onViewRun }: { data: AnalyticsResult; days: number; 
             <div>
               <div className="adm-mini">Buying signal</div>
               <SplitBar unit="conversations" parts={[
-                { label: 'Hot (70+)', value: data.pipeline.hot, color: 'var(--ord-5)' },
-                { label: 'Warm (40–69)', value: data.pipeline.warm, color: 'var(--ord-3)' },
-                { label: 'Cold (<40)', value: data.pipeline.cold, color: 'var(--ord-1)' },
+                { label: 'Hot', value: data.pipeline.hot, color: 'var(--ord-5)' },
+                { label: 'Warm', value: data.pipeline.warm, color: 'var(--ord-3)' },
+                { label: 'Cold', value: data.pipeline.cold, color: 'var(--ord-1)' },
               ]} />
             </div>
             <div>

@@ -1,4 +1,5 @@
 import type { AdvicePack } from '../types'
+import { AGENT_NAME } from '../brand'
 
 const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
@@ -87,7 +88,7 @@ ${nm.gapsToFill.length ? `<h4>Information still missing</h4><ul>${nm.gapsToFill.
   .disc{margin-top:12px;font-size:10.5px;color:#777;border-top:1px solid #eee;padding-top:8px}
 </style></head><body>
 <div class="bar"></div>
-<div class="brand"><span>AIA Singapore · Advice pack</span><span>${esc(new Date().toLocaleDateString())}</span></div>
+<div class="brand"><span>AIA Singapore · Advice pack · prepared with ${AGENT_NAME}</span><span>${esc(new Date().toLocaleDateString())}</span></div>
 <h1>${esc(customerName ?? 'Customer')}</h1>
 <div class="stamp">${reviewed}</div>
 <h2>1 · Fact-find</h2>${factFind || '<p><i>Not generated.</i></p>'}

@@ -51,8 +51,67 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   }
 }
 
-export function wsVoiceUrl(mode: 'live' | 'debrief' = 'live'): string {
-  return `${WS_BASE}/ws/voice${mode === 'debrief' ? '?mode=debrief' : ''}`
+export function wsVoiceUrl(mode: 'live' | 'debrief' | 'juno' = 'live'): string {
+  return `${WS_BASE}/ws/voice${mode === 'live' ? '' : `?mode=${mode}`}`
+}
+
+export interface JunoTurnRequest {
+  profileId?: string | null
+  phase: 'consent' | 'discovery'
+  turns: { role: 'juno' | 'customer'; text: string }[]
+}
+
+export interface JunoTurnResponse {
+  say: string
+  consent: 'granted' | 'declined' | 'unclear' | null
+  covered: string[]
+  done: boolean
+  stage: 'consent' | 'discovery' | 'wrapup' | 'declined'
+  /** How the line should sound: warm, gentle, upbeat, curious or reassuring. */
+  tone?: string
+}
+
+export type JunoTone = 'warm' | 'gentle' | 'upbeat' | 'curious' | 'reassuring'
+
+/** Is Juno's neural voice available? (If not, the browser's own voice is used.) */
+export async function junoVoiceStatus(): Promise<{ enabled: boolean; voices: { female: string; male: string } }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/juno/voice`, { headers: authHeaders() })
+    if (res.ok) return res.json()
+  } catch {
+    // fall through
+  }
+  return { enabled: false, voices: { female: 'coral', male: 'ash' } }
+}
+
+/** One spoken line as audio (MP3), or null if the neural voice could not produce it. */
+export async function junoSpeak(text: string, voice: 'female' | 'male', tone: string): Promise<Blob | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/juno/speak`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ text, voice, tone }),
+    })
+    return res.ok ? await res.blob() : null
+  } catch {
+    return null
+  }
+}
+
+/** What Juno should say next. This is the only thing the endpoint does — it cannot start an analysis. */
+export async function junoTurn(req: JunoTurnRequest): Promise<JunoTurnResponse> {
+  const res = await fetch(`${API_BASE}/api/juno/turn`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(req),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Juno could not respond (${res.status})`))
+  return res.json()
+}
+
+/** The customer declined consent: remove everything captured from the unfinished conversation. */
+export async function discardConversation(customerId: string): Promise<void> {
+  await fetch(`${API_BASE}/api/customers/${encodeURIComponent(customerId)}`, { method: 'DELETE', headers: authHeaders() })
 }
 
 export async function signup(email: string, password: string): Promise<{ token: string; email: string }> {

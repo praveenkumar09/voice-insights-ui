@@ -2,7 +2,7 @@ export interface CustomerProfile {
   id?: string
   agentUserId?: string
   status?: string
-  captureMode?: 'LIVE' | 'DEBRIEF'
+  captureMode?: 'LIVE' | 'DEBRIEF' | 'JUNO'
   customerName?: string | null
   age?: number | null
   occupation?: string | null
@@ -240,6 +240,8 @@ export interface CopilotInsights {
   complianceFlags: { severity: string; statement: string; advice: string }[]
   productMatches: { productName: string; fitScore: number; evidence: string; source: string }[]
   lifeMap?: LifeMapData | null
+  /** Why the first "ask next" question was suggested: the customer's own words, and the kind of move. */
+  askContext?: { trigger: string | null; kind: string } | null
 }
 
 export interface LifeMapPerson {

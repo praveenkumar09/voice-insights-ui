@@ -39,7 +39,8 @@ export function CaptureScreen({ onReady }: Props) {
   const [mode, setMode] = useState<HomeMode>(storedMode)
   // Customer-safe view is deliberately never remembered: it is something the advisor turns on for a moment, and a
   // fresh page always starts with the advisor's full view.
-  const [safeView, setSafeView] = useState(false)
+  // A Juno conversation starts in the customer-safe view, because the customer is the one looking at the screen.
+  const [safeView, setSafeView] = useState(() => storedMode() === 'juno')
   const [take, setTake] = useState(1)
   const [session, setSession] = useState(0)
   const consoleRef = useRef<HTMLDivElement>(null)
@@ -63,12 +64,17 @@ export function CaptureScreen({ onReady }: Props) {
     return () => io.disconnect()
   }, [])
 
+  // When Juno hands over, the advisor takes the screen and sees everything.
+  useEffect(() => {
+    if (juno.stage === 'finished') setSafeView(false)
+  }, [juno.stage])
+
   function changeMode(next: HomeMode) {
     if (busy || next === mode) return
     voice.reset()
     juno.reset()
     setMode(next)
-    setSafeView(false)
+    setSafeView(next === 'juno')
     setTake(1)
     setSession((s) => s + 1)
     try {
@@ -187,6 +193,7 @@ export function CaptureScreen({ onReady }: Props) {
           onRecommend={handleGetRecommendations}
           onBrief={() => printMeetingBrief(profile, copilot)}
           noVoice={typeof speechSynthesis === 'undefined'}
+          safe={safe}
         />
       )}
 

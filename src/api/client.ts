@@ -55,10 +55,38 @@ export function wsVoiceUrl(mode: 'live' | 'debrief' | 'juno' = 'live'): string {
   return `${WS_BASE}/ws/voice${mode === 'live' ? '' : `?mode=${mode}`}`
 }
 
+export type LangId = 'en' | 'zh' | 'ms' | 'ta'
+
+export interface JunoPhrases {
+  language: string
+  greeting: string
+  declined: string
+  unclear: string
+  firstQuestion: string
+  closing: string
+  wrap: string
+  askAway: string
+  tellMore: string
+  noFigures: string
+  nudge: string
+  missed: string
+  anythingElse: string
+  yes: string
+  no: string
+  yesText: string
+  noText: string
+  acks: string[]
+}
+
 export interface JunoTurnRequest {
   profileId?: string | null
   phase: 'consent' | 'discovery'
   turns: { role: 'juno' | 'customer'; text: string }[]
+  lang?: LangId
+  /** How far the fixed parts of the conversation have gone (the server cannot read these from non-English text). */
+  consentAsks?: number
+  closingAsked?: boolean
+  qaAnswers?: number
 }
 
 export interface JunoTurnResponse {
@@ -69,6 +97,10 @@ export interface JunoTurnResponse {
   stage: 'consent' | 'discovery' | 'wrapup' | 'declined'
   /** How the line should sound: warm, gentle, upbeat, curious or reassuring. */
   tone?: string
+  /** 'closing' = this is the closing question; 'qa' = this answers a customer question. */
+  marker?: 'closing' | 'qa' | null
+  /** The question invites a long answer (so longer pauses are allowed). */
+  open?: boolean | null
 }
 
 export type JunoTone = 'warm' | 'gentle' | 'upbeat' | 'curious' | 'reassuring'
@@ -85,12 +117,12 @@ export async function junoVoiceStatus(): Promise<{ enabled: boolean; voices: { f
 }
 
 /** One spoken line as audio (MP3), or null if the neural voice could not produce it. */
-export async function junoSpeak(text: string, voice: 'female' | 'male', tone: string): Promise<Blob | null> {
+export async function junoSpeak(text: string, voice: 'female' | 'male', tone: string, lang: LangId = 'en'): Promise<Blob | null> {
   try {
     const res = await fetch(`${API_BASE}/api/juno/speak`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ text, voice, tone }),
+      body: JSON.stringify({ text, voice, tone, lang }),
     })
     return res.ok ? await res.blob() : null
   } catch {
@@ -279,4 +311,14 @@ export async function reviewAdvicePack(runId: string): Promise<AdvicePack> {
   const res = await fetch(`${advicePackUrl(runId)}/review`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await errorMessage(res, `Failed to record the sign-off (${res.status})`))
   return res.json()
+}
+
+/** Juno's fixed lines (greeting, consent questions, goodbyes, acknowledgements) in a language. */
+export async function junoPhrases(lang: LangId): Promise<JunoPhrases | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/juno/phrases?lang=${lang}`, { headers: authHeaders() })
+    return res.ok ? await res.json() : null
+  } catch {
+    return null
+  }
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { discardConversation, junoSpeak, junoTurn, junoVoiceStatus } from '../api/client'
+import { discardConversation, junoPhrases, junoSpeak, junoTurn, junoVoiceStatus, type JunoPhrases, type LangId } from '../api/client'
 import type { useVoiceCapture } from './useVoiceCapture'
 
 type Voice = ReturnType<typeof useVoiceCapture>
@@ -22,8 +22,37 @@ export const JUNO_TOPICS = [
   { key: 'cover', label: 'Existing cover' },
 ] as const
 
-const GREETING =
-  "Hello, I'm Juno, your AIA Singapore digital and recommendation assistant. Before we begin, with your permission I'd like to record and analyse our conversation, so your advisor can help you better. Is that all right?"
+export type { LangId }
+
+/** The languages Juno speaks. English is the default; the others are chosen on the stage (before or during the conversation). */
+export const LANGUAGES: { id: LangId; label: string; name: string }[] = [
+  { id: 'en', label: 'EN', name: 'English' },
+  { id: 'zh', label: '中文', name: 'Chinese' },
+  { id: 'ms', label: 'BM', name: 'Bahasa Melayu' },
+  { id: 'ta', label: 'தமிழ்', name: 'Tamil' },
+]
+
+/** Used only if the server can't be reached for the fixed lines; the real ones (all four languages) come from the server. */
+const EN_PHRASES: JunoPhrases = {
+  language: 'English',
+  greeting: "Hello, I'm Juno, your AIA Singapore digital and recommendation assistant. Before we begin, with your permission I'd like to record and analyse our conversation, so your advisor can help you better. Is that all right?",
+  declined: "Of course, that's completely fine. I won't keep anything from this chat. Your advisor will be happy to take it from here.",
+  unclear: "Sorry, I didn't quite catch that. Is it all right if I record and analyse our chat, so your advisor can help you better? A simple yes or no is fine.",
+  firstQuestion: 'Thank you. To start, could I have your name?',
+  closing: "That's really helpful, thank you. Before I hand you over to your advisor, is there anything you'd like to ask me?",
+  wrap: 'Thank you so much for sharing all of that. Your advisor will review everything and take it from here.',
+  askAway: 'Of course. What would you like to ask?',
+  tellMore: 'Thank you. Could you tell me a little more about that?',
+  noFigures: "I can't give figures like that, as they depend on your situation.",
+  nudge: "Take your time. I'm listening.",
+  missed: 'Sorry, I missed that. Could you say it once more?',
+  anythingElse: "Is there anything else you'd like to ask?",
+  yes: "Yes, that's fine",
+  no: 'No thanks',
+  yesText: 'Yes, that is fine.',
+  noText: 'No, I would rather not.',
+  acks: ['Mm, I see.', 'Okay, got it.', 'Right, thank you.', 'I see, thanks.', 'Alright, got it.'],
+}
 
 // ── Turn-taking ─────────────────────────────────────────────────────────────────────────────────────────────
 // Juno decides an answer is over from the customer's VOICE (not from the transcript, which lags the speech by a
@@ -51,11 +80,13 @@ const HOLD_QUIET_MS = 1700
 const HOLD_QUIET_OPEN_MS = 2600
 const HOLD_MAX_MS = 4500
 const TRAILING = /(\b(and|but|so|because|then|or|also|like|um|uh|er|erm|well|if|when|that|which|with|to|of|for|in|on|at|my|our|the|a|an|is|are|was|were|i|we)\b|[,;:–-]|\.\.\.|…)\s*$/i
-function endpointMs(text: string, open: boolean): number {
+const TRAILING_PUNCT = /([,;:–\-、，；：]|\.\.\.|…)\s*$/
+function endpointMs(text: string, open: boolean, lang: LangId): number {
   const t = text.trim()
-  const sentenceEnd = /[.!?]["')]?$/.test(t)
-  if (TRAILING.test(t) || !sentenceEnd) return END_TRAILING_MS
-  const short = t.split(/\s+/).length <= 3
+  const sentenceEnd = /[.!?。！？]["')”]?$/.test(t)
+  // The word list is English; for the other languages only punctuation says a sentence trails off.
+  if ((lang === 'en' ? TRAILING.test(t) : TRAILING_PUNCT.test(t)) || !sentenceEnd) return END_TRAILING_MS
+  const short = lang === 'zh' ? t.length <= 6 : t.split(/\s+/).length <= 3
   return open ? (short ? END_SHORT_OPEN_MS : END_SENTENCE_OPEN_MS) : short ? END_SHORT_MS : END_SENTENCE_MS
 }
 /** After the last text arrives, wait this long for a trailing piece before replying. */
@@ -71,11 +102,15 @@ const MIN_VOICE = 0.07
 const NOISE_FLOOR_MAX = 0.05
 const HEARD_MS = 350
 const NUDGE_AFTER_MS = 25000
-// Always a short phrase, never a single word: the voice model renders a lone "Okay." unpredictably (it can come out in a different voice).
-const ACKS = ['Mm, I see.', 'Okay, got it.', 'Right, thank you.', 'I see, thanks.', 'Alright, got it.']
+// Acknowledgements are always a short phrase, never a single word: the voice model renders a lone "Okay." unpredictably.
 /** A segment that is only one of Juno's own acknowledgements (heard back through the speakers) is not the customer. */
 const ACK_ECHO = /^(mm+[\s,-]*(h?m+)?[\s,]*(i see)?|okay,?\s*(got it)?|ok|right,?\s*(thank you|thanks)?|i see,?\s*(okay|thanks)?|alright,?\s*(got it)?|got it|uh[\s-]*huh|mhm)[.!,\s]*$/i
-const CHARS_PER_SEC = 13.5
+/** Rough speaking speed (characters per second), used for caption timing when the audio's own timing isn't available. */
+const CPS: Record<LangId, number> = { en: 13.5, zh: 4.5, ms: 13, ta: 11 }
+/** Output devices that are headphones/earpieces: Juno's voice can't leak back into the microphone, so interruption is safe. */
+const HEADSET = /head(set|phone)|airpods|earbuds?|earphones?|buds|bluetooth|beats|jabra|bose|wh-1000|wf-1000/i
+const BARGE_KEY = 'vi_juno_barge'
+type BargeMode = 'auto' | 'on' | 'off'
 const VOICE_KEY = 'vi_juno_voice_id'
 const MUTE_KEY = 'vi_juno_silent'
 
@@ -121,6 +156,35 @@ export function useJuno(voice: Voice) {
   const [voiceId, setVoiceId] = useState<VoiceId>(() => {
     try { return localStorage.getItem(VOICE_KEY) === 'male' ? 'male' : 'female' } catch { return 'female' }
   })
+
+  // The language of the conversation: English unless the customer or advisor chooses another.
+  const [lang, setLangState] = useState<LangId>('en')
+  const langRef = useRef<LangId>('en')
+  langRef.current = lang
+  const [phrases, setPhrases] = useState<JunoPhrases>(EN_PHRASES)
+  const phrasesRef = useRef<JunoPhrases>(EN_PHRASES)
+  phrasesRef.current = phrases
+  const phrasesCache = useRef(new Map<LangId, JunoPhrases>())
+  // Where the fixed parts of the conversation have got to — sent with every turn so the server need not read them from the words.
+  const consentAsks = useRef(1)
+  const closingAsked = useRef(false)
+  const qaAnswers = useRef(0)
+
+  // Interruption: the customer can cut in while Juno is speaking. Automatic with headphones; the advisor can force it on or off.
+  const [bargeMode, setBargeModeState] = useState<BargeMode>(() => {
+    try { const v = localStorage.getItem(BARGE_KEY); return v === 'on' || v === 'off' ? v : 'auto' } catch { return 'auto' }
+  })
+  const [headset, setHeadset] = useState(false)
+  const bargeEnabled = bargeMode === 'on' || (bargeMode === 'auto' && headset)
+  const bargeRef = useRef(false)
+  bargeRef.current = bargeEnabled
+  const bargeable = useRef(false) // true while a line that may be interrupted is being spoken
+  const lineStartedAt = useRef(0)
+  const echoSamples = useRef<number[]>([])
+  const bargeStreak = useRef(0)
+  const interruptSpeak = useRef<null | (() => void)>(null)
+  const interrupted = useRef(false)
+  const revealedRef = useRef(0)
 
   const stageRef = useRef<JunoStage>('idle')
   const turnsRef = useRef<JunoTurn[]>([])
@@ -170,6 +234,28 @@ export function useJuno(voice: Voice) {
   useEffect(() => {
     void junoVoiceStatus().then((st) => setNeural(st.enabled ? st.voices : false))
   }, [])
+
+  /** Juno's fixed lines in a language, from the server (cached). */
+  const loadPhrases = useCallback(async (l: LangId): Promise<JunoPhrases> => {
+    const hit = phrasesCache.current.get(l)
+    if (hit) return hit
+    const p = (await junoPhrases(l)) ?? (l === 'en' ? EN_PHRASES : phrasesCache.current.get('en') ?? EN_PHRASES)
+    phrasesCache.current.set(l, p)
+    return p
+  }, [])
+  useEffect(() => {
+    let alive = true
+    void loadPhrases(lang).then((p) => alive && setPhrases(p))
+    return () => { alive = false }
+  }, [lang, loadPhrases])
+
+  /** Choose the language (before or during the conversation): Juno's next lines are in it. */
+  const setLanguage = useCallback((l: LangId) => {
+    langRef.current = l
+    setLangState(l)
+    void loadPhrases(l).then((p) => { phrasesRef.current = p; setPhrases(p) })
+    voiceApi.current.sendLanguage(l)
+  }, [loadPhrases])
 
   // The browser loads its voices asynchronously.
   useEffect(() => {
@@ -228,10 +314,10 @@ export function useJuno(voice: Voice) {
 
   /** Audio for one sentence, fetched once and shared: asking early (prefetch) makes the line play with no wait. */
   const audioFor = useCallback((text: string, tone: string): Promise<Blob | null> => {
-    const key = `${voiceIdRef.current}|${tone}|${text}`
+    const key = `${langRef.current}|${voiceIdRef.current}|${tone}|${text}`
     let p = audioCache.current.get(key)
     if (!p) {
-      p = junoSpeak(text, voiceIdRef.current, tone).then((b) => {
+      p = junoSpeak(text, voiceIdRef.current, tone, langRef.current).then((b) => {
         if (!b && audioCache.current.get(key) === p) audioCache.current.delete(key) // a failure is not remembered
         return b
       })
@@ -244,13 +330,14 @@ export function useJuno(voice: Voice) {
   /** Splits a line into sentences (short ones joined to the next) so each can be spoken, and fetched, on its own. */
   const sentences = useCallback((text: string) => {
     const parts: { text: string; at: number }[] = []
-    const re = /[^.!?]+[.!?]*\s*/g
+    const joinBelow = langRef.current === 'zh' ? 10 : 28 // characters: a very short sentence is joined to the next
+    const re = /[^.!?。！？]+[.!?。！？]*\s*/g
     let m: RegExpExecArray | null
     while ((m = re.exec(text))) {
       const t = m[0].trim()
       if (!t) continue
       const last = parts[parts.length - 1]
-      if (last && last.text.length < 28) last.text = `${last.text} ${t}`
+      if (last && last.text.length < joinBelow) last.text = `${last.text}${langRef.current === 'zh' ? '' : ' '}${t}`
       else parts.push({ text: t, at: m.index })
     }
     return parts.length ? parts : [{ text, at: 0 }]
@@ -269,25 +356,26 @@ export function useJuno(voice: Voice) {
   /** Get the greeting and the "Mm-hm" clips ready before they are needed, so they play instantly. */
   const prewarm = useCallback(() => {
     if (!neuralRef.current) return
-    sentences(GREETING).forEach((p) => void audioFor(p.text, 'warm'))
-    ACKS.forEach((t) => void audioFor(t, 'warm'))
+    sentences(phrasesRef.current.greeting).forEach((p) => void audioFor(p.text, 'warm'))
+    phrasesRef.current.acks.forEach((t) => void audioFor(t, 'warm'))
   }, [audioFor, sentences])
   useEffect(() => {
     if (neural) prewarm()
-  }, [neural, voiceId, prewarm])
+  }, [neural, voiceId, phrases, prewarm])
 
   /** A very short spoken "Mm-hm" while Juno works out its reply — it is not part of the conversation record. */
   const acknowledge = useCallback(() => {
     if (silentRef.current) return
     const g = gen.current
-    const text = ACKS[ackIdx.current++ % ACKS.length]
+    const acks = phrasesRef.current.acks
+    const text = acks[ackIdx.current++ % acks.length]
     const done = () => {
       // The reply may already be speaking (and holding the mic closed): only reopen if nothing else is.
       if (g === gen.current && !busyTalking.current) voiceApi.current.setMicMuted(false)
     }
     if (neuralRef.current) {
       // Only a clip that is already in hand is used: an ack that arrives late is worse than none.
-      const key = `${voiceIdRef.current}|warm|${text}`
+      const key = `${langRef.current}|${voiceIdRef.current}|warm|${text}`
       const pr = audioCache.current.get(key)
       if (!pr) return
       void Promise.race([pr, new Promise<null>((r) => window.setTimeout(() => r(null), 250))]).then((blob) => {
@@ -319,14 +407,20 @@ export function useJuno(voice: Voice) {
 
   /** Juno says something aloud (mic muted meanwhile), with captions paced to the speech. Resolves when finished. */
   const speak = useCallback(
-    (text: string, tone = 'warm') =>
+    (text: string, tone = 'warm', open?: boolean | null, canBarge = false) =>
       new Promise<void>((resolve) => {
         const v = voiceApi.current
         const g = gen.current
         awaiting.current = false
         pending.current = ''
-        openQuestion.current = OPEN_QUESTION.test(text)
+        // The model says whether its question invites a long answer; English text can also be judged by wording.
+        openQuestion.current = open ?? (langRef.current === 'en' ? OPEN_QUESTION.test(text) : true)
         busyTalking.current = true
+        bargeable.current = canBarge
+        lineStartedAt.current = performance.now()
+        echoSamples.current = []
+        bargeStreak.current = 0
+        revealedRef.current = 0
         v.setMicMuted(true)
         v.commitNow()
         v.sendAgentSay(text)
@@ -336,29 +430,41 @@ export function useJuno(voice: Voice) {
         setSpeaking(true)
 
         let finished = false
-        const estimateMs = Math.max(1400, (text.length / CHARS_PER_SEC) * 1000)
+        const cps = CPS[langRef.current]
+        const estimateMs = Math.max(1400, (text.length / cps) * 1000)
         const started = performance.now()
         let boundary = 0
         let audioReveal = 0
         const tick = window.setInterval(() => {
-          const est = Math.floor(((performance.now() - started) / 1000) * CHARS_PER_SEC)
-          setRevealed(Math.min(text.length, Math.max(boundary, audioReveal, neuralRef.current ? 0 : est)))
+          const est = Math.floor(((performance.now() - started) / 1000) * cps)
+          revealedRef.current = Math.min(text.length, Math.max(boundary, audioReveal, neuralRef.current ? 0 : est))
+          setRevealed(revealedRef.current)
         }, 60)
         speakTimers.current.push(tick)
 
-        const finish = () => {
+        // `cut`: the customer interrupted — stop at once, keep the caption where it was, and the microphone is already open.
+        const wrapUp = (cut: boolean) => {
           if (finished) return
           finished = true
           window.clearInterval(tick)
           busyTalking.current = false
+          bargeable.current = false
+          interruptSpeak.current = null
           if (g !== gen.current) return resolve() // the conversation was ended or reset meanwhile
-          setRevealed(text.length)
+          if (!cut) setRevealed(text.length)
           setSpeaking(false)
+          if (cut) return resolve()
           // A beat after the last word, so the room's echo has died before the mic opens again.
           window.setTimeout(() => {
             if (g === gen.current) voiceApi.current.setMicMuted(false)
             resolve()
           }, 250)
+        }
+        const finish = () => wrapUp(false)
+        interruptSpeak.current = () => {
+          stopAudio()
+          if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel()
+          wrapUp(true)
         }
 
         if (silentRef.current) {
@@ -439,13 +545,19 @@ export function useJuno(voice: Voice) {
         // Some browsers never fire onend; never let the conversation hang on that.
         window.setTimeout(finish, estimateMs * 1.9 + 3500)
       }),
-    [addTurn, audioFor, sentences],
+    [addTurn, audioFor, sentences, stopAudio],
   )
 
   /** After Juno finishes speaking: listen for the customer's answer, nudging once if it stays quiet. */
   const listen = useCallback(
     (canNudge = true) => {
       const g = gen.current
+      if (interrupted.current) {
+        // The customer cut in: they are already talking, so do not reset what has been heard so far.
+        interrupted.current = false
+        awaiting.current = true
+        return
+      }
       awaiting.current = true
       pending.current = ''
       const now = performance.now()
@@ -460,7 +572,7 @@ export function useJuno(voice: Voice) {
       if (!canNudge) return
       nudgeTimer.current = window.setTimeout(async () => {
         if (g !== gen.current || !awaiting.current || pending.current || loudMs.current > 0 || busy.current) return
-        await speak("Take your time. I'm listening.")
+        await speak(phrasesRef.current.nudge)
         if (g === gen.current) listen(false) // one nudge per question, never a loop
       }, NUDGE_AFTER_MS)
     },
@@ -496,10 +608,15 @@ export function useJuno(voice: Voice) {
           profileId: voiceApi.current.profile?.id,
           phase: consentPhase ? 'consent' : 'discovery',
           turns: turnsRef.current.map(({ role, text }) => ({ role, text })),
+          lang: langRef.current,
+          consentAsks: consentAsks.current,
+          closingAsked: closingAsked.current,
+          qaAnswers: qaAnswers.current,
         })
         if (g !== gen.current) return
         // Hold a ready reply until the customer has been quiet long enough: a pause mid-answer is not an ending.
-        const holdMs = openQuestion.current ? HOLD_QUIET_OPEN_MS : HOLD_QUIET_MS
+        // With interruption on, a reply that comes a little early can simply be cut in on, so Juno responds sooner.
+        const holdMs = (openQuestion.current ? HOLD_QUIET_OPEN_MS : HOLD_QUIET_MS) * (bargeRef.current ? 0.65 : 1)
         while (performance.now() - lastLoud.current < holdMs && performance.now() - t0 < HOLD_MAX_MS) {
           await new Promise((r) => window.setTimeout(r, 100))
           if (g !== gen.current) return
@@ -524,6 +641,9 @@ export function useJuno(voice: Voice) {
         }
         setThinking(false)
         console.debug(`[juno] reply ready in ${Math.round(performance.now() - t0)} ms`)
+        if (res.consent === 'unclear') consentAsks.current += 1
+        if (res.marker === 'closing') closingAsked.current = true
+        if (res.marker === 'qa') qaAnswers.current += 1
         if (res.covered?.length) setCovered((c) => [...new Set([...c, ...res.covered])])
 
         if (res.consent === 'declined') {
@@ -536,7 +656,7 @@ export function useJuno(voice: Voice) {
           return
         }
         if (res.consent === 'granted') setStageBoth('discovery')
-        await speak(res.say, res.tone)
+        await speak(res.say, res.tone, res.open, !res.done)
         if (g !== gen.current) return
         if (res.done) {
           setCovered(JUNO_TOPICS.map((t) => t.key))
@@ -547,7 +667,7 @@ export function useJuno(voice: Voice) {
       } catch {
         if (g !== gen.current) return
         setThinking(false)
-        await speak('Sorry, I missed that. Could you say it once more?')
+        await speak(phrasesRef.current.missed)
         if (g === gen.current) listen()
       } finally {
         busy.current = false
@@ -555,6 +675,82 @@ export function useJuno(voice: Voice) {
     },
     [acknowledge, addTurn, finishSession, listen, setStageBoth, speak],
   )
+
+  // ── Interruption ──────────────────────────────────────────────────────────────────────────────────────────
+  const percentile = (xs: number[], q: number) => {
+    if (xs.length === 0) return 0
+    const sorted = [...xs].sort((a, b) => a - b)
+    return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]
+  }
+
+  /** The customer has started talking over Juno: stop mid-sentence and listen. */
+  const barge = useCallback(() => {
+    if (!busyTalking.current || !bargeable.current) return
+    bargeable.current = false
+    bargeStreak.current = 0
+    echoSamples.current = []
+    interrupted.current = true
+    // What the customer actually heard of the line, so the conversation record is honest about it.
+    const lastJuno = [...turnsRef.current].reverse().find((t) => t.role === 'juno')
+    if (lastJuno) {
+      const heard = lastJuno.text.slice(0, Math.max(0, revealedRef.current)).trim()
+      turnsRef.current = turnsRef.current.map((t) => (t.id === lastJuno.id ? { ...t, text: `${heard} … [interrupted]` } : t))
+      setTurns(turnsRef.current)
+    }
+    interruptSpeak.current?.()
+    voiceApi.current.releaseHeld(6) // the customer's first words were held; send them, then listen normally
+    const now = performance.now()
+    awaiting.current = true
+    pending.current = ''
+    lastLoud.current = lastText.current = lastAmpAt.current = now
+    loudMs.current = HEARD_MS
+    committedAt.current = 0
+    inFlight.current = false
+    acked.current = false
+  }, [])
+
+  // While Juno speaks the microphone is still measured: a voice clearly above Juno's own echo, for about 0.3 s, is an interruption.
+  useEffect(() => {
+    voiceApi.current.setRawAmpListener((amp) => {
+      if (!busyTalking.current || !bargeable.current || !bargeRef.current) {
+        echoSamples.current = []
+        bargeStreak.current = 0
+        return
+      }
+      if (performance.now() - lineStartedAt.current < 900) {
+        echoSamples.current.push(amp) // the first moments of the line show how loud Juno itself sounds in this room
+        return
+      }
+      const base = percentile(echoSamples.current, 0.7)
+      echoSamples.current.push(amp)
+      if (echoSamples.current.length > 40) echoSamples.current.shift()
+      bargeStreak.current = amp > Math.max(0.16, base * 1.8 + 0.08) ? bargeStreak.current + 1 : 0
+      if (bargeStreak.current >= 3) barge()
+    })
+    return () => voiceApi.current.setRawAmpListener(null)
+  }, [barge])
+
+  const setBargeMode = useCallback((m: BargeMode) => {
+    setBargeModeState(m)
+    try { localStorage.setItem(BARGE_KEY, m) } catch { /* not remembering is fine */ }
+  }, [])
+
+  // Headphones make interruption safe: look at the audio output while the microphone is live.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return
+    const check = async () => {
+      try {
+        const outs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audiooutput')
+        const def = outs.find((d) => d.deviceId === 'default') ?? outs[0]
+        setHeadset(HEADSET.test(def?.label ?? ''))
+      } catch {
+        setHeadset(false)
+      }
+    }
+    void check()
+    navigator.mediaDevices.addEventListener?.('devicechange', check)
+    return () => navigator.mediaDevices.removeEventListener?.('devicechange', check)
+  }, [voice.status])
 
   // ── Watching the customer ────────────────────────────────────────────────────────────────────────────────
   const { finalSegments, status, amplitude } = voice
@@ -564,7 +760,8 @@ export function useJuno(voice: Voice) {
     seenSegments.current = finalSegments.length
     // Only in the moments right after Juno's own "Mm-hm": otherwise a real "Okay." from the customer is an answer.
     const echoWindow = performance.now() < ackUntil.current + 2500
-    const realText = fresh.filter((t) => !(echoWindow && ACK_ECHO.test(t.trim())))
+    const isAck = (t: string) => ACK_ECHO.test(t.trim()) || phrasesRef.current.acks.some((a) => a.replace(/[\s.,!，。！]/g, '') === t.replace(/[\s.,!，。！]/g, ''))
+    const realText = fresh.filter((t) => !(echoWindow && isAck(t)))
     if (realText.length && busy.current && !busyTalking.current) late.current = `${late.current} ${realText.join(' ')}`.trim()
     if (!awaiting.current || busy.current || realText.length === 0) return
     pending.current = `${pending.current} ${realText.join(' ')}`.trim()
@@ -625,7 +822,7 @@ export function useJuno(voice: Voice) {
       const text = pending.current.trim()
       if (!text || text.length < 2) return
       const textSettled = now - lastText.current >= SETTLE_MS
-      const quiet = quietFor >= endpointMs(text, openQuestion.current)
+      const quiet = quietFor >= endpointMs(text, openQuestion.current, langRef.current) * (bargeRef.current ? 0.7 : 1)
       const stale = now - lastText.current >= MAX_WAIT_MS && quietFor >= COMMIT_QUIET_MS
       if ((quiet && textSettled && !inFlight.current) || stale) void respond(text)
     }, 100)
@@ -637,7 +834,8 @@ export function useJuno(voice: Voice) {
     if (stageRef.current === 'connecting' && status === 'listening') {
       const g = gen.current
       setStageBoth('consent')
-      void speak(GREETING).then(() => g === gen.current && listen())
+      if (langRef.current !== 'en') voiceApi.current.sendLanguage(langRef.current)
+      void speak(phrasesRef.current.greeting).then(() => g === gen.current && listen())
     }
     if (status === 'stopped' && (stageRef.current === 'wrapup' || stageRef.current === 'discovery' || stageRef.current === 'consent')) {
       setStageBoth('finished')
@@ -645,7 +843,8 @@ export function useJuno(voice: Voice) {
     if (status === 'error' && stageRef.current !== 'idle') setStageBoth('error')
   }, [status, speak, listen, setStageBoth])
 
-  const reset = useCallback(() => {
+  /** Clears the conversation but keeps the chosen language (used when a conversation starts). */
+  const resetState = useCallback(() => {
     gen.current++
     clearTimers()
     stopAudio()
@@ -664,24 +863,35 @@ export function useJuno(voice: Voice) {
     setRevealed(0)
     setSpeaking(false)
     setThinking(false)
+    consentAsks.current = 1
+    closingAsked.current = false
+    qaAnswers.current = 0
     setStageBoth('idle')
   }, [clearTimers, setStageBoth, stopAudio])
 
+  /** Back to the start for a new customer: English again. */
+  const reset = useCallback(() => {
+    resetState()
+    langRef.current = 'en'
+    setLangState('en')
+  }, [resetState])
+
   const start = useCallback(async () => {
-    reset()
+    resetState()
+    phrasesRef.current = await loadPhrases(langRef.current)
     prewarm()
     noiseFloor.current = 0.03 // a fresh conversation starts with a fresh idea of the room
     setStageBoth('connecting')
     // Speech synthesis needs a user gesture: speaking an empty phrase now unlocks it for later.
     if (typeof speechSynthesis !== 'undefined') speechSynthesis.speak(new SpeechSynthesisUtterance(''))
     await voiceApi.current.start('juno')
-  }, [reset, prewarm, setStageBoth])
+  }, [resetState, loadPhrases, prewarm, setStageBoth])
 
   /** The customer tapped Yes/No on screen instead of answering aloud. */
   const answerConsent = useCallback(
     (yes: boolean) => {
       if (stageRef.current !== 'consent' || busy.current) return
-      void respond(yes ? 'Yes, that is fine.' : 'No, I would rather not.')
+      void respond(yes ? phrasesRef.current.yesText : phrasesRef.current.noText)
     },
     [respond],
   )
@@ -724,6 +934,8 @@ export function useJuno(voice: Voice) {
   return {
     stage, turns, speaking, thinking, listening, covered, line, revealed, progress,
     silent, toggleSilent, voiceChoices, voiceId, chooseVoice,
+    lang, setLanguage, phrases,
+    bargeMode, setBargeMode, bargeEnabled, headset,
     start, end, reset, answerConsent,
   }
 }

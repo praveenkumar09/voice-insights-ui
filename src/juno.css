@@ -58,7 +58,7 @@
 /* Body: presence | understanding */
 .jn__body { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.8fr); gap: 0; min-height: 600px; }
 .jn__presence { display: flex; flex-direction: column; align-items: center; padding: 20px 28px 30px; }
-.jn__orb-zone { flex: 0 0 auto; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; min-height: 290px; gap: 0; }
+.jn__orb-zone { flex: 0 0 auto; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; min-height: 340px; padding-top: 10px; gap: 0; }
 
 .jn__orb { position: relative; width: 156px; height: 156px; --lvl: 0; }
 .jn__orb-core { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; z-index: 3;
@@ -81,8 +81,8 @@
 .jn__orb--thinking .jn__orb-swirl { animation-duration: 1.7s; }
 @keyframes jn-breathe { 50% { transform: scale(1.045); } }
 @keyframes jn-spin { to { transform: rotate(360deg); } }
-@keyframes jn-ring-out { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2.4); opacity: 0; } }
-@keyframes jn-ring-in { 0% { transform: scale(2.4); opacity: 0; } 30% { opacity: 0.7; } 100% { transform: scale(1); opacity: 0; } }
+@keyframes jn-ring-out { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes jn-ring-in { 0% { transform: scale(1.9); opacity: 0; } 30% { opacity: 0.7; } 100% { transform: scale(1); opacity: 0; } }
 .jn__state { position: absolute; bottom: 0; display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(8px); }
 .jn__state-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: jn-blink 1.4s ease-in-out infinite; }
 
@@ -197,7 +197,7 @@
   .jn__brand small { display: none; }
   .jn__tools { gap: 6px; } .jn__seg button, .jn__seg--btn span { padding: 5px 10px; font-size: 0.7rem; }
   .jn__steps em { font-size: 0.62rem; }
-  .jn__orb { width: 120px; height: 120px; } .jn__orb-zone { min-height: 240px; }
+  .jn__orb { width: 120px; height: 120px; } .jn__orb-zone { min-height: 280px; }
   .jn__line { font-size: 1.1rem; min-height: 0; }
   .jn__start { padding: 14px 28px; }
 }
@@ -206,3 +206,16 @@
   .jn__mesh, .jn__orb-core, .jn__orb-halo, .jn__orb-swirl, .jn__orb-ring, .jn__start-glow, .jn__mark i, .jn__state-dot, .jn__dots i, .jn__sparks i, .jn__learn li.is-active, .jn__steps li.is-now .jn__step-node { animation: none !important; }
   .jn__sparks { display: none; }
 }
+
+
+/* Language selector */
+.jn__seg--lang button { min-width: 38px; font-size: 0.78rem; }
+.jn__langs { margin: 2px 0 0; font-size: 0.74rem; color: var(--faint); }
+
+
+/* Preferences row (voice, interruption, captions) at the foot of the presence column */
+.jn__prefs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin-top: auto; padding-top: 18px; }
+.jn__pill { font: inherit; font-size: 0.72rem; font-weight: 600; color: var(--dim); background: var(--glass); border: 1px solid var(--edge); border-radius: 999px; padding: 7px 15px; cursor: pointer; transition: all 0.25s ease; }
+.jn__pill:hover { color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+.jn__pill.is-on { color: #fff; border-color: rgba(61, 224, 176, 0.55); background: rgba(61, 224, 176, 0.12); }
+.jn__pill.is-muted { color: var(--gold); border-color: rgba(255, 212, 121, 0.45); background: rgba(255, 212, 121, 0.1); }

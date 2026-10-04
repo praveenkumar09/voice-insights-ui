@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef } from 'react'
-import { JUNO_TOPICS, type useJuno } from '../../hooks/useJuno'
+import { JUNO_TOPICS, LANGUAGES, type useJuno } from '../../hooks/useJuno'
 import type { CopilotInsights, CustomerProfile } from '../../types'
 import { JunoCanvas, type FieldMode } from './JunoCanvas'
 
@@ -22,6 +22,8 @@ interface Props {
   onBrief: () => void
   /** The browser has no speech synthesis, so Juno can only caption. */
   noVoice: boolean
+  /** Customer-safe view: internal signals (mood, interest) are not shown. */
+  safe?: boolean
 }
 
 const STEPS = ['Hello', 'Consent', 'Getting to know you', 'Hand-off'] as const
@@ -73,7 +75,7 @@ const TOPIC_ICON: Record<string, JSX.Element> = {
  * with the customer's own details. When the conversation is over the stage hands over to the real advisor, who
  * alone can start the analysis.
  */
-export function JunoStage({ k, amplitude, partialText, profile, copilot, canRecommend, advancing, onRecommend, onBrief, noVoice }: Props) {
+export function JunoStage({ k, amplitude, partialText, profile, copilot, canRecommend, advancing, onRecommend, onBrief, noVoice, safe = false }: Props) {
   const { stage, speaking, thinking, listening, covered, line, revealed, progress } = k
   const mode: FieldMode = stage === 'finished' || stage === 'declined' ? 'done' : speaking ? 'speaking' : thinking ? 'thinking' : listening ? 'listening' : 'idle'
   const step = stepIndex(stage)
@@ -83,12 +85,14 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
 
   const words = useMemo(() => {
     let at = 0
-    return line.split(/(\s+)/).map((w) => {
+    // Chinese has no spaces between words, so its captions light up a character at a time.
+    const tokens = k.lang === 'zh' ? Array.from(line) : line.split(/(\s+)/)
+    return tokens.map((w) => {
       const start = at
       at += w.length
       return { w, start }
     })
-  }, [line])
+  }, [line, k.lang])
 
   const stateLabel =
     stage === 'idle' ? 'Ready'
@@ -131,18 +135,13 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
         </ol>
 
         <div className="jn__tools">
-          {k.voiceChoices.length > 1 && (
-            <div className="jn__seg" role="group" aria-label="Juno voice">
-              {k.voiceChoices.map((c) => (
-                <button key={c.id} className={k.voiceId === c.id ? 'is-on' : ''} aria-pressed={k.voiceId === c.id} onClick={() => k.chooseVoice(c.id)} disabled={speaking}>
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
-          <button className={`jn__seg jn__seg--btn${k.silent || noVoice ? ' is-muted' : ''}`} onClick={k.toggleSilent} aria-pressed={k.silent} title={k.silent ? 'Juno is silent — captions only' : 'Mute Juno (captions stay)'}>
-            <span>{k.silent || noVoice ? 'Captions only' : 'Voice on'}</span>
-          </button>
+          <div className="jn__seg jn__seg--lang" role="group" aria-label="Language">
+            {LANGUAGES.map((l) => (
+              <button key={l.id} className={k.lang === l.id ? 'is-on' : ''} aria-pressed={k.lang === l.id} title={l.name} onClick={() => k.setLanguage(l.id)}>
+                {l.label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -186,6 +185,7 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
                     <li>Knows our products</li>
                     <li>You stay in control</li>
                   </ul>
+                  <p className="jn__langs">Speaks English, 中文, Bahasa Melayu and தமிழ் — choose above</p>
                 </motion.div>
               )}
 
@@ -210,8 +210,8 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
 
                   {stage === 'consent' && listening && (
                     <div className="jn__consent">
-                      <button className="jn__yes" onClick={() => k.answerConsent(true)}>Yes, that’s fine</button>
-                      <button className="jn__no" onClick={() => k.answerConsent(false)}>No thanks</button>
+                      <button className="jn__yes" onClick={() => k.answerConsent(true)}>{k.phrases.yes}</button>
+                      <button className="jn__no" onClick={() => k.answerConsent(false)}>{k.phrases.no}</button>
                       <small>Answer out loud, or tap.</small>
                     </div>
                   )}
@@ -277,6 +277,30 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
               )}
             </AnimatePresence>
           </div>
+
+          {/* Preferences live here, not in the header, so the header stays uncluttered */}
+          <div className="jn__prefs" aria-label="Juno preferences">
+            {k.voiceChoices.length > 1 && (
+              <div className="jn__seg" role="group" aria-label="Juno voice">
+                {k.voiceChoices.map((c) => (
+                  <button key={c.id} className={k.voiceId === c.id ? 'is-on' : ''} aria-pressed={k.voiceId === c.id} onClick={() => k.chooseVoice(c.id)} disabled={speaking}>
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              className={`jn__pill${k.bargeEnabled ? ' is-on' : ''}`}
+              onClick={() => k.setBargeMode(k.bargeEnabled ? 'off' : 'on')}
+              aria-pressed={k.bargeEnabled}
+              title={k.headset ? 'Headphones detected: the customer can interrupt Juno.' : 'Let the customer interrupt Juno. Works best with headphones; on speakers Juno can hear itself.'}
+            >
+              {k.bargeEnabled ? 'Interrupt: on' : 'Interrupt: off'}
+            </button>
+            <button className={`jn__pill${k.silent || noVoice ? ' is-muted' : ''}`} onClick={k.toggleSilent} aria-pressed={k.silent} title={k.silent ? 'Juno is silent — captions only' : 'Mute Juno (captions stay)'}>
+              {k.silent || noVoice ? 'Captions only' : 'Voice on'}
+            </button>
+          </div>
         </div>
 
         {/* Live understanding */}
@@ -330,7 +354,7 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
             })}
           </ol>
 
-          {copilot && (
+          {copilot && !safe && (
             <div className="jn__pulse">
               <div>
                 <small>Mood</small>

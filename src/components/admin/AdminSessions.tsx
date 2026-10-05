@@ -70,7 +70,7 @@ export function AdminSessions({ onViewRun }: Props) {
                     <b>{p.createdAt ? timeAgo(p.createdAt) : '—'}</b>
                     <small>{p.createdAt ? new Date(p.createdAt).toLocaleString() : ''}</small>
                   </span>
-                  <span><em className={`adm-chip adm-chip--${p.captureMode === 'DEBRIEF' ? 'debrief' : 'live'}`}>{p.captureMode === 'DEBRIEF' ? 'Dictated' : 'Live'}</em></span>
+                  <span><em className={`adm-chip adm-chip--${p.captureMode === 'DEBRIEF' || p.captureMode === 'JUNO_DEBRIEF' ? 'debrief' : 'live'}`}>{p.captureMode === 'JUNO_DEBRIEF' ? 'With Juno' : p.captureMode === 'DEBRIEF' ? 'Dictated' : 'Live'}</em></span>
                   <span><Pill value={p.status} /></span>
                   <span><Pill value={row.latestRunStatus} /></span>
                   <span>{row.latestRunId && <button className="adm-open" onClick={() => onViewRun(row.latestRunId!)}>Open</button>}</span>

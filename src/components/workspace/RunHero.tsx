@@ -24,7 +24,7 @@ export function RunHero({ runId, steps, profile, status, doneCount, total, elaps
   const top = shortlist?.shortlistedProducts?.[0]
   const topScore = top ? scoring?.scores.find((s) => s.productName.toLowerCase() === top.toLowerCase())?.score : undefined
   // A buying signal only means something when the customer was speaking; a dictated debrief has none worth showing.
-  const buying = profile?.captureMode === 'DEBRIEF' ? undefined : profile?.liveInsights?.latest?.buyingSignal
+  const buying = profile?.captureMode === 'DEBRIEF' || profile?.captureMode === 'JUNO_DEBRIEF' ? undefined : profile?.liveInsights?.latest?.buyingSignal
 
   const pct = Math.round((100 * doneCount) / total)
   const R = 40

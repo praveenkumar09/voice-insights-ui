@@ -51,7 +51,7 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   }
 }
 
-export function wsVoiceUrl(mode: 'live' | 'debrief' | 'juno' = 'live'): string {
+export function wsVoiceUrl(mode: 'live' | 'debrief' | 'juno-debrief' = 'live'): string {
   return `${WS_BASE}/ws/voice${mode === 'live' ? '' : `?mode=${mode}`}`
 }
 
@@ -103,6 +103,16 @@ export interface JunoTurnResponse {
   open?: boolean | null
 }
 
+/** Debrief with Juno: Juno talks with the advisor, after the advisor's own dictation. */
+export interface JunoDebriefRequest {
+  profileId?: string | null
+  /** What the advisor said before handing over to Juno. */
+  dictation: string
+  /** Juno and the advisor since the hand-over (empty for Juno's opening turn). */
+  turns: { role: 'juno' | 'advisor'; text: string }[]
+  lang?: LangId
+}
+
 export type JunoTone = 'warm' | 'gentle' | 'upbeat' | 'curious' | 'reassuring'
 
 /** Is Juno's neural voice available? (If not, the browser's own voice is used.) */
@@ -138,6 +148,52 @@ export async function junoTurn(req: JunoTurnRequest): Promise<JunoTurnResponse> 
     body: JSON.stringify(req),
   })
   if (!res.ok) throw new Error(await errorMessage(res, `Juno could not respond (${res.status})`))
+  return res.json()
+}
+
+/** What Juno says to the advisor next. Like junoTurn, it cannot start an analysis. Gives up after 25 s so a stalled server never leaves Juno silent. */
+export async function junoDebriefTurn(req: JunoDebriefRequest): Promise<JunoTurnResponse> {
+  const ctl = new AbortController()
+  const timer = window.setTimeout(() => ctl.abort(), 25000)
+  try {
+    const res = await fetch(`${API_BASE}/api/juno/debrief-turn`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(req),
+      signal: ctl.signal,
+    })
+    if (!res.ok) throw new Error(await errorMessage(res, `Juno could not respond (${res.status})`))
+    return await res.json()
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
+
+/** Fire and forget: lets the server get ready for Juno's first line while the last words are still being transcribed. */
+export function junoDebriefPrepare(profileId: string): void {
+  void fetch(`${API_BASE}/api/juno/debrief-prepare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ profileId }),
+  }).catch(() => undefined)
+}
+
+export interface FollowUpDraft {
+  /** The WhatsApp draft in the chosen language. */
+  message: string
+  /** The same draft in English, so the advisor can check what it says. */
+  english: string
+  language: string
+}
+
+/** A draft follow-up message for the customer after a debrief. Nothing is sent: the advisor reviews and sends it. */
+export async function junoFollowUp(profileId: string, lang: LangId): Promise<FollowUpDraft> {
+  const res = await fetch(`${API_BASE}/api/juno/debrief-followup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ profileId, lang }),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Could not draft the follow-up (${res.status})`))
   return res.json()
 }
 

@@ -2,7 +2,7 @@ export interface CustomerProfile {
   id?: string
   agentUserId?: string
   status?: string
-  captureMode?: 'LIVE' | 'DEBRIEF' | 'JUNO'
+  captureMode?: 'LIVE' | 'DEBRIEF' | 'JUNO' | 'JUNO_DEBRIEF'
   customerName?: string | null
   age?: number | null
   occupation?: string | null

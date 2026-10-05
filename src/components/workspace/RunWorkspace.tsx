@@ -209,5 +209,5 @@ function LiveStage({ profile, steps, finalReady }: { profile: CustomerProfile | 
       </div>
     )
   }
-  return <LiveVsFinal live={live} steps={steps} showBuying={profile?.captureMode !== 'DEBRIEF'} />
+  return <LiveVsFinal live={live} steps={steps} showBuying={profile?.captureMode !== 'DEBRIEF' && profile?.captureMode !== 'JUNO_DEBRIEF'} />
 }

@@ -4,8 +4,8 @@ import type { CopilotInsights, CustomerProfile, LifeMapData, SignalPoint } from 
 
 export type VoiceCaptureStatus = 'idle' | 'connecting' | 'listening' | 'paused' | 'stopping' | 'stopped' | 'error'
 
-/** live: the customer is speaking. debrief: the advisor dictates a summary after the meeting. */
-export type CaptureMode = 'live' | 'debrief' | 'juno'
+/** live: the customer is speaking. debrief: the advisor dictates a summary after the meeting. juno-debrief: the same, then Juno asks the advisor about the gaps. */
+export type CaptureMode = 'live' | 'debrief' | 'juno-debrief'
 
 /** How firmly background sound (a TV, other conversations) is kept out: off, normal, or strong. */
 export type NoiseFilter = 'off' | 'normal' | 'strong'
@@ -61,8 +61,6 @@ export function useVoiceCapture() {
   // customer who interrupts is heard from their first word. Nothing held is sent unless an interruption is confirmed.
   const heldRef = useRef<ArrayBuffer[]>([])
   const rawListener = useRef<((amp: number) => void) | null>(null)
-  // In a Juno conversation the filter is more forgiving: a customer's soft first and last words matter more than a TV.
-  const hostedRef = useRef(false)
   const lastSavedLevel = useRef(0)
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -122,7 +120,7 @@ export function useVoiceCapture() {
       const worklet = new AudioWorkletNode(audioContext, 'pcm-worklet', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 })
       processorRef.current = worklet
 
-      worklet.port.postMessage({ gate: noiseFilterRef.current !== 'off', ratio: hostedRef.current ? 0.2 : FILTER_RATIO[noiseFilterRef.current] || 0.35, hang: hostedRef.current ? 8 : 5, ref: storedLevel() ?? undefined })
+      worklet.port.postMessage({ gate: noiseFilterRef.current !== 'off', ratio: FILTER_RATIO[noiseFilterRef.current] || 0.35, ref: storedLevel() ?? undefined })
       worklet.port.onmessage = (e: MessageEvent<{ pcm?: ArrayBuffer; amp: number; gated?: boolean; ref?: number }>) => {
         setAmplitude(mutedRef.current ? 0 : e.data.amp)
         rawListener.current?.(e.data.amp)
@@ -202,6 +200,16 @@ export function useVoiceCapture() {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'language', lang }))
   }, [])
 
+  /**
+   * Switches the server to conversational timing (short answers are kept, each answer ends on the browser's commit).
+   * Used after the advisor hands over to Juno: dictation keeps the stricter settings of the normal debrief, so a
+   * silence or a breath is never turned into words.
+   */
+  const sendConversational = useCallback((on: boolean) => {
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'conversational', on }))
+  }, [])
+
   /** Ask the server to finalise whatever speech it has buffered (so nothing leaks into the next turn). */
   const commitNow = useCallback(() => {
     const ws = wsRef.current
@@ -220,7 +228,6 @@ export function useVoiceCapture() {
 
   const start = useCallback(
     async (mode: CaptureMode = 'live') => {
-      hostedRef.current = mode === 'juno'
       setErrorMessage(null)
       setPartialText('')
       setFinalSegments([])
@@ -243,7 +250,7 @@ export function useVoiceCapture() {
               if (statusRef.current === 'connecting') setStatus('listening')
               break
             case 'session_started':
-              setProfile((p) => ({ ...(p ?? {}), id: msg.customerProfileId as string, captureMode: mode === 'debrief' ? 'DEBRIEF' : mode === 'juno' ? 'JUNO' : 'LIVE' }))
+              setProfile((p) => ({ ...(p ?? {}), id: msg.customerProfileId as string, captureMode: mode === 'debrief' ? 'DEBRIEF' : mode === 'juno-debrief' ? 'JUNO_DEBRIEF' : 'LIVE' }))
               break
             case 'partial_transcript':
               setPartialText(msg.text as string)
@@ -343,12 +350,13 @@ export function useVoiceCapture() {
     }
   }, [attachMic])
 
-  const stop = useCallback(() => {
+  /** `flush: false` ends the session without transcribing the audio still buffered (nothing real is left in it). */
+  const stop = useCallback((flush = true) => {
     setStatus('stopping')
     cleanupAudio()
     const ws = wsRef.current
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'stop' }))
+      ws.send(JSON.stringify({ type: 'stop', flush }))
     }
   }, [cleanupAudio])
 
@@ -390,6 +398,6 @@ export function useVoiceCapture() {
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
     noiseFilter, setNoiseFilter, backgroundIgnored,
-    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, releaseHeld, sendLanguage, sendAgentSay, commitNow, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
+    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, releaseHeld, sendLanguage, sendAgentSay, sendConversational, commitNow, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

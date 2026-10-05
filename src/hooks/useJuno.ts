@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { discardConversation, junoPhrases, junoSpeak, junoTurn, junoVoiceStatus, type JunoPhrases, type LangId } from '../api/client'
+import { junoDebriefPrepare, junoDebriefTurn, junoPhrases, junoSpeak, junoVoiceStatus, type JunoPhrases, type JunoTurnResponse, type LangId } from '../api/client'
 import type { useVoiceCapture } from './useVoiceCapture'
 
 type Voice = ReturnType<typeof useVoiceCapture>
 
-export type JunoStage = 'idle' | 'connecting' | 'consent' | 'discovery' | 'wrapup' | 'declined' | 'finished' | 'error'
+/** dictate: the advisor briefs Juno freely. discovery: Juno asks about the gaps. wrapup: Juno reads back and the session is saved. */
+export type JunoStage = 'idle' | 'connecting' | 'dictate' | 'discovery' | 'wrapup' | 'finished' | 'error'
 
 export interface JunoTurn {
   id: number
-  role: 'juno' | 'customer'
+  role: 'juno' | 'advisor'
   text: string
 }
 
-/** The six things Juno gets to know, in the order it naturally raises them. */
+/** The six things a complete record holds, in the order Juno naturally raises them. */
 export const JUNO_TOPICS = [
   { key: 'about', label: 'About you' },
   { key: 'family', label: 'Family' },
@@ -54,30 +55,32 @@ const EN_PHRASES: JunoPhrases = {
   acks: ['Mm, I see.', 'Okay, got it.', 'Right, thank you.', 'I see, thanks.', 'Alright, got it.'],
 }
 
-// ── Turn-taking ─────────────────────────────────────────────────────────────────────────────────────────────
-// Juno decides an answer is over from the customer's VOICE (not from the transcript, which lags the speech by a
+// ── Turn-taking ─
+// Tuned for pace: an advisor's answers to Juno are short and factual, and a reply that arrives while they carry on is simply
+// dropped (they are heard out first), so Juno can afford to answer quickly.────────────────────────────────────────────────────────────────────────────────────────────
+// Juno decides an answer is over from the advisor's VOICE (not from the transcript, which lags the speech by a
 // second or two), commits it for transcription at once, and replies as soon as the text lands.
 /** Quiet this long after speech → the answer is committed for transcription. */
-const COMMIT_QUIET_MS = 800
+const COMMIT_QUIET_MS = 600
 /**
- * How long Juno waits after the customer goes quiet before it takes over, by how finished the answer sounds:
+ * How long Juno waits after the advisor goes quiet before it takes over, by how finished the answer sounds:
  * a short answer ("Yes.") is quick; a full sentence waits a natural breath; a sentence that trails off
- * ("…and we also have a") waits longest. If the customer carries on after Juno has started thinking, its reply
+ * ("…and we also have a") waits longest. If the advisor carries on after Juno has started thinking, its reply
  * is thrown away and it keeps listening, so being a little eager costs nothing.
  */
-const END_SHORT_MS = 900
-const END_SENTENCE_MS = 1500
-const END_TRAILING_MS = 3000
-/** Questions that invite a long, thoughtful answer (worries, hopes, family): the customer is allowed longer pauses. */
+const END_SHORT_MS = 650
+const END_SENTENCE_MS = 1050
+const END_TRAILING_MS = 2400
+/** Questions that invite a long, thoughtful answer (worries, hopes, family): the advisor is allowed longer pauses. */
 const OPEN_QUESTION = /(worr|concern|hope|goal|plan|tell me|family|anyone you|live with|support|share|what are|how do you feel|on your mind)/i
-const END_SHORT_OPEN_MS = 1400
-const END_SENTENCE_OPEN_MS = 2400
+const END_SHORT_OPEN_MS = 1000
+const END_SENTENCE_OPEN_MS = 1700
 /**
- * A reply that is ready is still held until the customer has been quiet this long, so a pause in the middle of an
- * answer is never talked over — Juno checks, right up to the moment it speaks, that the customer has not carried on.
+ * A reply that is ready is still held until the advisor has been quiet this long, so a pause in the middle of an
+ * answer is never talked over — Juno checks, right up to the moment it speaks, that the advisor has not carried on.
  */
-const HOLD_QUIET_MS = 1700
-const HOLD_QUIET_OPEN_MS = 2600
+const HOLD_QUIET_MS = 1100
+const HOLD_QUIET_OPEN_MS = 1700
 const HOLD_MAX_MS = 4500
 const TRAILING = /(\b(and|but|so|because|then|or|also|like|um|uh|er|erm|well|if|when|that|which|with|to|of|for|in|on|at|my|our|the|a|an|is|are|was|were|i|we)\b|[,;:–-]|\.\.\.|…)\s*$/i
 const TRAILING_PUNCT = /([,;:–\-、，；：]|\.\.\.|…)\s*$/
@@ -90,20 +93,43 @@ function endpointMs(text: string, open: boolean, lang: LangId): number {
   return open ? (short ? END_SHORT_OPEN_MS : END_SENTENCE_OPEN_MS) : short ? END_SHORT_MS : END_SENTENCE_MS
 }
 /** After the last text arrives, wait this long for a trailing piece before replying. */
-const SETTLE_MS = 350
+const SETTLE_MS = 250
 /** A committed answer that produces no text within this long was noise (or too short to transcribe). */
 const NO_TEXT_MS = 4000
 /** How long we expect a committed answer to take to come back as text. */
 const IN_FLIGHT_MS = 2500
-/** Text that has been sitting this long after the customer stopped is answered regardless. */
+/** "Juno, over to you" (or "your turn", "go ahead"): hands the debrief to Juno without touching the screen. */
+const HANDOVER = /\b(?:juno|juneau|junior|jeno|jonno)\b[\s,.!:-]*(?:over to you|your turn|go ahead|please go ahead|you can (?:start|go|begin)|over to you now)|(?:over to you|your turn)[\s,.!-]*\b(?:juno|juneau|junior|jeno|jonno)\b/i
+/**
+ * The speech model often hears "Juno" as something else ("you know"), so a line that is only "Over to you." / "Your turn." is
+ * accepted as the hand-over too. It has to be the whole line, so "…then I handed it over to you" never triggers it.
+ */
+const HANDOVER_ALONE = /^\W*(?:(?:ok|okay|right|so|alright)\W+)?(?:over to you|your turn|go ahead|you can (?:start|go|begin)(?: now)?|over to you now)\W*$/i
+/** A greeting or sign-off is never an answer to a debrief question: the speech model produces them ("Hi.") from room noise. */
+const NOT_AN_ANSWER = /^(?:\W*(?:hi|hello|hey|bye|goodbye|thanks?|thank you)\b\W*)+$/i
+const LEADING_GREETING = /^(?:[\s.,!?]*\b(?:hi|hello|hey|hola)\b)+[\s.,!?]*/i
+const TRAILING_GREETING = /(?:[\s.,!?]*\b(?:hi|hello|hey|hola|bye|goodbye|thanks?|thank you)\b)+[\s.,!?]*$/i
+const ORPHAN_WORD = /([.!?])\s*(?:the|a|an|and|but|so|um|uh)[\s.,!?]*$/i
+/**
+ * An answer as the advisor meant it: the speech model sometimes glues a greeting or a half word onto the end of a real answer
+ * ("…his son is three. Hola. Hello. The"). Those are dropped; what is left is what was said.
+ */
+function cleanAnswer(raw: string): string {
+  let t = raw.trim()
+  for (let i = 0; i < 2; i++) {
+    t = t.replace(ORPHAN_WORD, '$1').replace(TRAILING_GREETING, '').trim()
+  }
+  return t.replace(LEADING_GREETING, '').trim()
+}
+/** Text that has been sitting this long after the advisor stopped is answered regardless. */
 const MAX_WAIT_MS = 6000
-/** Voice louder than this (and well above the room's noise) counts as the customer speaking. */
+/** Voice louder than this (and well above the room's noise) counts as the advisor speaking. */
 const MIN_VOICE = 0.07
 const NOISE_FLOOR_MAX = 0.05
 const HEARD_MS = 350
 const NUDGE_AFTER_MS = 25000
 // Acknowledgements are always a short phrase, never a single word: the voice model renders a lone "Okay." unpredictably.
-/** A segment that is only one of Juno's own acknowledgements (heard back through the speakers) is not the customer. */
+/** A segment that is only one of Juno's own acknowledgements (heard back through the speakers) is not the advisor. */
 const ACK_ECHO = /^(mm+[\s,-]*(h?m+)?[\s,]*(i see)?|okay,?\s*(got it)?|ok|right,?\s*(thank you|thanks)?|i see,?\s*(okay|thanks)?|alright,?\s*(got it)?|got it|uh[\s-]*huh|mhm)[.!,\s]*$/i
 /** Rough speaking speed (characters per second), used for caption timing when the audio's own timing isn't available. */
 const CPS: Record<LangId, number> = { en: 13.5, zh: 4.5, ms: 13, ta: 11 }
@@ -131,9 +157,10 @@ function firstMatch(voices: SpeechSynthesisVoice[], list: RegExp[]): SpeechSynth
 export type VoiceId = 'female' | 'male'
 
 /**
- * Directs a conversation in which Juno talks with the customer by itself: it greets, asks for consent, listens,
- * asks the next question, and hands over to the advisor. It can only speak and listen — whatever happens next
- * (starting the analysis) is a button only the advisor can press.
+ * Directs a debrief in which Juno works with the advisor after a meeting: the advisor dictates freely, taps
+ * "Done, over to Juno", and Juno says what it understood and asks a few short questions about what is missing,
+ * then reads back. It can only speak and listen — whatever happens next (starting the analysis) is a button only
+ * the advisor can press.
  */
 export function useJuno(voice: Voice) {
   const [stage, setStage] = useState<JunoStage>('idle')
@@ -142,6 +169,9 @@ export function useJuno(voice: Voice) {
   const [thinking, setThinking] = useState(false)
   const [covered, setCovered] = useState<string[]>([])
   const [line, setLine] = useState('')
+  /** How long the debrief took, from the first word of dictation to the read-back (null until it is over). */
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null)
+  const startedAt = useRef(0)
   const [revealed, setRevealed] = useState(0)
   const [silent, setSilent] = useState(() => {
     try { return localStorage.getItem(MUTE_KEY) === '1' } catch { return false }
@@ -157,7 +187,7 @@ export function useJuno(voice: Voice) {
     try { return localStorage.getItem(VOICE_KEY) === 'male' ? 'male' : 'female' } catch { return 'female' }
   })
 
-  // The language of the conversation: English unless the customer or advisor chooses another.
+  // The language of the conversation: English unless the advisor or advisor chooses another.
   const [lang, setLangState] = useState<LangId>('en')
   const langRef = useRef<LangId>('en')
   langRef.current = lang
@@ -165,12 +195,10 @@ export function useJuno(voice: Voice) {
   const phrasesRef = useRef<JunoPhrases>(EN_PHRASES)
   phrasesRef.current = phrases
   const phrasesCache = useRef(new Map<LangId, JunoPhrases>())
-  // Where the fixed parts of the conversation have got to — sent with every turn so the server need not read them from the words.
-  const consentAsks = useRef(1)
-  const closingAsked = useRef(false)
-  const qaAnswers = useRef(0)
+  /** What the advisor dictated before handing over; sent with every turn so Juno never asks about what was already said. */
+  const dictationRef = useRef('')
 
-  // Interruption: the customer can cut in while Juno is speaking. Automatic with headphones; the advisor can force it on or off.
+  // Interruption: the advisor can cut in while Juno is speaking. Automatic with headphones; the advisor can force it on or off.
   const [bargeMode, setBargeModeState] = useState<BargeMode>(() => {
     try { const v = localStorage.getItem(BARGE_KEY); return v === 'on' || v === 'off' ? v : 'auto' } catch { return 'auto' }
   })
@@ -191,7 +219,7 @@ export function useJuno(voice: Voice) {
   const idRef = useRef(0)
   /** Bumped whenever the conversation is reset or ended, so anything still in flight from before knows to stand down. */
   const gen = useRef(0)
-  const awaiting = useRef(false) // true while Juno is waiting for the customer to answer
+  const awaiting = useRef(false) // true while Juno is waiting for the advisor to answer
   const pending = useRef('')
   const nudgeTimer = useRef<number | null>(null)
   const busy = useRef(false)
@@ -209,9 +237,9 @@ export function useJuno(voice: Voice) {
   const inFlight = useRef(false)
   const acked = useRef(false)
   const ackIdx = useRef(0)
-  // The customer carrying on while Juno is still working out its reply
+  // The advisor carrying on while Juno is still working out its reply
   const resumedMs = useRef(0)
-  /** While the "Mm-hm" is playing its echo can reach the mic: it must not be mistaken for the customer carrying on. */
+  /** While the "Mm-hm" is playing its echo can reach the mic: it must not be mistaken for the advisor carrying on. */
   const ackUntil = useRef(0)
   /** The question Juno just asked invites a long answer (so pauses are allowed to be longer). */
   const openQuestion = useRef(false)
@@ -353,12 +381,11 @@ export function useJuno(voice: Voice) {
     }
   }, [])
 
-  /** Get the greeting and the "Mm-hm" clips ready before they are needed, so they play instantly. */
+  /** Get the "Mm-hm" clips ready before they are needed, so they play instantly. */
   const prewarm = useCallback(() => {
     if (!neuralRef.current) return
-    sentences(phrasesRef.current.greeting).forEach((p) => void audioFor(p.text, 'warm'))
     phrasesRef.current.acks.forEach((t) => void audioFor(t, 'warm'))
-  }, [audioFor, sentences])
+  }, [audioFor])
   useEffect(() => {
     if (neural) prewarm()
   }, [neural, voiceId, phrases, prewarm])
@@ -380,7 +407,7 @@ export function useJuno(voice: Voice) {
       if (!pr) return
       void Promise.race([pr, new Promise<null>((r) => window.setTimeout(() => r(null), 250))]).then((blob) => {
         if (!blob || g !== gen.current || busyTalking.current) return
-        // The microphone stays open: a customer who resumes speaking right now must not lose a single word.
+        // The microphone stays open: an advisor who resumes speaking right now must not lose a single word.
         ackUntil.current = performance.now() + 900
         voiceApi.current.setLearning(false)
         window.setTimeout(() => voiceApi.current.setLearning(true), 1300)
@@ -442,7 +469,7 @@ export function useJuno(voice: Voice) {
         }, 60)
         speakTimers.current.push(tick)
 
-        // `cut`: the customer interrupted — stop at once, keep the caption where it was, and the microphone is already open.
+        // `cut`: the advisor interrupted — stop at once, keep the caption where it was, and the microphone is already open.
         const wrapUp = (cut: boolean) => {
           if (finished) return
           finished = true
@@ -548,12 +575,12 @@ export function useJuno(voice: Voice) {
     [addTurn, audioFor, sentences, stopAudio],
   )
 
-  /** After Juno finishes speaking: listen for the customer's answer, nudging once if it stays quiet. */
+  /** After Juno finishes speaking: listen for the advisor's answer, nudging once if it stays quiet. */
   const listen = useCallback(
     (canNudge = true) => {
       const g = gen.current
       if (interrupted.current) {
-        // The customer cut in: they are already talking, so do not reset what has been heard so far.
+        // The advisor cut in: they are already talking, so do not reset what has been heard so far.
         interrupted.current = false
         awaiting.current = true
         return
@@ -580,14 +607,30 @@ export function useJuno(voice: Voice) {
   )
 
   const finishSession = useCallback(async () => {
-    if (stageRef.current === 'declined') return
     setStageBoth('wrapup')
     awaiting.current = false
     voiceApi.current.setMicMuted(true)
-    voiceApi.current.stop() // the server finalises the profile and the last analysis; 'stopped' follows
+    // Juno has read back and the advisor's last answer was committed long ago: nothing real is left in the buffer.
+    voiceApi.current.stop(false) // the server finalises the profile and the last analysis; 'stopped' follows
   }, [setStageBoth])
 
-  /** The customer has finished answering: ask the brain what Juno says next, then say it. */
+  /** Says Juno's line and carries on: listens for the advisor's answer, or finishes after the read-back. */
+  const deliver = useCallback(
+    async (res: JunoTurnResponse, g: number, canBarge = !res.done) => {
+      if (res.covered?.length) setCovered((c) => [...new Set([...c, ...res.covered])])
+      await speak(res.say, res.tone, res.open, canBarge)
+      if (g !== gen.current) return
+      if (res.done) {
+        setCovered(JUNO_TOPICS.map((t) => t.key))
+        await finishSession()
+      } else {
+        listen()
+      }
+    },
+    [finishSession, listen, speak],
+  )
+
+  /** The advisor has finished answering: ask the brain what Juno says next, then say it. */
   const respond = useCallback(
     async (answer: string) => {
       if (busy.current) return
@@ -595,26 +638,22 @@ export function useJuno(voice: Voice) {
       busy.current = true
       awaiting.current = false
       if (nudgeTimer.current) window.clearTimeout(nudgeTimer.current)
-      addTurn('customer', answer)
+      addTurn('advisor', answer)
       setThinking(true)
       resumedMs.current = 0
       late.current = ''
-      const consentPhase = stageRef.current === 'consent'
       const t0 = performance.now()
-      // A short "Mm-hm" covers the moment Juno is working out its reply (only for a real answer, not the consent tap).
-      if (!consentPhase && answer.split(/\s+/).length >= 4) acknowledge()
+      // A short "Mm-hm" covers the moment Juno is working out its reply (only for a real answer).
+      if (answer.split(/\s+/).length >= 4) acknowledge()
       try {
-        const res = await junoTurn({
+        const res = await junoDebriefTurn({
           profileId: voiceApi.current.profile?.id,
-          phase: consentPhase ? 'consent' : 'discovery',
+          dictation: dictationRef.current,
           turns: turnsRef.current.map(({ role, text }) => ({ role, text })),
           lang: langRef.current,
-          consentAsks: consentAsks.current,
-          closingAsked: closingAsked.current,
-          qaAnswers: qaAnswers.current,
         })
         if (g !== gen.current) return
-        // Hold a ready reply until the customer has been quiet long enough: a pause mid-answer is not an ending.
+        // Hold a ready reply until the advisor has been quiet long enough: a pause mid-answer is not an ending.
         // With interruption on, a reply that comes a little early can simply be cut in on, so Juno responds sooner.
         const holdMs = (openQuestion.current ? HOLD_QUIET_OPEN_MS : HOLD_QUIET_MS) * (bargeRef.current ? 0.65 : 1)
         while (performance.now() - lastLoud.current < holdMs && performance.now() - t0 < HOLD_MAX_MS) {
@@ -622,7 +661,7 @@ export function useJuno(voice: Voice) {
           if (g !== gen.current) return
         }
         if (g !== gen.current) return
-        // The customer carried on speaking while Juno was working out its reply: that reply answers half an
+        // The advisor carried on speaking while Juno was working out its reply: that reply answers half an
         // answer, so drop it, keep what they said, and keep listening for the rest.
         if (resumedMs.current >= 500 || late.current.trim()) {
           const merged = `${answer} ${late.current}`.trim()
@@ -641,29 +680,7 @@ export function useJuno(voice: Voice) {
         }
         setThinking(false)
         console.debug(`[juno] reply ready in ${Math.round(performance.now() - t0)} ms`)
-        if (res.consent === 'unclear') consentAsks.current += 1
-        if (res.marker === 'closing') closingAsked.current = true
-        if (res.marker === 'qa') qaAnswers.current += 1
-        if (res.covered?.length) setCovered((c) => [...new Set([...c, ...res.covered])])
-
-        if (res.consent === 'declined') {
-          setStageBoth('declined')
-          await speak(res.say, 'gentle')
-          if (g !== gen.current) return
-          const id = voiceApi.current.profile?.id
-          voiceApi.current.reset()
-          if (id) await discardConversation(id)
-          return
-        }
-        if (res.consent === 'granted') setStageBoth('discovery')
-        await speak(res.say, res.tone, res.open, !res.done)
-        if (g !== gen.current) return
-        if (res.done) {
-          setCovered(JUNO_TOPICS.map((t) => t.key))
-          await finishSession()
-        } else {
-          listen()
-        }
+        await deliver(res, g)
       } catch {
         if (g !== gen.current) return
         setThinking(false)
@@ -673,8 +690,70 @@ export function useJuno(voice: Voice) {
         busy.current = false
       }
     },
-    [acknowledge, addTurn, finishSession, listen, setStageBoth, speak],
+    [acknowledge, addTurn, deliver, listen, speak],
   )
+
+  /**
+   * The advisor has finished dictating and taps "Done, over to Juno": what was said is committed, Juno reads it,
+   * says what it understood, and asks its first question about what is missing.
+   */
+  const handOver = useCallback(async () => {
+    if (stageRef.current !== 'dictate' || busy.current) return
+    const g = gen.current
+    busy.current = true
+    awaiting.current = false
+    setThinking(true)
+    setStageBoth('discovery')
+    // Something to read while Juno thinks, so the first seconds never look idle.
+    setLine('Reading your notes…')
+    setRevealed(0)
+    const v0 = voiceApi.current
+    // The server gets ready for Juno's first line while the last words are still being transcribed.
+    if (v0.profile?.id) junoDebriefPrepare(v0.profile.id)
+    v0.commitNow()
+    v0.sendConversational(true) // from here on the advisor gives short answers to Juno's questions
+    // The last words are still on their way back as text: wait for them, but only as long as they take
+    // (at least half a second, then until nothing new has arrived for a moment; never more than 1.8 s).
+    const t0 = performance.now()
+    let seen = voiceApi.current.finalSegments.length
+    let changedAt = t0
+    while (performance.now() - t0 < 1800) {
+      await new Promise((r) => window.setTimeout(r, 100))
+      if (g !== gen.current) return
+      const cur = voiceApi.current
+      if (cur.finalSegments.length !== seen || cur.partialText) {
+        seen = cur.finalSegments.length
+        changedAt = performance.now()
+      }
+      if (performance.now() - t0 >= 500 && performance.now() - changedAt >= 450 && !cur.partialText) break
+    }
+    const v = voiceApi.current
+    // The spoken hand-over phrase ("Juno, over to you") is not part of the notes.
+    dictationRef.current = [...v.finalSegments.filter((seg) => !HANDOVER_ALONE.test(seg)), v.partialText]
+      .join(' ').replace(new RegExp(HANDOVER.source, 'gi'), ' ').replace(/\s+/g, ' ').trim()
+    try {
+      const res = await junoDebriefTurn({ profileId: v.profile?.id, dictation: dictationRef.current, turns: [], lang: langRef.current })
+      if (g !== gen.current) return
+      setThinking(false)
+      // Juno's first line (what it understood) is the one the advisor most needs to hear whole: it is not interruptible.
+      await deliver(res, g, false)
+    } catch {
+      if (g !== gen.current) return
+      setThinking(false)
+      await speak(phrasesRef.current.missed)
+      if (g === gen.current) listen()
+    } finally {
+      busy.current = false
+    }
+  }, [deliver, listen, setStageBoth, speak])
+
+  // Hands-free: saying "Juno, over to you" in the dictation does the same as the button.
+  const { finalSegments: dictated } = voice
+  useEffect(() => {
+    if (stageRef.current !== 'dictate' || dictated.length === 0) return
+    // The speech model often splits "Juno, over to you" into two lines ("Juno." / "Over to you."), so the last two are read together.
+    if (HANDOVER.test(dictated.slice(-2).join(' ')) || dictated.slice(-3).some((seg) => HANDOVER_ALONE.test(seg))) void handOver()
+  }, [dictated, handOver])
 
   // ── Interruption ──────────────────────────────────────────────────────────────────────────────────────────
   const percentile = (xs: number[], q: number) => {
@@ -683,14 +762,14 @@ export function useJuno(voice: Voice) {
     return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]
   }
 
-  /** The customer has started talking over Juno: stop mid-sentence and listen. */
+  /** The advisor has started talking over Juno: stop mid-sentence and listen. */
   const barge = useCallback(() => {
     if (!busyTalking.current || !bargeable.current) return
     bargeable.current = false
     bargeStreak.current = 0
     echoSamples.current = []
     interrupted.current = true
-    // What the customer actually heard of the line, so the conversation record is honest about it.
+    // What the advisor actually heard of the line, so the conversation record is honest about it.
     const lastJuno = [...turnsRef.current].reverse().find((t) => t.role === 'juno')
     if (lastJuno) {
       const heard = lastJuno.text.slice(0, Math.max(0, revealedRef.current)).trim()
@@ -698,7 +777,7 @@ export function useJuno(voice: Voice) {
       setTurns(turnsRef.current)
     }
     interruptSpeak.current?.()
-    voiceApi.current.releaseHeld(6) // the customer's first words were held; send them, then listen normally
+    voiceApi.current.releaseHeld(6) // the advisor's first words were held; send them, then listen normally
     const now = performance.now()
     awaiting.current = true
     pending.current = ''
@@ -752,13 +831,13 @@ export function useJuno(voice: Voice) {
     return () => navigator.mediaDevices.removeEventListener?.('devicechange', check)
   }, [voice.status])
 
-  // ── Watching the customer ────────────────────────────────────────────────────────────────────────────────
+  // ── Watching the advisor ────────────────────────────────────────────────────────────────────────────────
   const { finalSegments, status, amplitude } = voice
   useEffect(() => {
     if (finalSegments.length < seenSegments.current) seenSegments.current = 0
     const fresh = finalSegments.slice(seenSegments.current)
     seenSegments.current = finalSegments.length
-    // Only in the moments right after Juno's own "Mm-hm": otherwise a real "Okay." from the customer is an answer.
+    // Only in the moments right after Juno's own "Mm-hm": otherwise a real "Okay." from the advisor is an answer.
     const echoWindow = performance.now() < ackUntil.current + 2500
     const isAck = (t: string) => ACK_ECHO.test(t.trim()) || phrasesRef.current.acks.some((a) => a.replace(/[\s.,!，。！]/g, '') === t.replace(/[\s.,!，。！]/g, ''))
     const realText = fresh.filter((t) => !(echoWindow && isAck(t)))
@@ -769,10 +848,10 @@ export function useJuno(voice: Voice) {
     inFlight.current = false // the committed speech has come back as text
   }, [finalSegments])
 
-  // Microphone level: is the customer speaking right now?
+  // Microphone level: is the advisor speaking right now?
   useEffect(() => {
     if (busy.current && !busyTalking.current) {
-      // Juno is thinking and the customer is talking again.
+      // Juno is thinking and the advisor is talking again.
       if (performance.now() > ackUntil.current && amplitude > Math.max(MIN_VOICE, noiseFloor.current * 2.4)) {
         resumedMs.current += 100
         lastLoud.current = performance.now()
@@ -797,7 +876,7 @@ export function useJuno(voice: Voice) {
     }
   }, [amplitude])
 
-  // The endpointing loop: commit when the customer goes quiet, acknowledge, reply once the text has landed.
+  // The endpointing loop: commit when the advisor goes quiet, acknowledge, reply once the text has landed.
   useEffect(() => {
     const id = window.setInterval(() => {
       if (!awaiting.current || busy.current) return
@@ -819,9 +898,22 @@ export function useJuno(voice: Voice) {
         return
       }
       if (inFlight.current && now - committedAt.current > IN_FLIGHT_MS) inFlight.current = false
-      const text = pending.current.trim()
-      if (!text || text.length < 2) return
+      const text = cleanAnswer(pending.current)
+      if (!text || text.length < 2) {
+        if (pending.current.trim() && now - lastText.current >= SETTLE_MS) pending.current = '' // nothing but greetings or fragments
+        return
+      }
       const textSettled = now - lastText.current >= SETTLE_MS
+      if (NOT_AN_ANSWER.test(text)) {
+        if (textSettled) pending.current = ''
+        return
+      }
+      // Words with no voice behind them: the speech model sometimes invents a line from room noise ("Hello, my name is…").
+      // A real answer always has the advisor's voice in it, so this is dropped instead of being answered.
+      if (!heard && !inFlight.current && textSettled) {
+        pending.current = ''
+        return
+      }
       const quiet = quietFor >= endpointMs(text, openQuestion.current, langRef.current) * (bargeRef.current ? 0.7 : 1)
       const stale = now - lastText.current >= MAX_WAIT_MS && quietFor >= COMMIT_QUIET_MS
       if ((quiet && textSettled && !inFlight.current) || stale) void respond(text)
@@ -831,17 +923,19 @@ export function useJuno(voice: Voice) {
 
   // Juno opens the conversation as soon as the microphone is live.
   useEffect(() => {
+    // Juno opens by listening: the advisor dictates freely, and Juno only speaks once they hand over.
     if (stageRef.current === 'connecting' && status === 'listening') {
-      const g = gen.current
-      setStageBoth('consent')
+      setStageBoth('dictate')
+      startedAt.current = Date.now()
+      setElapsedMs(null)
       if (langRef.current !== 'en') voiceApi.current.sendLanguage(langRef.current)
-      void speak(phrasesRef.current.greeting).then(() => g === gen.current && listen())
     }
-    if (status === 'stopped' && (stageRef.current === 'wrapup' || stageRef.current === 'discovery' || stageRef.current === 'consent')) {
+    if (status === 'stopped' && (stageRef.current === 'wrapup' || stageRef.current === 'discovery' || stageRef.current === 'dictate')) {
       setStageBoth('finished')
+      if (startedAt.current) setElapsedMs(Date.now() - startedAt.current)
     }
     if (status === 'error' && stageRef.current !== 'idle') setStageBoth('error')
-  }, [status, speak, listen, setStageBoth])
+  }, [status, setStageBoth])
 
   /** Clears the conversation but keeps the chosen language (used when a conversation starts). */
   const resetState = useCallback(() => {
@@ -863,13 +957,13 @@ export function useJuno(voice: Voice) {
     setRevealed(0)
     setSpeaking(false)
     setThinking(false)
-    consentAsks.current = 1
-    closingAsked.current = false
-    qaAnswers.current = 0
+    dictationRef.current = ''
+    startedAt.current = 0
+    setElapsedMs(null)
     setStageBoth('idle')
   }, [clearTimers, setStageBoth, stopAudio])
 
-  /** Back to the start for a new customer: English again. */
+  /** Back to the start for a new advisor: English again. */
   const reset = useCallback(() => {
     resetState()
     langRef.current = 'en'
@@ -884,19 +978,10 @@ export function useJuno(voice: Voice) {
     setStageBoth('connecting')
     // Speech synthesis needs a user gesture: speaking an empty phrase now unlocks it for later.
     if (typeof speechSynthesis !== 'undefined') speechSynthesis.speak(new SpeechSynthesisUtterance(''))
-    await voiceApi.current.start('juno')
+    await voiceApi.current.start('juno-debrief')
   }, [resetState, loadPhrases, prewarm, setStageBoth])
 
-  /** The customer tapped Yes/No on screen instead of answering aloud. */
-  const answerConsent = useCallback(
-    (yes: boolean) => {
-      if (stageRef.current !== 'consent' || busy.current) return
-      void respond(yes ? phrasesRef.current.yesText : phrasesRef.current.noText)
-    },
-    [respond],
-  )
-
-  /** End now: Juno stops talking and listening immediately; what was said so far is kept and handed to the advisor. */
+  /** End now: Juno stops talking and listening immediately; what was said so far is kept for the advisor to review. */
   const end = useCallback(() => {
     gen.current++ // everything still in flight (a nudge, a reply, a pending answer) stands down
     clearTimers()
@@ -909,11 +994,9 @@ export function useJuno(voice: Voice) {
     setSpeaking(false)
     setThinking(false)
     voiceApi.current.setMicMuted(true)
-    if (stageRef.current === 'consent' || stageRef.current === 'connecting') {
-      // Nothing has been agreed to yet, so nothing is kept.
-      const id = voiceApi.current.profile?.id
+    if (stageRef.current === 'connecting') {
+      // Nothing has been said yet.
       voiceApi.current.reset()
-      if (id) void discardConversation(id)
       reset()
       return
     }
@@ -928,7 +1011,7 @@ export function useJuno(voice: Voice) {
     if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel()
   }, [clearTimers, stopAudio])
 
-  const listening = !speaking && !thinking && (stage === 'consent' || stage === 'discovery')
+  const listening = !speaking && !thinking && (stage === 'dictate' || stage === 'discovery')
   const progress = useMemo(() => covered.filter((c) => JUNO_TOPICS.some((t) => t.key === c)).length, [covered])
 
   return {
@@ -936,6 +1019,6 @@ export function useJuno(voice: Voice) {
     silent, toggleSilent, voiceChoices, voiceId, chooseVoice,
     lang, setLanguage, phrases,
     bargeMode, setBargeMode, bargeEnabled, headset,
-    start, end, reset, answerConsent,
+    start, end, reset, handOver, elapsedMs,
   }
 }

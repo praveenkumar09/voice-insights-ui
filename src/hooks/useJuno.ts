@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { junoDebriefPrepare, junoDebriefTurn, junoPhrases, junoSpeak, junoVoiceStatus, type JunoPhrases, type JunoTurnResponse, type LangId } from '../api/client'
+import { junoDebriefPrepare, junoDebriefTurn, junoPhrases, type FactFindReadiness, junoSpeak, junoVoiceStatus, type JunoPhrases, type JunoTurnResponse, type LangId } from '../api/client'
 import type { useVoiceCapture } from './useVoiceCapture'
 
 type Voice = ReturnType<typeof useVoiceCapture>
@@ -171,6 +171,8 @@ export function useJuno(voice: Voice) {
   const [line, setLine] = useState('')
   /** How long the debrief took, from the first word of dictation to the read-back (null until it is over). */
   const [elapsedMs, setElapsedMs] = useState<number | null>(null)
+  /** Fact-find readiness (estimate), updated with every reply from Juno. */
+  const [readiness, setReadiness] = useState<FactFindReadiness | null>(null)
   const startedAt = useRef(0)
   const [revealed, setRevealed] = useState(0)
   const [silent, setSilent] = useState(() => {
@@ -618,6 +620,7 @@ export function useJuno(voice: Voice) {
   const deliver = useCallback(
     async (res: JunoTurnResponse, g: number, canBarge = !res.done) => {
       if (res.covered?.length) setCovered((c) => [...new Set([...c, ...res.covered])])
+      if (res.readiness) setReadiness(res.readiness)
       await speak(res.say, res.tone, res.open, canBarge)
       if (g !== gen.current) return
       if (res.done) {
@@ -709,7 +712,7 @@ export function useJuno(voice: Voice) {
     setRevealed(0)
     const v0 = voiceApi.current
     // The server gets ready for Juno's first line while the last words are still being transcribed.
-    if (v0.profile?.id) junoDebriefPrepare(v0.profile.id)
+    if (v0.profile?.id) junoDebriefPrepare(v0.profile.id, [...v0.finalSegments, v0.partialText].join(' ').replace(/\s+/g, ' ').trim())
     v0.commitNow()
     v0.sendConversational(true) // from here on the advisor gives short answers to Juno's questions
     // The last words are still on their way back as text: wait for them, but only as long as they take
@@ -960,6 +963,7 @@ export function useJuno(voice: Voice) {
     dictationRef.current = ''
     startedAt.current = 0
     setElapsedMs(null)
+    setReadiness(null)
     setStageBoth('idle')
   }, [clearTimers, setStageBoth, stopAudio])
 
@@ -1019,6 +1023,6 @@ export function useJuno(voice: Voice) {
     silent, toggleSilent, voiceChoices, voiceId, chooseVoice,
     lang, setLanguage, phrases,
     bargeMode, setBargeMode, bargeEnabled, headset,
-    start, end, reset, handOver, elapsedMs,
+    start, end, reset, handOver, elapsedMs, readiness,
   }
 }

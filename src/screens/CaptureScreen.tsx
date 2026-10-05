@@ -5,6 +5,7 @@ import { LiveWaveform } from '../components/capture/LiveWaveform'
 import { ModeSwitch, type HomeMode } from '../components/capture/ModeSwitch'
 import { JunoStage, JunoTranscript } from '../components/juno/JunoStage'
 import { useJuno } from '../hooks/useJuno'
+import { ConfirmChips } from '../components/capture/ConfirmChips'
 import { DebriefFollowUp } from '../components/capture/DebriefFollowUp'
 import { ReviewPanel } from '../components/capture/ReviewPanel'
 import { useElapsed } from '../components/capture/useElapsed'
@@ -288,7 +289,8 @@ export function CaptureScreen({ onReady }: Props) {
 
       {(debrief || withJuno) && status === 'stopped' && profile?.id && (
         <>
-          {withJuno && <DebriefFollowUp key={profile.id} profileId={profile.id} />}
+          {withJuno && <ConfirmChips profile={profile} onSaved={voice.patchProfile} />}
+          {withJuno && <DebriefFollowUp key={profile.id} profileId={profile.id} customerName={profile.customerName ?? ''} />}
           <ReviewPanel
             profile={profile}
             copilot={copilot}

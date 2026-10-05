@@ -89,7 +89,19 @@ export interface JunoTurnRequest {
   qaAnswers?: number
 }
 
+/** How much of the advice pack's fact-find (26 fields) a debrief has captured: an estimate, the pack makes the final count. */
+export interface FactFindReadiness {
+  captured: number
+  total: number
+  /** The count right after the dictation, before Juno's questions. */
+  baseline?: number | null
+  /** Fields still missing, most valuable first. */
+  missing: string[]
+}
+
 export interface JunoTurnResponse {
+  /** Debrief with Juno only: the fact-find readiness after this turn. */
+  readiness?: FactFindReadiness | null
   say: string
   consent: 'granted' | 'declined' | 'unclear' | null
   covered: string[]
@@ -170,15 +182,32 @@ export async function junoDebriefTurn(req: JunoDebriefRequest): Promise<JunoTurn
 }
 
 /** Fire and forget: lets the server get ready for Juno's first line while the last words are still being transcribed. */
-export function junoDebriefPrepare(profileId: string): void {
+export function junoDebriefPrepare(profileId: string, dictation: string): void {
   void fetch(`${API_BASE}/api/juno/debrief-prepare`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ profileId }),
+    body: JSON.stringify({ profileId, dictation }),
   }).catch(() => undefined)
 }
 
+/** A risky statement the advisor made, as flagged live. */
+export interface ConductFlag {
+  severity: string
+  statement: string
+  advice: string
+}
+
+/** The conduct note for a debrief whose advisor wording was flagged: what was said, how it was recorded, what the draft clarifies. */
+export interface ConductNote {
+  flags: ConductFlag[]
+  recordedAs: string
+  /** The clarifying sentence the draft carries, in English. */
+  correction?: string | null
+}
+
 export interface FollowUpDraft {
+  /** Present only when something the advisor said was flagged. */
+  conduct?: ConductNote | null
   /** The WhatsApp draft in the chosen language. */
   message: string
   /** The same draft in English, so the advisor can check what it says. */

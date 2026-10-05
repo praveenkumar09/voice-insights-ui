@@ -282,3 +282,39 @@
 .fu__error { padding: 12px 4px; font-size: 0.88rem; color: #b3261e; } .fu__error button { font: inherit; margin-left: 8px; cursor: pointer; }
 .fu__check { font-size: 0.85rem; } .fu__check summary { cursor: pointer; font-weight: 600; } .fu__check p { margin: 8px 0 0; line-height: 1.5; padding: 10px 12px; border-radius: 10px; background: rgba(120, 120, 140, 0.1); }
 .fu__actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; } .fu__actions small { color: var(--text-muted, #6b6b78); }
+
+/* ── Fact-find readiness meter (in the stage's right panel) ───────────────────────────────────────────── */
+.jn__ready { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--edge); }
+.jn__ready-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.jn__ready-top b { font-size: 1.05rem; letter-spacing: 0; color: #fff; }
+.jn__ready-top b.is-pop { animation: jn-pop 0.6s ease-out; }
+@keyframes jn-pop { 0% { transform: scale(1.5); color: var(--teal); } 100% { transform: scale(1); } }
+.jn__ready-bar { position: relative; height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.jn__ready-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(90deg, #35d3a7, #3de0b0); transition: width 0.9s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.jn__ready-bar u { position: absolute; top: -1px; bottom: -1px; width: 2px; background: rgba(255, 255, 255, 0.85); }
+.jn__ready small { font-size: 0.74rem; color: var(--dim); }
+
+/* ── Confirm chips and conduct note (below the stage) ───────────────────────────────────────────────────── */
+.cc { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.cc__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.cc__sub { margin: 4px 0 0; font-size: 0.85rem; color: var(--text-muted, #6b6b78); max-width: 560px; }
+.cc__tally { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-muted, #6b6b78); } .cc__tally b { color: inherit; font-size: 1.1rem; }
+.cc__chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.cc__chip { display: inline-flex; align-items: stretch; border-radius: 14px; border: 1px solid rgba(120, 120, 140, 0.35); background: rgba(120, 120, 140, 0.08); overflow: hidden; transition: border-color 0.2s ease, background 0.2s ease; }
+.cc__chip.is-check { border-color: rgba(214, 140, 20, 0.6); background: rgba(255, 175, 80, 0.12); }
+.cc__chip.is-ok { border-color: rgba(27, 175, 122, 0.6); background: rgba(27, 175, 122, 0.12); }
+.cc__main { display: grid; grid-template-columns: 22px auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left; font: inherit; color: inherit; background: none; border: none; padding: 9px 14px; cursor: pointer; }
+.cc__tick { grid-row: 1 / span 2; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0.5; display: grid; place-items: center; font-size: 0.8rem; font-weight: 800; }
+.cc__chip.is-ok .cc__tick { background: #1baf7a; border-color: #1baf7a; color: #fff; opacity: 1; }
+.cc__label { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.65; }
+.cc__main b { grid-column: 2; font-size: 0.98rem; }
+.cc__main em { grid-column: 2; font-style: normal; font-size: 0.72rem; color: #b36b00; }
+.cc__pencil { font: inherit; background: none; border: none; border-left: 1px solid rgba(120, 120, 140, 0.25); padding: 0 12px; cursor: pointer; color: inherit; opacity: 0.7; } .cc__pencil:hover { opacity: 1; }
+.cc__edit { display: flex; align-items: center; gap: 8px; padding: 6px 10px; } .cc__edit span { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.65; }
+.cc__edit input { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(120, 120, 140, 0.45); background: rgba(255, 255, 255, 0.6); color: #222; min-width: 160px; }
+.cc__edit button { font: inherit; font-size: 0.8rem; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(120, 120, 140, 0.45); background: none; color: inherit; cursor: pointer; }
+.cc__error { margin: 0; color: #b3261e; font-size: 0.85rem; }
+.fu__conduct { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(214, 140, 20, 0.5); background: rgba(255, 175, 80, 0.1); font-size: 0.88rem; }
+.fu__conduct p { margin: 0; line-height: 1.45; } .fu__conduct button { align-self: flex-start; margin-top: 4px; }
+.fu__conduct-head { display: flex; gap: 10px; align-items: baseline; } .fu__conduct-head span { font-size: 0.75rem; color: var(--text-muted, #6b6b78); }
+.fu__flag em { font-style: normal; font-weight: 800; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: #b3261e; margin-right: 6px; }

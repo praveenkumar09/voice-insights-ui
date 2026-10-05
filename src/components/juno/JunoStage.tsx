@@ -335,6 +335,26 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
             </div>
           </div>
 
+          <div className="jn__ready" title="An estimate of how much of the advice pack's 26-field fact-find this debrief has captured. The pack makes the final count.">
+            <div className="jn__ready-top">
+              <span>Fact-find readiness</span>
+              <b key={k.readiness?.captured ?? 'none'} className={k.readiness ? 'is-pop' : ''}>{k.readiness ? `${k.readiness.captured}/${k.readiness.total}` : '—'}</b>
+            </div>
+            <div className="jn__ready-bar" role="progressbar" aria-valuemin={0} aria-valuemax={k.readiness?.total ?? 26} aria-valuenow={k.readiness?.captured ?? 0}>
+              <i style={{ width: `${k.readiness ? (k.readiness.captured / k.readiness.total) * 100 : 0}%` }} />
+              {k.readiness?.baseline != null && k.readiness.baseline < k.readiness.captured && (
+                <u style={{ left: `${(k.readiness.baseline / k.readiness.total) * 100}%` }} title="After your dictation" />
+              )}
+            </div>
+            <small>
+              {!k.readiness
+                ? 'Starts when you hand over to Juno'
+                : k.readiness.baseline != null && k.readiness.captured > k.readiness.baseline
+                  ? `+${k.readiness.captured - k.readiness.baseline} from Juno’s questions${k.readiness.missing[0] ? ` · next: ${k.readiness.missing[0]}` : ''}`
+                  : k.readiness.missing[0] ? `Next most valuable: ${k.readiness.missing[0]}` : 'Every field captured'}
+            </small>
+          </div>
+
           <ol className="jn__learn">
             {JUNO_TOPICS.map((t) => {
               const done = isDone(t.key)

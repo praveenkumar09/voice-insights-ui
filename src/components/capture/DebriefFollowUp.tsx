@@ -4,13 +4,15 @@ import { LANGUAGES } from '../../hooks/useJuno'
 
 interface Props {
   profileId: string
+  /** When the advisor corrects the name, the drafts are written again with it. */
+  customerName?: string
 }
 
 /**
  * The follow-up message for the customer, drafted from the debrief the moment it ends, in English, Mandarin, Malay or Tamil.
  * It is only a draft: the advisor reads it, can edit it, and sends it themselves. Nothing is sent from here.
  */
-export function DebriefFollowUp({ profileId }: Props) {
+export function DebriefFollowUp({ profileId, customerName = '' }: Props) {
   const [lang, setLang] = useState<LangId>('en')
   const [draft, setDraft] = useState<FollowUpDraft | null>(null)
   const [text, setText] = useState('')
@@ -52,11 +54,38 @@ export function DebriefFollowUp({ profileId }: Props) {
     void load('en')
   }, [load])
 
+  // The name was corrected on the confirm chips: earlier drafts used the old one.
+  const firstName = useRef(customerName)
+  useEffect(() => {
+    if (customerName === firstName.current) return
+    firstName.current = customerName
+    cache.current.clear()
+    void load(lang)
+  }, [customerName]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function choose(l: LangId) {
     if (l === lang) return
     setLang(l)
     setCopied(false)
     void load(l)
+  }
+
+  async function copyConduct() {
+    const c = draft?.conduct
+    if (!c) return
+    const note = [
+      'Conduct note (debrief with Juno)',
+      ...c.flags.map((x) => `Flagged: "${x.statement}" (${x.advice})`),
+      `Recorded as: ${c.recordedAs}`,
+      c.correction ? `Clarification sent to the customer: ${c.correction}` : '',
+    ].filter(Boolean).join('\n')
+    try {
+      await navigator.clipboard.writeText(note)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard can be blocked; the note stays selectable on screen.
+    }
   }
 
   async function copy() {
@@ -103,6 +132,17 @@ export function DebriefFollowUp({ profileId }: Props) {
               <summary>Check what it says in English</summary>
               <p>{draft.english}</p>
             </details>
+          )}
+          {draft.conduct && (
+            <div className="fu__conduct" aria-label="Conduct note">
+              <div className="fu__conduct-head"><b>Conduct note</b><span>from this debrief</span></div>
+              {draft.conduct.flags.map((x, i) => (
+                <p key={i} className="fu__flag"><em>{x.severity === 'high' ? 'High risk' : 'Caution'}</em> “{x.statement}”</p>
+              ))}
+              <p><b>Recorded as:</b> {draft.conduct.recordedAs}</p>
+              {draft.conduct.correction && <p><b>Clarification in the message above:</b> “{draft.conduct.correction}”</p>}
+              <button className="ghost-btn" onClick={copyConduct}>Copy conduct note</button>
+            </div>
           )}
           <div className="fu__actions">
             <button className="cta-btn" onClick={copy}>{copied ? 'Copied ✓' : 'Copy message'}</button>

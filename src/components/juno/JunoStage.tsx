@@ -229,6 +229,15 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
                     ) : null}
                   </div>
 
+                  {stage === 'discovery' && listening && (
+                    <div className="jn__quick" role="group" aria-label="Quick answers">
+                      <button onClick={() => k.answerQuick('Yes.')}>Yes</button>
+                      <button onClick={() => k.answerQuick('No.')}>No</button>
+                      <button onClick={() => k.answerQuick('Not discussed.')}>Not discussed</button>
+                      <small>or just answer out loud</small>
+                    </div>
+                  )}
+
                   {stage === 'dictate' && (
                     <button className="jn__start jn__start--go" onClick={k.handOver}>
                       <span className="jn__start-glow" />

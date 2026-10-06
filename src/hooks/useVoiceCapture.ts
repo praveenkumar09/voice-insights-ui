@@ -114,7 +114,7 @@ export function useVoiceCapture() {
       // 'suspended' — onaudioprocess then never fires and no audio is ever sent.
       if (audioContext.state === 'suspended') await audioContext.resume()
 
-      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=6')
+      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=7')
       const source = audioContext.createMediaStreamSource(stream)
       sourceRef.current = source
       const worklet = new AudioWorkletNode(audioContext, 'pcm-worklet', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 })
@@ -194,6 +194,12 @@ export function useVoiceCapture() {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'agent_say', text }))
   }, [])
 
+  /** Files an answer the advisor tapped (Yes / No / Not discussed) in the transcript, where a spoken answer would have gone. */
+  const sendAdvisorSay = useCallback((text: string) => {
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'advisor_say', text }))
+  }, [])
+
   /** Tells the server which language the conversation is in, so the speech model knows what to expect. */
   const sendLanguage = useCallback((lang: string) => {
     const ws = wsRef.current
@@ -208,6 +214,14 @@ export function useVoiceCapture() {
   const sendConversational = useCallback((on: boolean) => {
     const ws = wsRef.current
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'conversational', on }))
+  }, [])
+
+  /**
+   * After the hand-over to Juno the advisor often answers in a single word ("No."), which is shorter than the two loud 100 ms chunks
+   * the background filter needs before it lets speech through. This lets a single chunk open it. Dictation keeps the default.
+   */
+  const setShortAnswers = useCallback((on: boolean) => {
+    processorRef.current?.port.postMessage({ minRun: on ? 1 : 2 })
   }, [])
 
   /** Ask the server to finalise whatever speech it has buffered (so nothing leaks into the next turn). */
@@ -398,6 +412,6 @@ export function useVoiceCapture() {
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
     noiseFilter, setNoiseFilter, backgroundIgnored,
-    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, releaseHeld, sendLanguage, sendAgentSay, sendConversational, commitNow, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
+    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, releaseHeld, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

@@ -714,6 +714,7 @@ export function useJuno(voice: Voice) {
     // The server gets ready for Juno's first line while the last words are still being transcribed.
     if (v0.profile?.id) junoDebriefPrepare(v0.profile.id, [...v0.finalSegments, v0.partialText].join(' ').replace(/\s+/g, ' ').trim())
     v0.commitNow()
+    v0.setShortAnswers(true) // and a one-word "No." must not be mistaken for background noise
     v0.sendConversational(true) // from here on the advisor gives short answers to Juno's questions
     // The last words are still on their way back as text: wait for them, but only as long as they take
     // (at least half a second, then until nothing new has arrived for a moment; never more than 1.8 s).
@@ -757,6 +758,16 @@ export function useJuno(voice: Voice) {
     // The speech model often splits "Juno, over to you" into two lines ("Juno." / "Over to you."), so the last two are read together.
     if (HANDOVER.test(dictated.slice(-2).join(' ')) || dictated.slice(-3).some((seg) => HANDOVER_ALONE.test(seg))) void handOver()
   }, [dictated, handOver])
+
+  /** The advisor tapped Yes / No / Not discussed: a one-word spoken answer is easily lost as noise, a tap never is. */
+  const answerQuick = useCallback(
+    (text: string) => {
+      if (stageRef.current !== 'discovery' || busy.current || !awaiting.current) return
+      voiceApi.current.sendAdvisorSay(text)
+      void respond(text)
+    },
+    [respond],
+  )
 
   // ── Interruption ──────────────────────────────────────────────────────────────────────────────────────────
   const percentile = (xs: number[], q: number) => {
@@ -1023,6 +1034,6 @@ export function useJuno(voice: Voice) {
     silent, toggleSilent, voiceChoices, voiceId, chooseVoice,
     lang, setLanguage, phrases,
     bargeMode, setBargeMode, bargeEnabled, headset,
-    start, end, reset, handOver, elapsedMs, readiness,
+    start, end, reset, handOver, answerQuick, elapsedMs, readiness,
   }
 }

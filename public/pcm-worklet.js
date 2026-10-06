@@ -55,10 +55,12 @@ class PcmWorklet extends AudioWorkletProcessor {
     this.savedRef = REF_START
     this.queue = [] // recent background chunks, held briefly so they can be released if speech begins right after them
     this.hangChunks = HANG_CHUNKS
+    this.minRun = 2 // loud chunks in a row needed to open the gate; 1 lets a one-word answer ("No.") through (set only for short-answer debriefs)
     this.port.onmessage = (e) => {
       const d = e.data || {}
       if (typeof d.gate === 'boolean') this.gateOn = d.gate
       if (typeof d.ratio === 'number') this.gateRatio = d.ratio
+      if (typeof d.minRun === 'number') this.minRun = d.minRun >= 2 ? 2 : 1
       if (typeof d.hang === 'number') this.hangChunks = Math.max(1, Math.min(20, d.hang))
       if (typeof d.learn === 'boolean') this.noLearn = !d.learn
       if (typeof d.freeze === 'boolean' && d.freeze !== this.frozen) {
@@ -81,7 +83,7 @@ class PcmWorklet extends AudioWorkletProcessor {
     if (this.frozen) return false
     // Speech opens the gate only if it stays loud for two chunks (200ms): a short burst from a TV or a slammed door
     // is not an utterance. (Once open, the half-second hangover bridges the natural dips inside real speech.)
-    const sustained = Math.min(rms, this.prevRms)
+    const sustained = this.minRun <= 1 ? rms : Math.min(rms, this.prevRms)
     this.prevRms = rms
     const loud = sustained >= Math.max(ABS_MIN, this.gateRatio * this.ref)
     if (this.noLearn) {

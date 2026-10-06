@@ -318,3 +318,9 @@
 .fu__conduct p { margin: 0; line-height: 1.45; } .fu__conduct button { align-self: flex-start; margin-top: 4px; }
 .fu__conduct-head { display: flex; gap: 10px; align-items: baseline; } .fu__conduct-head span { font-size: 0.75rem; color: var(--text-muted, #6b6b78); }
 .fu__flag em { font-style: normal; font-weight: 800; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: #b3261e; margin-right: 6px; }
+
+/* Quick answers: a one-word spoken answer is easily lost as noise, a tap never is */
+.jn__quick { display: flex; flex-wrap: wrap; gap: 8px 10px; justify-content: center; align-items: center; animation: jn-rise 0.4s ease-out both; }
+.jn__quick button { font: inherit; font-size: 0.9rem; font-weight: 650; cursor: pointer; padding: 8px 20px; border-radius: 999px; color: var(--ink); background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(8px); transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease; }
+.jn__quick button:hover { transform: translateY(-2px); border-color: rgba(61, 224, 176, 0.6); background: rgba(61, 224, 176, 0.12); }
+.jn__quick small { flex-basis: 100%; color: var(--faint); font-size: 0.72rem; text-align: center; }

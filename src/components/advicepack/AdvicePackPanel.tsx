@@ -3,6 +3,7 @@ import { generateAdvicePack, getAdvicePack, regenerateAdviceSection, reviewAdvic
 import type { AdviceTask, AdvicePack, AdvicePackSection, AdvicePackView, FactFindField, FactSource } from '../../types'
 import { printAdvicePack } from '../../utils/advicePackPdf'
 import { AGENT_NAME } from '../../brand'
+import { countWords } from '../../utils/wordCount'
 
 type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting'
 type Tone = 'warm' | 'professional' | 'brief'
@@ -338,7 +339,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
                   <div className="ap-wa">
                     <AutoText className="ap-wa__bubble" rows={9} value={pack.followUp.whatsapp}
                       onChange={(e) => edit((p) => ({ ...p, followUp: { ...p.followUp!, whatsapp: e.target.value } }))} />
-                    <small>{pack.followUp.whatsapp.trim().split(/\s+/).filter(Boolean).length} words</small>
+                    <small>{countWords(pack.followUp.whatsapp)} words</small>
                   </div>
                 </div>
                 <div className="glass-card ap-card">

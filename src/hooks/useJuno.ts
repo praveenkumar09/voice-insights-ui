@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { junoDebriefPrepare, junoDebriefTurn, junoPhrases, type FactFindReadiness, junoSpeak, junoVoiceStatus, type JunoPhrases, type JunoTurnResponse, type LangId } from '../api/client'
 import type { useVoiceCapture } from './useVoiceCapture'
+import { countWords } from '../utils/wordCount'
 
 type Voice = ReturnType<typeof useVoiceCapture>
 
@@ -647,7 +648,7 @@ export function useJuno(voice: Voice) {
       late.current = ''
       const t0 = performance.now()
       // A short "Mm-hm" covers the moment Juno is working out its reply (only for a real answer).
-      if (answer.split(/\s+/).length >= 4) acknowledge()
+      if (countWords(answer) >= 4) acknowledge()
       try {
         const res = await junoDebriefTurn({
           profileId: voiceApi.current.profile?.id,

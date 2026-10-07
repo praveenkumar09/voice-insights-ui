@@ -114,7 +114,7 @@ export function useVoiceCapture() {
       // 'suspended' — onaudioprocess then never fires and no audio is ever sent.
       if (audioContext.state === 'suspended') await audioContext.resume()
 
-      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=7')
+      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=12')
       const source = audioContext.createMediaStreamSource(stream)
       sourceRef.current = source
       const worklet = new AudioWorkletNode(audioContext, 'pcm-worklet', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 })

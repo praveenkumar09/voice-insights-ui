@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
+import { countWords } from '../utils/wordCount'
 
 interface Props {
   partialText: string
@@ -26,7 +27,7 @@ export function TranscriptPanel({ partialText, finalSegments, isListening, onSav
     if (el) el.scrollTop = el.scrollHeight
   }, [partialText, finalSegments])
 
-  const wordCount = finalSegments.join(' ').trim().split(/\s+/).filter(Boolean).length
+  const wordCount = countWords(finalSegments.join(' '))
   const lastIndex = finalSegments.length - 1
   const canEdit = !!onSaveEdit && !isListening && finalSegments.length > 0
 

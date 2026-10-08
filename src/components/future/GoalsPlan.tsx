@@ -14,8 +14,8 @@ interface Props {
 }
 
 /**
- * Goals and plan — the warm, customer-facing centre of the recommendation: what the customer told us matters to
- * them, and how the recommended products support each of those goals. It carries no figures and no worst-case
+ * Goals and plan — the warm, customer-facing centre of the suggestion: what the customer told us matters to
+ * them, and how the suggested products support each of those goals. It carries no figures and no worst-case
  * scenarios; the advisor's cover-adequacy check lives in its own clearly-labelled, advisor-only section.
  */
 export function GoalsPlan({ runId, report, customerName }: Props) {
@@ -47,7 +47,7 @@ export function GoalsPlan({ runId, report, customerName }: Props) {
         <p>
           {story
             ? 'This view was created before “Goals and plan” existed. Refresh it to see their goals and how the plan supports each one.'
-            : 'A personal view built from what the customer said: their goals in their own words, and how the recommended plan supports each of them.'}
+            : 'A personal view built from what the customer said: their goals in their own words, and how the suggested plan supports each of them.'}
         </p>
         {error && <p className="proposal__error">{error}</p>}
         <button className="cta-btn" onClick={create} disabled={loading}>

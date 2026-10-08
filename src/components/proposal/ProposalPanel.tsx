@@ -1,3 +1,4 @@
+import { relevanceLabel } from '../../utils/relevance'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { generateProposal } from '../../api/client'
@@ -144,7 +145,7 @@ export function ProposalPanel({ runId, report, customerName }: Props) {
                   <div className="proposal__product-head">
                     <span className="proposal__rank">{i + 1}</span>
                     <strong>{p.name}</strong>
-                    <span className="proposal__fit">{p.fitScore}% fit</span>
+                    <span className="proposal__fit">{relevanceLabel(p.fitScore, proposal.language)}</span>
                   </div>
                   <p>{p.whyItFits}</p>
                   {p.keyBenefits.length > 0 && (

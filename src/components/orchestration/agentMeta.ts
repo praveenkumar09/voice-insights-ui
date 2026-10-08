@@ -20,7 +20,7 @@ export const AGENT_META: Record<AgentKey, AgentMeta> = {
   },
   affordability: {
     label: 'Affordability Agent',
-    purpose: 'Prevent unsuitable recommendations.',
+    purpose: 'Prevent unsuitable suggestions.',
     question: 'What can this customer realistically afford?',
   },
   merge: {
@@ -36,7 +36,7 @@ export const AGENT_META: Record<AgentKey, AgentMeta> = {
   productScoring: {
     label: 'Product Scoring Agent',
     purpose: 'Score every product for an unbiased ranking.',
-    question: 'Which products are the best fit?',
+    question: 'Which products are most relevant?',
   },
   productShortlist: {
     label: 'Customer Product Agent',
@@ -45,18 +45,18 @@ export const AGENT_META: Record<AgentKey, AgentMeta> = {
   },
   ragValidation: {
     label: 'RAG Validation Agent',
-    purpose: 'Validate the recommendation is factually correct against product documents.',
-    question: 'What evidence supports this recommendation?',
+    purpose: 'Validate the suggestion is factually correct against product documents.',
+    question: 'What evidence supports this suggestion?',
   },
   complianceCheck: {
     label: 'Compliance Check Agent',
     purpose: 'Act as an automated compliance officer.',
-    question: 'Is this recommendation compliant?',
+    question: 'Is this suggestion compliant?',
   },
   summary: {
-    label: 'Recommendation Summary Agent',
+    label: 'Suggestion Summary Agent',
     purpose: 'Convert technical results into an agent-friendly explanation, once compliance has weighed in.',
-    question: 'How do I explain this recommendation?',
+    question: 'How do I explain this suggestion?',
   },
   salesReport: {
     label: 'Sales Report Generation Agent',

@@ -45,7 +45,7 @@ export function CaptureScreen({ onReady }: Props) {
   const [take, setTake] = useState(1)
   const [session, setSession] = useState(0)
   const consoleRef = useRef<HTMLDivElement>(null)
-  // The recommend button lives in the console at the top; once that scrolls away a docked copy keeps it in reach.
+  // The suggest button lives in the console at the top; once that scrolls away a docked copy keeps it in reach.
   const [consoleVisible, setConsoleVisible] = useState(true)
 
   const debrief = mode === 'debrief'
@@ -128,7 +128,7 @@ export function CaptureScreen({ onReady }: Props) {
         listening: 'Dictating — speak naturally. Pause any time; you can dictate in several takes.',
         paused: 'Paused — resume when you are ready, or finish to review.',
         stopping: 'Wrapping up…',
-        stopped: 'Dictation captured — check it below, then get recommendations.',
+        stopped: 'Dictation captured — check it below, then get suggestions.',
         error: errorMessage ?? 'Something went wrong',
       }[status]
     : {
@@ -144,7 +144,7 @@ export function CaptureScreen({ onReady }: Props) {
   const recommendCta = canRecommend && (
     // After a debrief with Juno only a real press by a person counts: a scripted click is ignored.
     <button className="cta-btn" onClick={(e) => { if (withJuno && !e.isTrusted) return; void handleGetRecommendations() }} disabled={advancing}>
-      {advancing ? 'Preparing…' : 'Get Recommendations'}
+      {advancing ? 'Preparing…' : 'Get Suggestions'}
     </button>
   )
 
@@ -155,7 +155,7 @@ export function CaptureScreen({ onReady }: Props) {
           <h2 className="capture-hero__title">{debrief ? 'Debrief the meeting' : withJuno ? 'Debrief with Juno' : 'Customer Conversation Intelligence'}</h2>
           <p className="capture-hero__sub">
             {debrief
-              ? 'Dictate what you learned once the customer has left. Juno turns your summary into recommendations, a report and a proposal.'
+              ? 'Dictate what you learned once the customer has left. Juno turns your summary into suggestions, a report and a proposal.'
               : withJuno
                 ? 'Dictate what happened in your own words. Juno then checks for anything missing and asks a few short questions, so nothing is lost before you start the analysis.'
                 : 'Capture the conversation, let Juno and its specialist agents analyse it, and walk into the next meeting equipped.'}
@@ -303,7 +303,7 @@ export function CaptureScreen({ onReady }: Props) {
       {!safe && canRecommend && !consoleVisible && (
         <div className="recommend-dock" role="region" aria-label="Next step">
           <span>
-            <strong>Captured and ready.</strong> Get the detailed recommendations, report and proposal.
+            <strong>Captured and ready.</strong> Get the detailed suggestions, report and proposal.
           </span>
           {recommendCta}
         </div>

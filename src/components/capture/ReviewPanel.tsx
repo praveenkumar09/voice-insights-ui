@@ -110,7 +110,7 @@ function DetailsForm({ profile, onSaved }: { profile: CustomerProfile; onSaved: 
       </div>
       <div className="review__tip">
         <b>Why it matters</b>
-        Age, budget and existing cover are what let {AGENT_NAME} size the cover and avoid recommending what the customer already has.
+        Age, budget and existing cover are what let {AGENT_NAME} size the cover and avoid suggesting what the customer already has.
       </div>
       <div className="review__actions">
         <span className="review__note">Optional — blanks are fine</span>

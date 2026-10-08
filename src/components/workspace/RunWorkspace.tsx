@@ -29,7 +29,7 @@ interface Props {
 }
 
 /**
- * The recommendation page, as a five-stage journey: (1) Agent orchestration — the pipeline doing its work;
+ * The suggestion page, as a five-stage journey: (1) Agent orchestration — the pipeline doing its work;
  * (2) Live vs final — what the copilot thought during the call set against what those agents concluded (so it
  * can only follow the pipeline); (3) Final report — the advisory report and the customer proposal;
  * (4) Goals & plan — the warm customer conversation page; (5) Advice pack — the advisor's after-meeting admin.
@@ -101,21 +101,21 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
         <div>
           {tab === 'agents' && (
             <>
-              <StageIntro title={`Meet ${AGENT_NAME}`} text={`${AGENT_NAME} is the orchestration behind every recommendation: eleven specialist AI agents analyse the conversation in four phases. Every card shows its one-line conclusion — open it for the full reasoning.`} audience={[{ label: 'Behind the scenes', kind: 'internal' }]} />
+              <StageIntro title={`Meet ${AGENT_NAME}`} text={`${AGENT_NAME} is the orchestration behind every suggestion: eleven specialist AI agents analyse the conversation in four phases. Every card shows its one-line conclusion — open it for the full reasoning.`} audience={[{ label: 'Behind the scenes', kind: 'internal' }]} />
               <OrchestratorCanvas runId={runId} steps={steps} />
             </>
           )}
 
           {tab === 'live' && (
             <>
-              <StageIntro title="Live vs final analysis" text="What the copilot suggested during the conversation, set against what the full agent analysis concluded. The agents’ answer is the recommendation of record." audience={[{ label: 'For the advisor · internal', kind: 'internal' }]} />
+              <StageIntro title="Live vs final analysis" text="What the copilot suggested during the conversation, set against what the full agent analysis concluded. The agents’ answer is the suggestion of record." audience={[{ label: 'For the advisor · internal', kind: 'internal' }]} />
               <LiveStage profile={profile} steps={steps} finalReady={finalReady} />
             </>
           )}
 
           {tab === 'future' && (
             <>
-              <StageIntro title="Goals & plan" text="A warm, positive page to talk through with the customer: what matters to them, in their own words, and how the recommendation helps with each goal." audience={[{ label: 'Customer-facing · for the conversation', kind: 'customer' }]} />
+              <StageIntro title="Goals & plan" text="A warm, positive page to talk through with the customer: what matters to them, in their own words, and how the suggestion helps with each goal." audience={[{ label: 'Customer-facing · for the conversation', kind: 'customer' }]} />
               {report && runId ? (
                 <GoalsPlan runId={runId} report={report} customerName={name} />
               ) : (

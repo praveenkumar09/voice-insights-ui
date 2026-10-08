@@ -46,7 +46,7 @@ export function agentHeadline(agent: AgentKey, result: unknown): string | null {
       case 'productScoring': {
         const r = result as ProductScoringResult
         const top = [...(r.scores ?? [])].sort((a, b) => b.score - a.score)[0]
-        return top ? `${r.scores.length} products ranked · best ${top.score}% ${top.productName}` : null
+        return top ? `${r.scores.length} products ranked · top: ${top.productName}` : null
       }
       case 'productShortlist': {
         const r = result as ProductShortlistResult

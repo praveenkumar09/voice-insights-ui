@@ -4,6 +4,7 @@ import type { AdviceTask, AdvicePack, AdvicePackSection, AdvicePackView, FactFin
 import { printAdvicePack } from '../../utils/advicePackPdf'
 import { AGENT_NAME } from '../../brand'
 import { countWords } from '../../utils/wordCount'
+import { relevanceLabel } from '../../utils/relevance'
 
 type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting'
 type Tone = 'warm' | 'professional' | 'brief'
@@ -28,7 +29,7 @@ interface Props {
 }
 
 /**
- * The advisor's after-the-meeting pack, built automatically when the recommendation lands: a pre-filled fact-find,
+ * The advisor's after-the-meeting pack, built automatically when the suggestion lands: a pre-filled fact-find,
  * the record of advice, the customer follow-up, the CRM note and tasks, and a brief for the next meeting. Everything
  * is an editable draft, every fact shows where it came from, and the advisor signs it off when satisfied.
  */
@@ -133,7 +134,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
       <div className="glass-card ws__waiting">
         <span className="proposal__spinner" />
         <div>
-          <strong>The advice pack is built from the finished recommendation</strong>
+          <strong>The advice pack is built from the finished suggestion</strong>
           <p>It starts automatically as soon as {AGENT_NAME} completes.</p>
         </div>
       </div>
@@ -156,7 +157,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
           <>
             <div>
               <strong>No advice pack yet</strong>
-              <p>Build the fact-find, record of advice, follow-up, CRM note and next-meeting brief from this recommendation.</p>
+              <p>Build the fact-find, record of advice, follow-up, CRM note and next-meeting brief from this suggestion.</p>
             </div>
             <button className="cta-btn" onClick={regenerateAll}>Generate advice pack</button>
           </>
@@ -178,7 +179,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
         <div className="ap-head__title">
           <h3>Advice pack</h3>
           <p>
-            Drafted from the conversation and the recommendation — check, edit and sign off. Generated{' '}
+            Drafted from the conversation and the suggestion — check, edit and sign off. Generated{' '}
             {new Date(pack.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             {pack.version > 1 ? ` · version ${pack.version}` : ''}
           </p>
@@ -236,7 +237,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
         )}
 
         {part === 'record' && (
-          <Section title="Record of advice" hint="Why each product was recommended. Scores, reasons and evidence come from the analysis and the product documents."
+          <Section title="Record of advice" hint="Why each product was suggested. Scores, reasons and evidence come from the analysis and the product documents."
             failed={failed('recordOfAdvice') || !pack.recordOfAdvice} busy={busy === 'recordOfAdvice'} onRegenerate={() => regenerate('recordOfAdvice')}>
             {pack.recordOfAdvice && (
               <>
@@ -250,13 +251,13 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
                     <div className="ap-product__head">
                       <span className="ap-product__n">{i + 1}</span>
                       <h4>{it.productName}</h4>
-                      <span className="ap-fit">{it.fitScore}% fit</span>
+                      <span className="ap-fit">{relevanceLabel(it.fitScore)}</span>
                     </div>
                     <div className="ap-product__grid">
                       <div>
                         <Label>Customer need</Label>
                         <p>{it.need || '—'}</p>
-                        <Label>Why it fits</Label>
+                        <Label>Why we suggest it</Label>
                         <AutoText className="ap-text" rows={4} value={it.rationale}
                           onChange={(e) => edit((p) => setItem(p, i, { rationale: e.target.value }))} />
                         {it.customerQuotes.length > 0 && (

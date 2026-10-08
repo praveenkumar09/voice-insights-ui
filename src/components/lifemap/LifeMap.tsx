@@ -1,3 +1,4 @@
+import { relevanceLabel } from '../../utils/relevance'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LifeMapConcern, LifeMapData, LifeMapPerson } from '../../types'
@@ -11,7 +12,7 @@ interface Props {
   safe?: boolean
   /** The map was built from the advisor's dictation, not a live conversation. */
   debrief?: boolean
-  /** Live product matches: their score is the single source of truth for how well a product fits. */
+  /** Live product matches: their score is the single source of truth for how relevant a product is. */
   matches?: { productName: string; fitScore: number }[]
 }
 
@@ -274,7 +275,7 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
                               <path d="M10 1l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V4z" />
                               <path d="M6.5 11l2.4 2.4L13.6 8.7" />
                             </svg>
-                            <span>{n.idea.product} · {fitFor(n.idea.product, n.idea.fit)}% fit</span>
+                            <span>{n.idea.product} · {relevanceLabel(fitFor(n.idea.product, n.idea.fit))}</span>
                           </span>
                         )}
                       </motion.li>
@@ -333,7 +334,7 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
                   <i>{n.kind === 'dream' ? '✦' : '!'}</i>
                   {n.label}
                   {n.idea && !safe && (
-                    <span className="lifemap__product" title={`${n.idea.product} (${fitFor(n.idea.product, n.idea.fit)}% fit)`}>
+                    <span className="lifemap__product" title={`${n.idea.product} (${relevanceLabel(fitFor(n.idea.product, n.idea.fit))})`}>
                       <svg className="lifemap__shield" viewBox="0 0 20 22" aria-label="A protection idea matches this">
                         <path d="M10 1l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V4z" />
                         <path d="M6.5 11l2.4 2.4L13.6 8.7" />
@@ -354,7 +355,7 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
                 <q>{n.said}</q>
                 {n.idea && !safe && (
                   <span className="lifemap__pop-idea">
-                    Protection idea · <b>{n.idea.product}</b> ({fitFor(n.idea.product, n.idea.fit)}% fit)
+                    Protection idea · <b>{n.idea.product}</b> ({relevanceLabel(fitFor(n.idea.product, n.idea.fit))})
                   </span>
                 )}
               </span>
@@ -388,7 +389,7 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
                 >
                   <span className="lifemap__idea-head">
                     <b>{g.product}</b>
-                    <em>{g.fit}% fit</em>
+                    <em>{relevanceLabel(g.fit)}</em>
                   </span>
                   <span className="lifemap__idea-covers">
                     {g.covers.map((c) => (

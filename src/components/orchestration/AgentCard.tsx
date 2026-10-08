@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { recommendationReportUrl } from '../../api/client'
+import { relevanceLabel } from '../../utils/relevance'
 import type { AgentState } from '../../hooks/useRecommendationStream'
 import type {
   AffordabilityResult,
@@ -209,7 +210,7 @@ function AgentResultView({ agentKey, result, runId }: { agentKey: AgentKey; resu
               .sort((a, b) => b.score - a.score)
               .map((s, i) => (
                 <li key={i}>
-                  <strong>{s.productName}</strong> — {s.score}/100
+                  <strong>{s.productName}</strong> — {relevanceLabel(s.score)}
                   {s.matchReasons.length > 0 && (
                     <ul className="agent-card__list">
                       {s.matchReasons.map((m, j) => (
@@ -309,7 +310,7 @@ function AgentResultView({ agentKey, result, runId }: { agentKey: AgentKey; resu
 
 /** Leads with the recommended products — the part of the report the reader actually wants — rather than the header. */
 function reportPreview(md: string): string {
-  const m = md.match(/## Recommended Products\n([\s\S]*?)(?=\n## |$)/)
+  const m = md.match(/## (?:Suggested|Recommended) Products\n([\s\S]*?)(?=\n## |$)/)
   const text = (m ? m[1] : md).replace(/\*\*/g, '').replace(/\*/g, '').trim()
   return text.length > 420 ? `${text.slice(0, 420)}…` : text
 }

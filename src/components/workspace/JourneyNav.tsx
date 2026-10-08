@@ -27,7 +27,7 @@ export function JourneyNav({ steps, active, onPick }: Props) {
     ref.current?.querySelector<HTMLElement>('.journey__step.is-active')?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
   }, [active])
   return (
-    <nav ref={ref} className="journey" role="tablist" aria-label="Recommendation stages">
+    <nav ref={ref} className="journey" role="tablist" aria-label="Suggestion stages">
       <div className="journey__rail"><span style={{ width: `${reached === 0 ? 0 : fill}%` }} /></div>
       {steps.map((s, i) => (
         <button key={s.id} role="tab" aria-selected={active === s.id} className={`journey__step is-${s.state}${active === s.id ? ' is-active' : ''}`} onClick={() => onPick(s.id)}>

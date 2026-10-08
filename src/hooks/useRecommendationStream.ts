@@ -69,7 +69,7 @@ export function useRecommendationStream() {
         break
       }
       case 'run_failed':
-        setRunFailed((evt.payload as { error?: string } | null)?.error ?? 'Recommendation run failed')
+        setRunFailed((evt.payload as { error?: string } | null)?.error ?? 'Suggestion run failed')
         eventSourceRef.current?.close()
         break
       case 'run_started':

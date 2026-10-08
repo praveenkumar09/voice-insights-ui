@@ -22,7 +22,7 @@ export function OrchestrationScreen({ customerId, onBack }: Props) {
     if (startedFor.current === customerId) return
     startedFor.current = customerId
     start(customerId).catch((err) => {
-      console.error('Failed to start recommendation run', err)
+      console.error('Failed to start suggestion run', err)
     })
   }, [customerId, start])
 

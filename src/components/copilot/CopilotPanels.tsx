@@ -1,3 +1,4 @@
+import { relevanceBand, relevanceLabel } from '../../utils/relevance'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { CopilotInsights } from '../../types'
 
@@ -99,10 +100,7 @@ export function ProductMatches({ matches }: { matches: CopilotInsights['productM
                   <p className="match-card__evidence">“{m.evidence}”</p>
                   <span className="match-card__source">{m.source}</span>
                 </div>
-                <div className="match-card__fit" style={{ ['--fit' as string]: m.fitScore }}>
-                  <span>{m.fitScore}</span>
-                  <small>fit</small>
-                </div>
+                <div className={`relevance relevance--${relevanceBand(m.fitScore)}`}>{relevanceLabel(m.fitScore)}</div>
               </motion.li>
             ))}
           </AnimatePresence>

@@ -37,7 +37,7 @@ export const LANGUAGES: { id: LangId; label: string; name: string }[] = [
 /** Used only if the server can't be reached for the fixed lines; the real ones (all four languages) come from the server. */
 const EN_PHRASES: JunoPhrases = {
   language: 'English',
-  greeting: "Hello, I'm Juno, your AIA Singapore digital and recommendation assistant. Before we begin, with your permission I'd like to record and analyse our conversation, so your advisor can help you better. Is that all right?",
+  greeting: "Hello, I'm Juno, your AIA Singapore digital suggestion assistant. Before we begin, with your permission I'd like to record and analyse our conversation, so your advisor can help you better. Is that all right?",
   declined: "Of course, that's completely fine. I won't keep anything from this chat. Your advisor will be happy to take it from here.",
   unclear: "Sorry, I didn't quite catch that. Is it all right if I record and analyse our chat, so your advisor can help you better? A simple yes or no is fine.",
   firstQuestion: 'Thank you. To start, could I have your name?',

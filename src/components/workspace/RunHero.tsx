@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { relevanceLabel } from '../../utils/relevance'
 import type { AgentState } from '../../hooks/useRecommendationStream'
 import type { AgentKey, ComplianceCheckResult, CustomerPersonaResult, CustomerProfile, ProductScoringResult, ProductShortlistResult } from '../../types'
 import { AGENT_NAME } from '../../brand'
@@ -38,7 +39,7 @@ export function RunHero({ runId, steps, profile, status, doneCount, total, elaps
         <div className="hero__who">
           <span className="hero__avatar">{(name ?? '?').charAt(0).toUpperCase()}</span>
           <div>
-            <span className="hero__eyebrow">{AGENT_NAME} recommendation for</span>
+            <span className="hero__eyebrow">{AGENT_NAME} suggestion for</span>
             <h2>{name ?? 'the customer'}</h2>
             <p>
               {profile?.occupation ?? 'Customer'}
@@ -77,7 +78,7 @@ export function RunHero({ runId, steps, profile, status, doneCount, total, elaps
       <div className="hero__kpis">
         <AnimatePresence>
           {top && (
-            <Kpi key="top" label="Top recommendation" value={top} sub={topScore != null ? `${topScore}% fit` : 'Shortlisted'} wide />
+            <Kpi key="top" label="Top suggestion" value={top} sub={topScore != null ? relevanceLabel(topScore) : 'Shortlisted'} wide />
           )}
           {persona && <Kpi key="persona" label="Customer segment" value={persona.personaLabel} sub={persona.lifeStage} />}
           {buying && <Kpi key="buy" label="Buying signal" value={buying.level} sub={`${buying.score}/100 in the conversation`} />}

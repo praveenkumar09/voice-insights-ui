@@ -56,7 +56,7 @@ export function AdminSessions({ onViewRun }: Props) {
         <section className="adm-card adm-sessions">
           <ul>
             <li className="adm-sessions__head">
-              <span>Customer</span><span>Captured</span><span>How</span><span>Profile</span><span>Recommendation</span><span />
+              <span>Customer</span><span>Captured</span><span>How</span><span>Profile</span><span>Suggestion</span><span />
             </li>
             {items.map((row, i) => {
               const p = row.profile

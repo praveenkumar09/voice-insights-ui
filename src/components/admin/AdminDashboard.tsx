@@ -165,7 +165,7 @@ function Body({ data, days, onViewRun }: { data: AnalyticsResult; days: number; 
     () => [
       { label: 'Conversations captured', value: t.conversations, note: 'Every voice session started in this period' },
       { label: 'Analysed live', value: t.analysed, note: 'Sessions that produced a transcript and live insights' },
-      { label: 'Recommendation run', value: t.recommendations, note: `Analysed by ${AGENT_NAME}, the 11-agent team` },
+      { label: 'Suggestion run', value: t.recommendations, note: `Analysed by ${AGENT_NAME}, the 11-agent team` },
       { label: 'Advice pack drafted', value: ops?.packsGenerated ?? 0, note: 'Fact-find, record of advice, follow-up and CRM note built' },
       { label: 'Signed off by the advisor', value: ops?.packsReviewed ?? 0, note: 'Reviewed and confirmed by the advisor' },
     ],
@@ -185,13 +185,13 @@ function Body({ data, days, onViewRun }: { data: AnalyticsResult; days: number; 
       <div className="adm-tiles">
         <Tile index={0} label="Hot leads" value={data.pipeline.hot} sub={`${hotPct}% of conversations`} delta={prev ? delta(data.pipeline.hot, prev.hot) : undefined} deltaLabel={vs} />
         <Tile index={1} label="Average buying signal" value={t.avgBuyingSignal} decimals={1} suffix=" / 100" delta={prev && prev.analysed > 0 ? delta(t.avgBuyingSignal, prev.avgBuyingSignal) : undefined} deltaLabel={vs} />
-        <Tile index={2} label="Recommendations run" value={t.recommendations} delta={prev ? delta(t.recommendations, prev.recommendations) : undefined} deltaLabel={vs} />
+        <Tile index={2} label="Suggestions run" value={t.recommendations} delta={prev ? delta(t.recommendations, prev.recommendations) : undefined} deltaLabel={vs} />
         {ops && ops.avgAnalysisSeconds > 0 && (
-          <Tile index={3} label="Time to recommendation" value={ops.avgAnalysisSeconds} suffix=" s" sub={`Median ${Math.round(ops.medianAnalysisSeconds)} s · ${AGENT_NAME}, start to finish`} />
+          <Tile index={3} label="Time to suggestion" value={ops.avgAnalysisSeconds} suffix=" s" sub={`Median ${Math.round(ops.medianAnalysisSeconds)} s · ${AGENT_NAME}, start to finish`} />
         )}
         {complianceRate != null && (
           <Tile index={4} label="Compliance pass rate" value={complianceRate} suffix="%" meter={{ value: complianceRate, tone: complianceTone }}
-            sub={`${data.compliance.compliantRuns} of ${data.compliance.reviewedRuns} recommendations cleared`} />
+            sub={`${data.compliance.compliantRuns} of ${data.compliance.reviewedRuns} suggestions cleared`} />
         )}
         {ops && ops.packsGenerated > 0 && (
           <Tile index={5} label="Advice packs signed off" value={ops.packsReviewed} suffix={` / ${ops.packsGenerated}`} meter={{ value: signedPct, tone: 'brand' }}
@@ -258,9 +258,9 @@ function Body({ data, days, onViewRun }: { data: AnalyticsResult; days: number; 
           <HBarList rows={data.topNeeds.map((n) => ({ label: n.label, value: n.count, detail: `Average strength ${n.avgStrength}%` }))} unit="conversations" />
         </ChartCard>
 
-        <ChartCard className="span-6" title="Most recommended products" subtitle="Appearances on a recommendation shortlist"
+        <ChartCard className="span-6" title="Most suggested products" subtitle="Appearances on a suggestion shortlist"
           table={{ head: ['Product', 'Shortlists'], rows: data.topProducts.map((p) => [p.label, p.count]) }}>
-          <HBarList rows={data.topProducts.map((p) => ({ label: p.label, value: p.count }))} unit="shortlists" empty="Run recommendations to see which products are chosen most." />
+          <HBarList rows={data.topProducts.map((p) => ({ label: p.label, value: p.count }))} unit="shortlists" empty="Run suggestions to see which products are chosen most." />
         </ChartCard>
 
         {activity.length === 168 && (
@@ -273,12 +273,12 @@ function Body({ data, days, onViewRun }: { data: AnalyticsResult; days: number; 
           </ChartCard>
         )}
 
-        <ChartCard className="span-4" title="Compliance" subtitle="Live conduct flags and recommendation checks">
+        <ChartCard className="span-4" title="Compliance" subtitle="Live conduct flags and suggestion checks">
           <div className="adm-comp">
             <div className={`adm-comp__status adm-comp__status--${complianceTone}`}>
               <i aria-hidden>{complianceTone === 'good' ? '✓' : complianceTone === 'warn' ? '!' : complianceTone === 'crit' ? '✕' : '–'}</i>
               <div>
-                <b>{complianceRate == null ? 'No recommendations checked yet' : `${complianceRate}% cleared`}</b>
+                <b>{complianceRate == null ? 'No suggestions checked yet' : `${complianceRate}% cleared`}</b>
                 <span>{complianceRate == null ? '' : complianceTone === 'good' ? 'Strong' : complianceTone === 'warn' ? 'Worth watching' : 'Needs attention'}</span>
               </div>
             </div>

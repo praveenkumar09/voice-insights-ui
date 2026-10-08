@@ -1,3 +1,4 @@
+import { relevanceLabel } from './relevance'
 import type { CopilotInsights, CustomerProfile } from '../types'
 import { AGENT_NAME } from '../brand'
 
@@ -34,7 +35,7 @@ export function printMeetingBrief(profile: CustomerProfile | null, copilot: Copi
 <div class="bar"></div>
 <h1>Customer Meeting Brief</h1>
 <p class="sub">AIA Voice Insights · ${esc(new Date().toLocaleString())}</p>
-<p class="sub" style="color:#b45309"><b>Preliminary — live view.</b> Based on real-time signals during the call. The full agent analysis and sales report are the final recommendation.</p>
+<p class="sub" style="color:#b45309"><b>Preliminary — live view.</b> Based on real-time signals during the call. The full agent analysis and sales report are the final suggestion.</p>
 
 <h2>Customer profile</h2>
 <table>${facts.filter(([, v]) => v !== null && v !== undefined && v !== '').map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('') || '<tr><td class="muted">No fields captured</td></tr>'}</table>
@@ -46,7 +47,7 @@ ${
 <p><span class="pill">Sentiment: ${esc(c.sentiment.label)} (${esc(c.sentiment.emotion)})</span><span class="pill">Buying signal: ${esc(c.buyingSignal.level)} · ${c.buyingSignal.score}/100</span></p>
 ${c.buyingSignal.signals.length ? `<ul>${c.buyingSignal.signals.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
 <h2>Detected needs</h2>${c.needs.length ? `<p>${c.needs.map((n) => `<span class="pill">${esc(n.label)} · ${n.strength}%</span>`).join('')}</p>` : '<p class="muted">None detected</p>'}
-<h2>Product matches</h2>${c.productMatches.length ? c.productMatches.map((m) => `<div class="prod"><b>${esc(m.productName)}</b> — fit ${m.fitScore}/100<p class="ev">“${esc(m.evidence)}”</p><span class="muted">${esc(m.source)}</span></div>`).join('') : '<p class="muted">No matches</p>'}
+<h2>Product matches</h2>${c.productMatches.length ? c.productMatches.map((m) => `<div class="prod"><b>${esc(m.productName)}</b> — ${relevanceLabel(m.fitScore)}<p class="ev">“${esc(m.evidence)}”</p><span class="muted">${esc(m.source)}</span></div>`).join('') : '<p class="muted">No matches</p>'}
 <h2>Compliance checklist</h2>${c.complianceFlags.length ? c.complianceFlags.map((f) => `<div class="flag"><b>${esc(f.severity === 'high' ? 'High risk' : 'Caution')}:</b> “${esc(f.statement)}”<br>${esc(f.advice)}</div>`).join('') : '<p class="ok">✓ No risky statements detected during the conversation</p>'}
 <h2>Suggested follow-ups</h2>${list(c.nextQuestions)}`
     : ''

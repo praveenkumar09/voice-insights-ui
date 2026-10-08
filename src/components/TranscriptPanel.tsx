@@ -80,7 +80,7 @@ export function TranscriptPanel({ partialText, finalSegments, isListening, onSav
           />
           <p className="transcript-edit__hint">
             Fix any mis-heard words. Saving re-analyses the conversation — profile, signals and product matches update, and
-            the corrected text is what the recommendation agents use.
+            the corrected text is what the suggestion agents use.
           </p>
           {saveError && <p className="transcript-edit__error">{saveError}</p>}
           <div className="transcript-edit__actions">

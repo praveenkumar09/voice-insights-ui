@@ -378,7 +378,7 @@ export function useVoiceCapture() {
    * Saves an agent-corrected transcript: the server re-extracts the profile and
    * re-runs the live analysis from the edited text, and everything on screen
    * (transcript, profile, signals, matches) is replaced with the result so the
-   * final recommendations are built from the corrected conversation.
+   * final suggestions are built from the corrected conversation.
    */
   const saveTranscriptEdit = useCallback(
     async (text: string) => {

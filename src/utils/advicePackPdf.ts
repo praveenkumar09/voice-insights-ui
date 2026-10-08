@@ -1,3 +1,4 @@
+import { relevanceLabel } from './relevance'
 import type { AdvicePack } from '../types'
 import { AGENT_NAME } from '../brand'
 
@@ -29,9 +30,9 @@ export function printAdvicePack(pack: AdvicePack, customerName?: string | null) 
   const record = r
     ? `<p>${nl(r.needsSummary)}</p>${r.items
         .map(
-          (i, n) => `<div class="card"><h4>${n + 1}. ${esc(i.productName)} <span class="fit">${i.fitScore}% fit</span></h4>
+          (i, n) => `<div class="card"><h4>${n + 1}. ${esc(i.productName)} <span class="fit">${relevanceLabel(i.fitScore)}</span></h4>
 <div class="lab">Customer need</div><div>${nl(i.need)}</div>
-<div class="lab">Why it fits</div><div>${nl(i.rationale)}</div>
+<div class="lab">Why we suggest it</div><div>${nl(i.rationale)}</div>
 ${i.customerQuotes.length ? `<div class="lab">In the customer’s words</div>${i.customerQuotes.map((q) => `<div class="q">“${esc(q)}”</div>`).join('')}` : ''}
 <div class="lab">Existing cover</div><div>${nl(i.existingCoverNote)}</div>
 ${i.risksToDisclose.length ? `<div class="lab">Risks and points to disclose</div><ul>${i.risksToDisclose.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}

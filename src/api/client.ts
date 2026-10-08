@@ -304,7 +304,7 @@ export async function startRecommendations(customerId: string): Promise<{ runId:
     method: 'POST',
     headers: authHeaders(),
   })
-  if (!res.ok) throw new Error(await errorMessage(res, `Failed to start recommendations (${res.status})`))
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to start suggestions (${res.status})`))
   return res.json()
 }
 
@@ -314,7 +314,7 @@ export function recommendationStreamUrl(runId: string): string {
 
 export async function getRecommendationRun(runId: string): Promise<RecommendationRunView> {
   const res = await fetch(`${API_BASE}/api/recommendations/${runId}`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await errorMessage(res, `Failed to fetch recommendation run (${res.status})`))
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to fetch suggestion run (${res.status})`))
   return res.json()
 }
 

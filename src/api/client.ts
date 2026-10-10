@@ -51,7 +51,7 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   }
 }
 
-export function wsVoiceUrl(mode: 'live' | 'debrief' | 'juno-debrief' = 'live'): string {
+export function wsVoiceUrl(mode: 'live' | 'debrief' | 'juno-debrief' | 'ask' = 'live'): string {
   return `${WS_BASE}/ws/voice${mode === 'live' ? '' : `?mode=${mode}`}`
 }
 
@@ -405,5 +405,101 @@ export async function junoPhrases(lang: LangId): Promise<JunoPhrases | null> {
     return res.ok ? await res.json() : null
   } catch {
     return null
+  }
+}
+
+
+// ── Talk it through with Juno ──────────────────────────────────────────────────────────────────────────────────────
+
+/** Where one of Juno's statements comes from: what the customer shared, the agents' analysis, compliance, or a product document. */
+export interface AskSource {
+  id: string
+  kind: 'customer' | 'analysis' | 'compliance' | 'document'
+  label: string
+  text: string
+  file?: string | null
+  /** Matched by the server rather than named by Juno: the closest source in the file. */
+  inferred?: boolean
+}
+
+export interface AskStarter {
+  label: string
+  question: string
+}
+
+/** One saved question and answer of the discussion about a suggestion run. */
+export interface AskTurn {
+  turn: number
+  question: string
+  answer: string
+  sources: Record<string, AskSource>
+  at: string
+}
+
+export type AskEvent =
+  | { type: 'sentence'; text: string; sources: AskSource[] }
+  | { type: 'done'; turn: number }
+  | { type: 'error'; message: string }
+
+export async function getAskStarters(runId: string): Promise<AskStarter[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/recommendations/${runId}/ask/starters`, { headers: authHeaders() })
+    return res.ok ? await res.json() : []
+  } catch {
+    return []
+  }
+}
+
+export async function getAskHistory(runId: string): Promise<AskTurn[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/recommendations/${runId}/ask/history`, { headers: authHeaders() })
+    return res.ok ? await res.json() : []
+  } catch {
+    return []
+  }
+}
+
+export async function clearAskHistory(runId: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/recommendations/${runId}/ask/history`, { method: 'DELETE', headers: authHeaders() })
+  } catch {
+    // The discussion simply stays saved.
+  }
+}
+
+/**
+ * Asks Juno a question and calls {@code onEvent} for every sentence as it is written (and for done / error). Resolves when the
+ * stream ends; aborting {@code signal} stops the answer at once, which is how an interruption works.
+ */
+export async function askJuno(runId: string, question: string, onEvent: (e: AskEvent) => void, signal: AbortSignal): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/recommendations/${runId}/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...authHeaders() },
+    body: JSON.stringify({ question }),
+    signal,
+  })
+  if (!res.ok || !res.body) {
+    onEvent({ type: 'error', message: res.status === 409 ? 'The analysis is still finishing — give me a moment.' : "I couldn't reach my notes just now — please ask again." })
+    return
+  }
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    let at: number
+    while ((at = buf.indexOf('\n\n')) >= 0) {
+      const block = buf.slice(0, at)
+      buf = buf.slice(at + 2)
+      const data = block.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trimStart()).join('')
+      if (!data) continue
+      try {
+        onEvent(JSON.parse(data) as AskEvent)
+      } catch {
+        // A malformed event is skipped; the next one carries on.
+      }
+    }
   }
 }

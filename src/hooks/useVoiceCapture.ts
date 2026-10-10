@@ -4,8 +4,8 @@ import type { CopilotInsights, CustomerProfile, LifeMapData, SignalPoint } from 
 
 export type VoiceCaptureStatus = 'idle' | 'connecting' | 'listening' | 'paused' | 'stopping' | 'stopped' | 'error'
 
-/** live: the customer is speaking. debrief: the advisor dictates a summary after the meeting. juno-debrief: the same, then Juno asks the advisor about the gaps. */
-export type CaptureMode = 'live' | 'debrief' | 'juno-debrief'
+/** live: the customer is speaking. debrief: the advisor dictates a summary after the meeting. juno-debrief: the same, then Juno asks the advisor about the gaps. ask: the advisor puts questions to Juno about a finished suggestion (listening only, nothing is kept). */
+export type CaptureMode = 'live' | 'debrief' | 'juno-debrief' | 'ask'
 
 /** How firmly background sound (a TV, other conversations) is kept out: off, normal, or strong. */
 export type NoiseFilter = 'off' | 'normal' | 'strong'
@@ -61,6 +61,7 @@ export function useVoiceCapture() {
   // customer who interrupts is heard from their first word. Nothing held is sent unless an interruption is confirmed.
   const heldRef = useRef<ArrayBuffer[]>([])
   const rawListener = useRef<((amp: number) => void) | null>(null)
+  const utteranceEndListener = useRef<(() => void) | null>(null)
   const lastSavedLevel = useRef(0)
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -172,6 +173,11 @@ export function useVoiceCapture() {
     rawListener.current = fn
   }, [])
 
+  /** Calls back when the server hears the speaker finish an utterance (ask mode). */
+  const setUtteranceEndListener = useCallback((fn: (() => void) | null) => {
+    utteranceEndListener.current = fn
+  }, [])
+
   /** An interruption was confirmed: send the last fraction of a second that was held (the customer's first words), then listen normally. */
   const releaseHeld = useCallback((lastChunks = 4) => {
     const ws = wsRef.current
@@ -262,6 +268,10 @@ export function useVoiceCapture() {
               // The transcription service has confirmed the session — only now is it safe to start talking.
               readyRef.current = true
               if (statusRef.current === 'connecting') setStatus('listening')
+              break
+            case 'utterance_end':
+              // The server heard the speaker finish what they were saying (a question for Juno): its words are on the way.
+              utteranceEndListener.current?.()
               break
             case 'session_started':
               setProfile((p) => ({ ...(p ?? {}), id: msg.customerProfileId as string, captureMode: mode === 'debrief' ? 'DEBRIEF' : mode === 'juno-debrief' ? 'JUNO_DEBRIEF' : 'LIVE' }))
@@ -412,6 +422,6 @@ export function useVoiceCapture() {
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
     noiseFilter, setNoiseFilter, backgroundIgnored,
-    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, releaseHeld, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
+    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, releaseHeld, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

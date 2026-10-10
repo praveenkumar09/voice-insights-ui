@@ -4,6 +4,7 @@ import type { AgentState } from '../../hooks/useRecommendationStream'
 import { PIPELINE_ORDER } from '../../hooks/useRecommendationStream'
 import type { AgentKey, CustomerProfile, SalesReportResult } from '../../types'
 import { AdvicePackPanel } from '../advicepack/AdvicePackPanel'
+import { AskJuno } from '../ask/AskJuno'
 import { DownloadIcon } from '../icons'
 import { GoalsPlan } from '../future/GoalsPlan'
 import { LiveVsFinal } from '../orchestration/LiveVsFinal'
@@ -108,8 +109,8 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
 
           {tab === 'live' && (
             <>
-              <StageIntro title="Live vs final analysis" text="What the copilot suggested during the conversation, set against what the full agent analysis concluded. The agents’ answer is the suggestion of record." audience={[{ label: 'For the advisor · internal', kind: 'internal' }]} />
-              <LiveStage profile={profile} steps={steps} finalReady={finalReady} />
+              <StageIntro title="Live vs final analysis" text="What the copilot suggested during the conversation, set against what the full agent analysis concluded. The agents’ answer is the suggestion of record. Then talk it through with Juno: ask why it suggested what it did." audience={[{ label: 'For the advisor · internal', kind: 'internal' }]} />
+              <LiveStage profile={profile} steps={steps} finalReady={finalReady} askReady={reportReady} runId={runId} customerName={name} />
             </>
           )}
 
@@ -186,10 +187,11 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
   )
 }
 
-function LiveStage({ profile, steps, finalReady }: { profile: CustomerProfile | null; steps: Record<AgentKey, AgentState>; finalReady: boolean }) {
+function LiveStage({ profile, steps, finalReady, askReady, runId, customerName }: { profile: CustomerProfile | null; steps: Record<AgentKey, AgentState>; finalReady: boolean; askReady: boolean; runId: string | null; customerName?: string | null }) {
   const live = profile?.liveInsights ?? null
+  let comparison
   if (!live?.latest) {
-    return (
+    comparison = (
       <div className="glass-card ws__waiting">
         <div>
           <strong>No live analysis was captured for this conversation</strong>
@@ -197,9 +199,8 @@ function LiveStage({ profile, steps, finalReady }: { profile: CustomerProfile | 
         </div>
       </div>
     )
-  }
-  if (!finalReady) {
-    return (
+  } else if (!finalReady) {
+    comparison = (
       <div className="glass-card ws__waiting">
         <span className="proposal__spinner" />
         <div>
@@ -208,6 +209,23 @@ function LiveStage({ profile, steps, finalReady }: { profile: CustomerProfile | 
         </div>
       </div>
     )
+  } else {
+    comparison = <LiveVsFinal live={live} steps={steps} showBuying={profile?.captureMode !== 'DEBRIEF' && profile?.captureMode !== 'JUNO_DEBRIEF'} />
   }
-  return <LiveVsFinal live={live} steps={steps} showBuying={profile?.captureMode !== 'DEBRIEF' && profile?.captureMode !== 'JUNO_DEBRIEF'} />
+  return (
+    <>
+      {comparison}
+      {askReady && runId ? (
+        <AskJuno runId={runId} customerName={customerName} />
+      ) : (
+        <div className="glass-card ws__waiting">
+          <span className="proposal__spinner" />
+          <div>
+            <strong>Juno will be ready to talk it through</strong>
+            <p>As soon as the agents finish the full analysis, you can ask Juno why it suggested what it did.</p>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }

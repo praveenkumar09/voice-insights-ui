@@ -1,6 +1,8 @@
+import { relevanceLabel } from '../../utils/relevance'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LifeMapConcern, LifeMapData, LifeMapPerson } from '../../types'
+import { forLabel } from '../../utils/names'
 
 interface Props {
   customerName?: string | null
@@ -10,7 +12,7 @@ interface Props {
   safe?: boolean
   /** The map was built from the advisor's dictation, not a live conversation. */
   debrief?: boolean
-  /** Live product matches: their score is the single source of truth for how well a product fits. */
+  /** Live product matches: their score is the single source of truth for how relevant a product is. */
   matches?: { productName: string; fitScore: number }[]
 }
 
@@ -37,11 +39,13 @@ function onEllipse(cx: number, cy: number, rx: number, ry: number, deg: number) 
 
 const personKey = (p: LifeMapPerson) => `p:${p.relation.toLowerCase()}:${(p.name ?? '').toLowerCase()}`
 
-// Approximate stage size in px — only used to resolve overlaps between nodes; the real stage is responsive.
-const W = 1100
+// Stage height in px; the width is measured, so overlaps are resolved against the real stage.
 const H = 440
+// Below this card width a radial map cannot fit its chips without covering each other: a stacked layout is used.
+const COMPACT_BELOW = 640
+const PAD = 14
 
-export function layout(map: LifeMapData): Placed[] {
+export function layout(map: LifeMapData, W = 1100): Placed[] {
   const out: Placed[] = []
   const n = map.people.length
   const personAngle = new Map<string, number>()
@@ -70,8 +74,8 @@ export function layout(map: LifeMapData): Placed[] {
     n.kind === 'person' ? { w: 100, h: 104 } : { w: n.label.length * 8 + 96 + (n.idea ? Math.min(n.idea.product.length * 6.5, 150) + 16 : 0), h: 56 }
   const overlap = (a: Placed, b: Placed) => {
     const ba = box(a), bb = box(b)
-    const ox = (ba.w + bb.w) / 2 - Math.abs((a.x - b.x) * (W / 100))
-    const oy = (ba.h + bb.h) / 2 - Math.abs((a.y - b.y) * (H / 100))
+    const ox = (ba.w + bb.w + PAD) / 2 - Math.abs((a.x - b.x) * (W / 100))
+    const oy = (ba.h + bb.h + PAD) / 2 - Math.abs((a.y - b.y) * (H / 100))
     return ox > 0 && oy > 0 ? Math.min(ox, oy) : 0
   }
   const outside = (n: Placed) => {
@@ -81,6 +85,8 @@ export function layout(map: LifeMapData): Placed[] {
     return Math.max(0, 8 - l) + Math.max(0, r - (W - 8)) + Math.max(0, 6 - t) + Math.max(0, bt - (H - 6))
   }
 
+  // The customer in the middle is an obstacle too.
+  const hub: Placed = { key: 'hub', kind: 'person', x: 50, y: 50, label: '', said: '' }
   const perAnchor = new Map<string, number>()
   let selfIdx = 0
   const placed: Placed[] = []
@@ -98,12 +104,12 @@ export function layout(map: LifeMapData): Placed[] {
     }
     const node: Placed = {
       key: `${kind}:${c.label.toLowerCase()}`, kind, x: 50, y: 50, label: c.label,
-      sub: anchor !== undefined ? `for ${c.forRelation.toLowerCase()}` : undefined, said: c.said, idea: c.idea,
+      sub: anchor !== undefined ? `for ${forLabel(c.forRelation)}` : undefined, said: c.said, idea: c.idea,
     }
     const costAt = (x: number, y: number) => {
       node.x = x
       node.y = y
-      return outside(node) * 50 + [...out, ...placed].reduce((sum, o) => sum + overlap(node, o), 0)
+      return outside(node) * 50 + [...out, ...placed, hub].reduce((sum, o) => sum + overlap(node, o), 0)
     }
     let best: { x: number; y: number; cost: number } | null = null
     search: for (const ring of [1, 0.9, 1.08, 0.78]) {
@@ -145,7 +151,20 @@ export function layout(map: LifeMapData): Placed[] {
  */
 export function LifeMap({ customerName, lifeMap, listening, safe = false, debrief = false, matches = [] }: Props) {
   const map: LifeMapData = lifeMap ?? { people: [], dreams: [], worries: [] }
-  const nodes = useMemo(() => layout(map), [lifeMap]) // eslint-disable-line react-hooks/exhaustive-deps
+  const rootRef = useRef<HTMLElement>(null)
+  const [width, setWidth] = useState(1100)
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el) return
+    const measure = () => setWidth(Math.max(280, Math.round(el.clientWidth / 25) * 25))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const compact = width < COMPACT_BELOW
+  const nodes = useMemo(() => layout(map, width), [lifeMap, width]) // eslint-disable-line react-hooks/exhaustive-deps
   const total = nodes.length
 
   // "Just heard": announce whatever appeared since the last update.
@@ -192,7 +211,7 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
   const initial = (customerName ?? '').trim().charAt(0).toUpperCase()
 
   return (
-    <section className={`glass-card lifemap${listening ? ' is-live' : ''}`} aria-label="Life map">
+    <section ref={rootRef} className={`glass-card lifemap${listening ? ' is-live' : ''}${compact ? ' is-compact' : ''}`} aria-label="Life map">
       <header className="lifemap__head">
         <div>
           <div className="glass-card__label">
@@ -207,6 +226,67 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
         </div>
       </header>
 
+      {compact ? (
+        <div className="lifemap__stack">
+          <div className="lifemap__center lifemap__center--stack">
+            <span className="lifemap__center-ring" />
+            <span className="lifemap__center-core">{initial || '♥'}</span>
+            <span className="lifemap__center-name">{customerName ?? (listening ? 'Listening…' : 'Your customer')}</span>
+          </div>
+          {total === 0 && (
+            <div className="lifemap__empty lifemap__empty--stack">
+              {listening ? 'Listening… the people, hopes and worries in their life will appear here as they speak.' : 'Start — their family, hopes and worries will take shape here.'}
+            </div>
+          )}
+          {personNodes.length > 0 && (
+            <div className="lifemap__group">
+              <div className="lifemap__group-title">People</div>
+              <div className="lifemap__people">
+                <AnimatePresence initial={false}>
+                  {personNodes.map((n) => (
+                    <motion.div key={n.key} className={`lifemap__person-card${n.child ? ' is-child' : ''}`} layout initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+                      <span className="lifemap__person"><Glyph child={!!n.child} /></span>
+                      <span className="lifemap__label">{n.label}{n.sub && <small>{n.sub}</small>}</span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          )}
+          {(['dream', 'worry'] as const).map((kind) => {
+            const list = nodes.filter((n) => n.kind === kind)
+            if (list.length === 0) return null
+            return (
+              <div className="lifemap__group" key={kind}>
+                <div className="lifemap__group-title">{kind === 'dream' ? (safe ? 'Hopes' : 'Dreams') : (safe ? 'Concerns' : 'Worries')}</div>
+                <ul className="lifemap__stack-list">
+                  <AnimatePresence initial={false}>
+                    {list.map((n) => (
+                      <motion.li key={n.key} className={`lifemap__node-row lifemap__node--${kind}${n.idea && !safe ? ' has-idea' : ''}${focus ? (n.idea?.product === focus ? ' is-linked' : ' is-dim') : ''}`} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                        <span className="lifemap__chip">
+                          <i>{kind === 'dream' ? '✦' : '!'}</i>
+                          {n.label}
+                          {n.sub && <span className="lifemap__sub">{n.sub}</span>}
+                        </span>
+                        <q className="lifemap__row-said">{n.said}</q>
+                        {n.idea && !safe && (
+                          <span className="lifemap__product">
+                            <svg className="lifemap__shield" viewBox="0 0 20 22" aria-hidden>
+                              <path d="M10 1l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V4z" />
+                              <path d="M6.5 11l2.4 2.4L13.6 8.7" />
+                            </svg>
+                            <span>{n.idea.product} · {relevanceLabel(fitFor(n.idea.product, n.idea.fit))}</span>
+                          </span>
+                        )}
+                      </motion.li>
+                    ))}
+                  </AnimatePresence>
+                </ul>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
       <div className="lifemap__stage">
         <div className="lifemap__orbit lifemap__orbit--1" />
         <div className="lifemap__orbit lifemap__orbit--2" />
@@ -254,7 +334,7 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
                   <i>{n.kind === 'dream' ? '✦' : '!'}</i>
                   {n.label}
                   {n.idea && !safe && (
-                    <span className="lifemap__product" title={`${n.idea.product} (${fitFor(n.idea.product, n.idea.fit)}% fit)`}>
+                    <span className="lifemap__product" title={`${n.idea.product} (${relevanceLabel(fitFor(n.idea.product, n.idea.fit))})`}>
                       <svg className="lifemap__shield" viewBox="0 0 20 22" aria-label="A protection idea matches this">
                         <path d="M10 1l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V4z" />
                         <path d="M6.5 11l2.4 2.4L13.6 8.7" />
@@ -275,7 +355,7 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
                 <q>{n.said}</q>
                 {n.idea && !safe && (
                   <span className="lifemap__pop-idea">
-                    Protection idea · <b>{n.idea.product}</b> ({fitFor(n.idea.product, n.idea.fit)}% fit)
+                    Protection idea · <b>{n.idea.product}</b> ({relevanceLabel(fitFor(n.idea.product, n.idea.fit))})
                   </span>
                 )}
               </span>
@@ -290,6 +370,7 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
           </div>
         )}
       </div>
+      )}
 
       {!safe && ideaGroups.length > 0 && (
         <div className="lifemap__ideas">
@@ -308,7 +389,7 @@ export function LifeMap({ customerName, lifeMap, listening, safe = false, debrie
                 >
                   <span className="lifemap__idea-head">
                     <b>{g.product}</b>
-                    <em>{g.fit}% fit</em>
+                    <em>{relevanceLabel(g.fit)}</em>
                   </span>
                   <span className="lifemap__idea-covers">
                     {g.covers.map((c) => (

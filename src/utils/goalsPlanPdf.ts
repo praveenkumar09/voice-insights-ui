@@ -1,4 +1,5 @@
 import type { ProtectionStory } from '../types'
+import { forLabel } from './names'
 
 const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
@@ -31,7 +32,7 @@ export function printGoalsPlan(story: ProtectionStory, customerName?: string | n
 ${story.quotes.length ? `<h3>What you told us</h3>${story.quotes.map((q) => `<blockquote>“${esc(q.text)}”<small>${esc(q.theme)}</small></blockquote>`).join('')}` : ''}
 ${goals.length ? `<h3>How we can help</h3>${goals
     .map(
-      (g) => `<div class="goal"><h2>${esc(g.label)}</h2>${g.forRelation && g.forRelation !== 'Self' ? `<div class="for">For ${esc(g.forRelation.toLowerCase())}</div>` : ''}
+      (g) => `<div class="goal"><h2>${esc(g.label)}</h2>${g.forRelation && g.forRelation !== 'Self' ? `<div class="for">For ${esc(forLabel(g.forRelation))}</div>` : ''}
 <div>${esc(g.support)}</div>${g.products.length ? `<div class="prods">${g.products.map((p) => `<span>${esc(p)}</span>`).join('')}</div>` : ''}</div>`,
     )
     .join('')}` : ''}

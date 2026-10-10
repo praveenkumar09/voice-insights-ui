@@ -153,3 +153,8 @@
 .review__fields { row-gap: 22px; flex: 0 0 auto; }
 .review__tip { margin-top: auto; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; font-size: 0.8rem; line-height: 1.5; color: var(--ink-soft); background: rgba(var(--tint-rgb), 0.04); border-left: 3px solid var(--aia-red); }
 .review__tip b { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); }
+
+/* The Juno tab: a little light on it so it reads as the new, special mode */
+.mode-switch__juno strong i { font-style: normal; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-left: 6px; padding: 2px 7px; border-radius: 999px; color: #fff; background: linear-gradient(135deg, #ff4f78, #d31145); vertical-align: 1px; }
+.mode-switch__juno.is-active { box-shadow: 0 4px 14px rgba(var(--shadow-rgb), 0.12), 0 0 0 1.5px rgba(211, 17, 69, 0.45) !important; }
+@media (max-width: 760px) { .mode-switch { flex-wrap: wrap; } .mode-switch button { flex: 1 1 140px; } }

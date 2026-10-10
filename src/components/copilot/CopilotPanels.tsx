@@ -1,10 +1,15 @@
+import { relevanceBand, relevanceLabel } from '../../utils/relevance'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { CopilotInsights } from '../../types'
 
 const enter = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 } }
 
 /** The agent's eyes are on the customer, so the single best next question is shown large; the rest are quiet chips. */
-export function NextQuestions({ questions }: { questions: string[] }) {
+const KIND_LABEL: Record<string, string> = {
+  followup: 'Follow up', objection: 'Handle concern', clarify: 'Clarify', gap: 'Fill a gap', close: 'Next step',
+}
+
+export function NextQuestions({ questions, context }: { questions: string[]; context?: CopilotInsights['askContext'] }) {
   const [primary, ...rest] = questions
   return (
     <div className="glass-card ask-strip">
@@ -20,6 +25,12 @@ export function NextQuestions({ questions }: { questions: string[] }) {
               {primary}
             </motion.p>
           </AnimatePresence>
+          {context && (
+            <p className="ask-strip__why">
+              <b>{KIND_LABEL[context.kind] ?? 'Follow up'}</b>
+              {context.trigger && <span>They just said “{context.trigger}”</span>}
+            </p>
+          )}
           {rest.length > 0 && (
             <div className="ask-strip__chips">
               <AnimatePresence initial={false}>
@@ -89,10 +100,7 @@ export function ProductMatches({ matches }: { matches: CopilotInsights['productM
                   <p className="match-card__evidence">“{m.evidence}”</p>
                   <span className="match-card__source">{m.source}</span>
                 </div>
-                <div className="match-card__fit" style={{ ['--fit' as string]: m.fitScore }}>
-                  <span>{m.fitScore}</span>
-                  <small>fit</small>
-                </div>
+                <div className={`relevance relevance--${relevanceBand(m.fitScore)}`}>{relevanceLabel(m.fitScore)}</div>
               </motion.li>
             ))}
           </AnimatePresence>

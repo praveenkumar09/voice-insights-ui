@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { generateStory } from '../../api/client'
 import type { ProtectionStory, SalesReportResult } from '../../types'
 import { printGoalsPlan } from '../../utils/goalsPlanPdf'
+import { forLabel } from '../../utils/names'
 
 const sgd = (n: number) => `S$${Math.round(n).toLocaleString('en-SG')}`
 
@@ -13,8 +14,8 @@ interface Props {
 }
 
 /**
- * Goals and plan — the warm, customer-facing centre of the recommendation: what the customer told us matters to
- * them, and how the recommended products support each of those goals. It carries no figures and no worst-case
+ * Goals and plan — the warm, customer-facing centre of the suggestion: what the customer told us matters to
+ * them, and how the suggested products support each of those goals. It carries no figures and no worst-case
  * scenarios; the advisor's cover-adequacy check lives in its own clearly-labelled, advisor-only section.
  */
 export function GoalsPlan({ runId, report, customerName }: Props) {
@@ -46,7 +47,7 @@ export function GoalsPlan({ runId, report, customerName }: Props) {
         <p>
           {story
             ? 'This view was created before “Goals and plan” existed. Refresh it to see their goals and how the plan supports each one.'
-            : 'A personal view built from what the customer said: their goals in their own words, and how the recommended plan supports each of them.'}
+            : 'A personal view built from what the customer said: their goals in their own words, and how the suggested plan supports each of them.'}
         </p>
         {error && <p className="proposal__error">{error}</p>}
         <button className="cta-btn" onClick={create} disabled={loading}>
@@ -110,7 +111,7 @@ export function GoalsPlan({ runId, report, customerName }: Props) {
                 <span className="gp-goal__tick" aria-hidden>✓</span>
                 <div>
                   <h4>{g.label}</h4>
-                  {g.forRelation && g.forRelation !== 'Self' && <small>for {g.forRelation.toLowerCase()}</small>}
+                  {g.forRelation && g.forRelation !== 'Self' && <small>for {forLabel(g.forRelation)}</small>}
                 </div>
               </header>
               {g.said && <q className="gp-goal__said">{g.said}</q>}

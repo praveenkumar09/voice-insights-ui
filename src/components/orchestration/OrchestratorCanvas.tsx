@@ -1,66 +1,74 @@
+import { motion } from 'framer-motion'
 import type { AgentState } from '../../hooks/useRecommendationStream'
 import type { AgentKey } from '../../types'
-import { PARALLEL_AGENTS, POST_MERGE_AGENTS } from './agentMeta'
+import { PHASES } from './agentMeta'
 import { AgentCard } from './AgentCard'
-import { ConnectorLine } from './ConnectorLine'
-import { OrchestratorNode } from './OrchestratorNode'
-import { SequentialConnector } from './SequentialConnector'
+import { CheckIcon, SpinnerIcon } from '../icons'
+import { AGENT_NAME } from '../../brand'
 
 interface Props {
   runId?: string | null
   steps: Record<AgentKey, AgentState>
 }
 
+type PhaseState = 'idle' | 'running' | 'done'
+
 /**
- * One continuous graph, top to bottom: Orchestrator fans out to the three
- * parallel analysis agents, which converge into a single chain — merge,
- * persona, product scoring, shortlist, RAG validation, compliance, summary,
- * sales report — rendered as the same AgentCard used everywhere else, so
- * there's no visual seam between "the parallel part" and "the rest of the
- * pipeline." Every step, including merge, is collapsed by default and only
- * shows its full output on click, so nothing pre-empts the sales report at
- * the end of the chain.
+ * The 11-agent pipeline as four phases — Understand, Decide, Verify, Communicate — each a band of cards.
+ * Within a phase the agents are laid side by side (the first phase genuinely runs in parallel); between phases a
+ * flowing link shows the hand-off. Every card shows its one-line outcome and opens to the full result on click.
  */
 export function OrchestratorCanvas({ runId, steps }: Props) {
-  const active = PARALLEL_AGENTS.map((k) => steps[k].status === 'running' || steps[k].status === 'done') as [
-    boolean,
-    boolean,
-    boolean,
-  ]
-  const done = PARALLEL_AGENTS.map((k) => steps[k].status === 'done') as [boolean, boolean, boolean]
-  const anyStarted = active.some(Boolean)
-  const allParallelDone = done.every(Boolean)
-  const fanInStatus = allParallelDone ? 'done' : anyStarted ? 'running' : 'idle'
+  const states: PhaseState[] = PHASES.map((p) => {
+    const st = p.agents.map((k) => steps[k].status)
+    if (st.every((s) => s === 'done')) return 'done'
+    return st.some((s) => s === 'running' || s === 'done') ? 'running' : 'idle'
+  })
+  const total = PHASES.flatMap((p) => p.agents).length
+  const done = PHASES.flatMap((p) => p.agents).filter((k) => steps[k].status === 'done').length
 
   return (
-    <div className="orchestrator-canvas">
-      <OrchestratorNode
-        label="Orchestrator"
-        status={anyStarted ? (allParallelDone ? 'done' : 'active') : 'idle'}
-        subtitle={allParallelDone ? 'Analysis complete' : anyStarted ? 'Dispatching to 3 specialist agents' : 'Ready to start'}
-      />
-
-      <ConnectorLine direction="down" active={active} done={done} />
-
-      <div className="agent-row">
-        {PARALLEL_AGENTS.map((key, index) => (
-          <AgentCard key={key} agentKey={key} state={steps[key]} index={index} />
-        ))}
+    <div className="phases">
+      <div className={`phases__conductor is-${done === total ? 'done' : done > 0 || states.includes('running') ? 'running' : 'idle'}`}>
+        <span className="phases__conductor-icon">{done === total ? <CheckIcon /> : done > 0 || states.includes('running') ? <SpinnerIcon /> : <span />}</span>
+        <div>
+          <strong>{AGENT_NAME}</strong>
+          <small>{done === total ? 'Orchestrator · all 11 agents have reported back' : done > 0 || states.includes('running') ? `Orchestrator · coordinating 11 specialist agents · ${done} complete` : 'Orchestrator · ready to dispatch 11 specialist agents'}</small>
+        </div>
       </div>
 
-      <ConnectorLine direction="up" active={done} done={done} />
-
-      <div className="pipeline-sequence">
-        {POST_MERGE_AGENTS.map((key, index) => {
-          const prevStatus = index === 0 ? fanInStatus : steps[POST_MERGE_AGENTS[index - 1]].status
-          return (
-            <div className="pipeline-sequence__step" key={key}>
-              <SequentialConnector status={prevStatus} isFirst={index === 0} />
-              <AgentCard agentKey={key} state={steps[key]} index={index} runId={runId} />
+      {PHASES.map((phase, i) => (
+        <div key={phase.id}>
+          <PhaseLink state={i === 0 ? (states[0] === 'idle' ? 'idle' : 'done') : states[i - 1]} flowing={states[i] === 'running' && (i === 0 || states[i - 1] === 'done')} />
+          <motion.section
+            className={`phase phase--${states[i]}`}
+            style={{ ['--cols' as string]: Math.min(phase.agents.length, 4) }}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: i * 0.08 }}
+          >
+            <header className="phase__head">
+              <span className="phase__n">{states[i] === 'done' ? <CheckIcon /> : phase.n}</span>
+              <div>
+                <h3>{phase.title}</h3>
+                <p>{phase.blurb}</p>
+              </div>
+              <span className="phase__count">
+                {phase.agents.filter((k) => steps[k].status === 'done').length}/{phase.agents.length}
+              </span>
+            </header>
+            <div className="phase__cards">
+              {phase.agents.map((key, index) => (
+                <AgentCard key={key} agentKey={key} state={steps[key]} index={index} runId={runId} />
+              ))}
             </div>
-          )
-        })}
-      </div>
+          </motion.section>
+        </div>
+      ))}
     </div>
   )
+}
+
+function PhaseLink({ state, flowing }: { state: PhaseState; flowing: boolean }) {
+  return <div className={`phase-link is-${state}${flowing ? ' is-flowing' : ''}`} aria-hidden><span /></div>
 }

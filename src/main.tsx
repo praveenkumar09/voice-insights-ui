@@ -8,6 +8,10 @@ import './workspace.css'
 import './future.css'
 import './lifemap.css'
 import './modes.css'
+import './advicepack.css'
+import './juno.css'
+import './exec.css'
+import './admin.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

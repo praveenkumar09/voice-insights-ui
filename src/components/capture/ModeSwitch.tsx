@@ -1,4 +1,4 @@
-export type HomeMode = 'debrief' | 'live'
+export type HomeMode = 'debrief' | 'live' | 'juno'
 
 interface Props {
   mode: HomeMode
@@ -6,7 +6,7 @@ interface Props {
   disabled?: boolean
 }
 
-/** How this conversation is being captured: dictated after the meeting (the usual way) or live with the customer. */
+/** How this conversation is being captured: dictated after the meeting, live with the customer, or dictated and then checked with Juno. */
 export function ModeSwitch({ mode, onChange, disabled }: Props) {
   return (
     <div className="mode-switch" role="tablist" aria-label="Capture mode">
@@ -17,6 +17,10 @@ export function ModeSwitch({ mode, onChange, disabled }: Props) {
       <button role="tab" aria-selected={mode === 'live'} className={mode === 'live' ? 'is-active' : ''} onClick={() => onChange('live')} disabled={disabled}>
         <strong>With the customer</strong>
         <small>Live conversation</small>
+      </button>
+      <button role="tab" aria-selected={mode === 'juno'} className={`mode-switch__juno${mode === 'juno' ? ' is-active' : ''}`} onClick={() => onChange('juno')} disabled={disabled}>
+        <strong>Debrief with Juno <i>AI</i></strong>
+        <small>Dictate, then Juno checks the gaps</small>
       </button>
     </div>
   )

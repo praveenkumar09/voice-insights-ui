@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { recommendationReportUrl } from '../../api/client'
+import { relevanceLabel } from '../../utils/relevance'
 import type { AgentState } from '../../hooks/useRecommendationStream'
 import type {
   AffordabilityResult,
@@ -17,6 +18,8 @@ import type {
   SalesReportResult,
 } from '../../types'
 import { AGENT_META } from './agentMeta'
+import { AgentIcon } from './agentIcons'
+import { agentHeadline } from './agentHeadline'
 import { CheckIcon, ChevronIcon, DownloadIcon, SpinnerIcon } from '../icons'
 
 interface Props {
@@ -30,10 +33,11 @@ export function AgentCard({ agentKey, state, index, runId }: Props) {
   const [open, setOpen] = useState(false)
   const [showRaw, setShowRaw] = useState(false)
   const meta = AGENT_META[agentKey]
+  const headline = state.status === 'done' ? agentHeadline(agentKey, state.result) : null
 
   return (
     <motion.div
-      className={`agent-card agent-card--${state.status}`}
+      className={`agent-card agent-card--${state.status}${open ? ' is-open' : ''}`}
       data-agent={agentKey}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -41,11 +45,14 @@ export function AgentCard({ agentKey, state, index, runId }: Props) {
     >
       <div className="agent-card__inner">
         <button className="agent-card__header" onClick={() => setOpen((o) => !o)}>
-          <StatusDot status={state.status} />
+          <span className="agent-card__icon"><AgentIcon agent={agentKey} /></span>
           <div className="agent-card__titles">
             <span className="agent-card__label">{meta.label}</span>
-            <span className="agent-card__description">To answer: {meta.question}</span>
+            <span className="agent-card__description">{meta.question}</span>
+            {state.status === 'done' && headline && <span className="agent-card__headline">{headline}</span>}
+            {state.status === 'running' && <span className="agent-card__headline agent-card__headline--busy">Working on it…</span>}
           </div>
+          <StatusDot status={state.status} />
           <span className={`agent-card__chevron ${open ? 'is-open' : ''}`}>
             <ChevronIcon />
           </span>
@@ -203,7 +210,7 @@ function AgentResultView({ agentKey, result, runId }: { agentKey: AgentKey; resu
               .sort((a, b) => b.score - a.score)
               .map((s, i) => (
                 <li key={i}>
-                  <strong>{s.productName}</strong> — {s.score}/100
+                  <strong>{s.productName}</strong> — {relevanceLabel(s.score)}
                   {s.matchReasons.length > 0 && (
                     <ul className="agent-card__list">
                       {s.matchReasons.map((m, j) => (
@@ -303,7 +310,7 @@ function AgentResultView({ agentKey, result, runId }: { agentKey: AgentKey; resu
 
 /** Leads with the recommended products — the part of the report the reader actually wants — rather than the header. */
 function reportPreview(md: string): string {
-  const m = md.match(/## Recommended Products\n([\s\S]*?)(?=\n## |$)/)
+  const m = md.match(/## (?:Suggested|Recommended) Products\n([\s\S]*?)(?=\n## |$)/)
   const text = (m ? m[1] : md).replace(/\*\*/g, '').replace(/\*/g, '').trim()
   return text.length > 420 ? `${text.slice(0, 420)}…` : text
 }

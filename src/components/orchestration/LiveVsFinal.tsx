@@ -4,6 +4,8 @@ import type { AgentKey, CopilotInsights, MergedInsights, ProductShortlistResult,
 interface Props {
   live: { latest: CopilotInsights; history: SignalPoint[] } | null
   steps: Record<AgentKey, AgentState>
+  /** A buying signal only means something when the customer was speaking, not when the advisor dictated a debrief. */
+  showBuying?: boolean
 }
 
 type Verdict = 'confirmed' | 'refined' | 'new'
@@ -23,7 +25,7 @@ function Badge({ verdict }: { verdict: Verdict }) {
  * this panel makes any difference between them visible and explained,
  * instead of leaving the viewer to spot an unexplained contradiction.
  */
-export function LiveVsFinal({ live, steps }: Props) {
+export function LiveVsFinal({ live, steps, showBuying = true }: Props) {
   const merged = steps.merge.status === 'done' ? (steps.merge.result as MergedInsights) : null
   const shortlist = steps.productShortlist.status === 'done' ? (steps.productShortlist.result as ProductShortlistResult) : null
   if (!live?.latest || (!merged && !shortlist)) return null
@@ -46,12 +48,12 @@ export function LiveVsFinal({ live, steps }: Props) {
           <div className="glass-card__label lvf__title">Live vs final analysis</div>
           <p className="lvf__sub">
             <b>Live</b> is the copilot&rsquo;s first impression during the call. <b>Final</b> is the full agent analysis and is the
-            recommendation of record.
+            suggestion of record.
           </p>
         </div>
         <div className="lvf__signals">
           <span className="lvf__pill">Sentiment · {live.latest.sentiment.label}</span>
-          <span className="lvf__pill">Buying · {live.latest.buyingSignal.level}</span>
+          {showBuying && <span className="lvf__pill">Buying · {live.latest.buyingSignal.level}</span>}
         </div>
       </div>
 
@@ -102,7 +104,7 @@ export function LiveVsFinal({ live, steps }: Props) {
             Advisor conduct flags <span className="live-tag">Report only</span>
           </div>
           <p className="lvf__flags-note">
-            Raised live during the call. They are included in the sales report for review and do not change the recommendation.
+            Raised live during the call. They are included in the sales report for review and do not change the suggestion.
           </p>
           {flags.map((f, i) => (
             <div className={`flag flag--${f.severity}`} key={i}>

@@ -24,7 +24,7 @@ export function AdminRunDetailScreen({ runId, onBack }: Props) {
         getCustomerProfile(r.customerProfileId).then((p) => !cancelled && setProfile(p)).catch(() => {})
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load recommendation run')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load suggestion run')
       })
     return () => {
       cancelled = true
@@ -38,7 +38,7 @@ export function AdminRunDetailScreen({ runId, onBack }: Props) {
       </button>
 
       {error && <p className="orchestration-screen__error">{error}</p>}
-      {!error && !run && <p className="capture-screen__hint">Loading recommendation&hellip;</p>}
+      {!error && !run && <p className="capture-screen__hint">Loading suggestion&hellip;</p>}
 
       {run && (
         <>

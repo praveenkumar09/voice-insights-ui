@@ -3,6 +3,10 @@ import { saveCustomerProfile } from '../api/client'
 import { CoverageCues } from '../components/capture/CoverageCues'
 import { LiveWaveform } from '../components/capture/LiveWaveform'
 import { ModeSwitch, type HomeMode } from '../components/capture/ModeSwitch'
+import { JunoStage, JunoTranscript } from '../components/juno/JunoStage'
+import { useJuno } from '../hooks/useJuno'
+import { ConfirmChips } from '../components/capture/ConfirmChips'
+import { DebriefFollowUp } from '../components/capture/DebriefFollowUp'
 import { ReviewPanel } from '../components/capture/ReviewPanel'
 import { useElapsed } from '../components/capture/useElapsed'
 import { CustomerProfileCard } from '../components/CustomerProfileCard'
@@ -22,7 +26,8 @@ const MODE_KEY = 'vi_home_mode'
 
 function storedMode(): HomeMode {
   try {
-    return localStorage.getItem(MODE_KEY) === 'live' ? 'live' : 'debrief'
+    const v = localStorage.getItem(MODE_KEY)
+    return v === 'live' || v === 'juno' ? v : 'debrief'
   } catch {
     return 'debrief'
   }
@@ -30,24 +35,26 @@ function storedMode(): HomeMode {
 
 export function CaptureScreen({ onReady }: Props) {
   const voice = useVoiceCapture()
+  const juno = useJuno(voice)
   const { status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage } = voice
   const [advancing, setAdvancing] = useState(false)
   const [mode, setMode] = useState<HomeMode>(storedMode)
   // Customer-safe view is deliberately never remembered: it is something the advisor turns on for a moment, and a
-  // fresh page always starts with the advisor's full view.
+  // fresh page always starts with the advisor's full view. It only applies when the customer is in the room (live mode).
   const [safeView, setSafeView] = useState(false)
   const [take, setTake] = useState(1)
   const [session, setSession] = useState(0)
   const consoleRef = useRef<HTMLDivElement>(null)
-  // The recommend button lives in the console at the top; once that scrolls away a docked copy keeps it in reach.
+  // The suggest button lives in the console at the top; once that scrolls away a docked copy keeps it in reach.
   const [consoleVisible, setConsoleVisible] = useState(true)
 
   const debrief = mode === 'debrief'
+  const withJuno = mode === 'juno'
   const listening = status === 'listening' || status === 'connecting'
-  const busy = listening || status === 'paused' || status === 'stopping'
+  const busy = listening || status === 'paused' || status === 'stopping' || (withJuno && juno.stage !== 'idle' && juno.stage !== 'finished')
   const elapsed = useElapsed(status === 'listening', debrief, session)
   const canRecommend = status === 'stopped' && !!profile?.id
-  const safe = safeView && !debrief
+  const safe = safeView && mode === 'live'
   const spoken = finalSegments.join(' ')
 
   useEffect(() => {
@@ -61,6 +68,7 @@ export function CaptureScreen({ onReady }: Props) {
   function changeMode(next: HomeMode) {
     if (busy || next === mode) return
     voice.reset()
+    juno.reset()
     setMode(next)
     setSafeView(false)
     setTake(1)
@@ -75,7 +83,7 @@ export function CaptureScreen({ onReady }: Props) {
   async function begin() {
     setTake(1)
     setSession((s) => s + 1)
-    await voice.start(mode)
+    await voice.start(mode === 'juno' ? 'juno-debrief' : mode)
   }
 
   /** Live: the button starts and stops. Debrief: it starts, then pauses and resumes between takes. */
@@ -120,7 +128,7 @@ export function CaptureScreen({ onReady }: Props) {
         listening: 'Dictating — speak naturally. Pause any time; you can dictate in several takes.',
         paused: 'Paused — resume when you are ready, or finish to review.',
         stopping: 'Wrapping up…',
-        stopped: 'Dictation captured — check it below, then get recommendations.',
+        stopped: 'Dictation captured — check it below, then get suggestions.',
         error: errorMessage ?? 'Something went wrong',
       }[status]
     : {
@@ -134,8 +142,9 @@ export function CaptureScreen({ onReady }: Props) {
       }[status]
 
   const recommendCta = canRecommend && (
-    <button className="cta-btn" onClick={handleGetRecommendations} disabled={advancing}>
-      {advancing ? 'Preparing…' : 'Get Recommendations'}
+    // After a debrief with Juno only a real press by a person counts: a scripted click is ignored.
+    <button className="cta-btn" onClick={(e) => { if (withJuno && !e.isTrusted) return; void handleGetRecommendations() }} disabled={advancing}>
+      {advancing ? 'Preparing…' : 'Get Suggestions'}
     </button>
   )
 
@@ -143,16 +152,18 @@ export function CaptureScreen({ onReady }: Props) {
     <section className="capture-screen">
       <div className="capture-hero">
         <div>
-          <h2 className="capture-hero__title">{debrief ? 'Debrief the meeting' : 'Customer Conversation Intelligence'}</h2>
+          <h2 className="capture-hero__title">{debrief ? 'Debrief the meeting' : withJuno ? 'Debrief with Juno' : 'Customer Conversation Intelligence'}</h2>
           <p className="capture-hero__sub">
             {debrief
-              ? 'Dictate what you learned once the customer has left. The agents turn your summary into recommendations, a report and a proposal.'
-              : 'Capture the conversation, let specialised agents analyse it, and walk into the next meeting equipped.'}
+              ? 'Dictate what you learned once the customer has left. Juno turns your summary into suggestions, a report and a proposal.'
+              : withJuno
+                ? 'Dictate what happened in your own words. Juno then checks for anything missing and asks a few short questions, so nothing is lost before you start the analysis.'
+                : 'Capture the conversation, let Juno and its specialist agents analyse it, and walk into the next meeting equipped.'}
           </p>
         </div>
         <div className="capture-hero__controls">
           <ModeSwitch mode={mode} onChange={changeMode} disabled={busy} />
-          {!debrief && (
+          {mode === 'live' && (
             <div className={`safe-toggle${safeView ? ' is-on' : ''}`}>
               <button role="switch" aria-checked={safeView} onClick={() => setSafeView((v) => !v)}>
                 <span className="safe-toggle__track"><span /></span>
@@ -166,7 +177,23 @@ export function CaptureScreen({ onReady }: Props) {
         </div>
       </div>
 
-      <div ref={consoleRef} className={`glass-card capture-console${status === 'listening' ? ' is-live' : ''}`}>
+      {withJuno && (
+        <JunoStage
+          k={juno}
+          amplitude={amplitude}
+          partialText={partialText}
+          profile={profile}
+          copilot={copilot}
+          canRecommend={canRecommend}
+          advancing={advancing}
+          onRecommend={handleGetRecommendations}
+          onBrief={() => printMeetingBrief(profile, copilot)}
+          noVoice={typeof speechSynthesis === 'undefined'}
+          safe={safe}
+        />
+      )}
+
+      {!withJuno && <div ref={consoleRef} className={`glass-card capture-console${status === 'listening' ? ' is-live' : ''}`}>
         <VoiceOrb
           listening={status === 'listening' || status === 'connecting'}
           amplitude={amplitude}
@@ -186,6 +213,17 @@ export function CaptureScreen({ onReady }: Props) {
             {debrief && (status === 'listening' || status === 'paused') && <span className="capture-console__take">Take {take}</span>}
           </div>
           <p className="capture-screen__hint">{hint}</p>
+          <div className="noise-filter" role="group" aria-label="Background audio filter">
+            <span className="noise-filter__label">Background filter</span>
+            <div className="noise-filter__seg">
+              {(['off', 'normal', 'strong'] as const).map((f) => (
+                <button key={f} className={voice.noiseFilter === f ? 'is-active' : ''} aria-pressed={voice.noiseFilter === f} onClick={() => voice.setNoiseFilter(f)}>
+                  {f === 'off' ? 'Off' : f === 'normal' ? 'Normal' : 'Strong'}
+                </button>
+              ))}
+            </div>
+            {voice.backgroundIgnored && listening && <span className="noise-filter__live">Ignoring background audio</span>}
+          </div>
         </div>
         <LiveWaveform amplitude={amplitude} active={status === 'listening'} />
 
@@ -199,7 +237,7 @@ export function CaptureScreen({ onReady }: Props) {
           <button className="ghost-btn" onClick={() => printMeetingBrief(profile, copilot)}>Download brief (PDF)</button>
         )}
         {!safe && recommendCta}
-      </div>
+      </div>}
 
       {safe && (
         <div className="safe-banner">
@@ -208,30 +246,31 @@ export function CaptureScreen({ onReady }: Props) {
         </div>
       )}
 
-      {!debrief && !safe && <NextQuestions questions={copilot?.nextQuestions ?? []} />}
+      {mode === 'live' && !safe && <NextQuestions questions={copilot?.nextQuestions ?? []} context={copilot?.askContext} />}
 
       <LifeMap
         customerName={profile?.customerName}
         lifeMap={copilot?.lifeMap}
         listening={status === 'listening' || status === 'connecting'}
         safe={safe}
-        debrief={debrief}
+        debrief={debrief || withJuno}
         matches={copilot?.productMatches}
       />
 
       <div className={safe ? 'capture-safe' : 'capture-grid'}>
         <div className="capture-grid__col">
+          {withJuno && juno.turns.length > 0 && <JunoTranscript turns={juno.turns} />}
           <TranscriptPanel
             partialText={partialText}
             finalSegments={finalSegments}
             isListening={status === 'listening' || status === 'connecting' || status === 'stopping'}
             onSaveEdit={status === 'stopped' ? voice.saveTranscriptEdit : undefined}
           />
-          {!debrief && !safe && <ProductMatches matches={copilot?.productMatches ?? []} />}
+          {mode === 'live' && !safe && <ProductMatches matches={copilot?.productMatches ?? []} />}
         </div>
         {!safe && (
           <div className="capture-grid__col">
-            {debrief ? (
+            {debrief || withJuno ? (
               <>
                 <CoverageCues profile={profile} copilot={copilot} text={spoken} />
                 <CustomerProfileCard profile={profile} />
@@ -248,8 +287,10 @@ export function CaptureScreen({ onReady }: Props) {
         )}
       </div>
 
-      {debrief && status === 'stopped' && profile?.id && (
+      {(debrief || withJuno) && status === 'stopped' && profile?.id && (
         <>
+          {withJuno && <ConfirmChips profile={profile} onSaved={voice.patchProfile} />}
+          {withJuno && <DebriefFollowUp key={profile.id} profileId={profile.id} customerName={profile.customerName ?? ''} />}
           <ReviewPanel
             profile={profile}
             copilot={copilot}
@@ -262,7 +303,7 @@ export function CaptureScreen({ onReady }: Props) {
       {!safe && canRecommend && !consoleVisible && (
         <div className="recommend-dock" role="region" aria-label="Next step">
           <span>
-            <strong>Captured and ready.</strong> Get the detailed recommendations, report and proposal.
+            <strong>Captured and ready.</strong> Get the detailed suggestions, report and proposal.
           </span>
           {recommendCta}
         </div>

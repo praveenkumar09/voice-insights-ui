@@ -1,13 +1,14 @@
+import { relevanceLabel } from './relevance'
 import type { ProposalResult } from '../types'
 
 const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
 
 const LABELS = {
-  en: { why: 'Why it fits you', benefits: 'Key benefits', premium: 'Indicative premium', next: 'Recommended next steps', fit: 'fit', source: 'Source' },
-  zh: { why: '为什么适合您', benefits: '主要保障', premium: '参考保费', next: '建议的下一步', fit: '匹配度', source: '来源' },
-  ta: { why: 'உங்களுக்கு ஏன் பொருந்துகிறது', benefits: 'முக்கிய நன்மைகள்', premium: 'குறிப்பீட்டு பிரீமியம்', next: 'பரிந்துரைக்கப்படும் அடுத்த படிகள்', fit: 'பொருத்தம்', source: 'ஆதாரம்' },
-  ms: { why: 'Mengapa ia sesuai', benefits: 'Manfaat utama', premium: 'Premium indikatif', next: 'Langkah seterusnya', fit: 'padanan', source: 'Sumber' },
+  en: { why: 'Why we suggest it', benefits: 'Key benefits', premium: 'Indicative premium', next: 'Suggested next steps', source: 'Source' },
+  zh: { why: '我们为什么建议它', benefits: '主要保障', premium: '参考保费', next: '建议的下一步', source: '来源' },
+  ta: { why: 'நாங்கள் ஏன் இதை யோசனையாகக் கூறுகிறோம்', benefits: 'முக்கிய நன்மைகள்', premium: 'குறிப்பீட்டு பிரீமியம்', next: 'முன்மொழியப்படும் அடுத்த படிகள்', source: 'ஆதாரம்' },
+  ms: { why: 'Mengapa kami mencadangkannya', benefits: 'Manfaat utama', premium: 'Premium indikatif', next: 'Langkah seterusnya yang dicadangkan', source: 'Sumber' },
 } as const
 
 /** Opens the browser print dialog ("Save as PDF") on a branded, customer-ready proposal. */
@@ -40,7 +41,7 @@ ${customerName ? `<p class="greet"><b>${esc(customerName)}</b></p>` : ''}
 <div class="summary">${esc(p.summary)}</div>
 ${p.products
   .map(
-    (pr, i) => `<div class="prod"><h2><span>${i + 1}. ${esc(pr.name)}</span><span class="fit">${pr.fitScore}% ${L.fit}</span></h2>
+    (pr, i) => `<div class="prod"><h2><span>${i + 1}. ${esc(pr.name)}</span><span class="fit">${relevanceLabel(pr.fitScore, p.language)}</span></h2>
 <div class="lab">${L.why}</div><div>${esc(pr.whyItFits)}</div>
 ${pr.keyBenefits.length ? `<div class="lab">${L.benefits}</div><ul>${pr.keyBenefits.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}
 <div class="lab">${L.premium}</div><div class="prem">${esc(pr.indicativePremium)}</div>

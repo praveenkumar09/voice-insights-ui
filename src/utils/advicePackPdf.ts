@@ -1,3 +1,5 @@
+import type { AskTurn } from '../api/client'
+import { chipLabel, chipLabels } from './askSources'
 import { relevanceLabel } from './relevance'
 import type { AdvicePack } from '../types'
 import { AGENT_NAME } from '../brand'
@@ -9,7 +11,16 @@ const nl = (s: unknown) => esc(s).replace(/\n/g, '<br>')
 const SOURCE: Record<string, string> = { customer: 'Customer said', profile: 'From conversation', advisor: 'Added by advisor', missing: 'Not mentioned' }
 
 /** Opens the print dialog ("Save as PDF") on the whole advice pack: fact-find, record of advice, follow-up, CRM, next meeting. */
-export function printAdvicePack(pack: AdvicePack, customerName?: string | null) {
+export function printAdvicePack(pack: AdvicePack, customerName?: string | null, discussion: AskTurn[] = []) {
+  const talk = discussion.length
+    ? discussion
+        .map((t) => {
+          const labels = chipLabels(Object.values(t.sources ?? {}))
+          const src = Object.values(t.sources ?? {}).map((s) => labels.get(s.id) ?? chipLabel(s))
+          return `<div class="card"><div class="lab">The advisor asked</div><div>${nl(t.question)}</div><div class="lab">Juno answered</div><div>${nl(t.answer)}</div>${src.length ? `<div class="muted">Sources: ${esc(src.join(' · '))}</div>` : ''}</div>`
+        })
+        .join('')
+    : '<p class="muted">The advisor did not discuss the suggestions with Juno.</p>'
   const reviewed = pack.review
     ? `Reviewed by ${esc(pack.review.reviewedBy)} on ${esc(new Date(pack.review.reviewedAt).toLocaleString())}`
     : 'DRAFT — not yet reviewed by the advisor'
@@ -97,6 +108,8 @@ ${nm.gapsToFill.length ? `<h4>Information still missing</h4><ul>${nm.gapsToFill.
 <h2>3 · Customer follow-up</h2>${follow}
 <h2>4 · CRM note and tasks</h2>${crmHtml}
 <h2>5 · Next-meeting brief</h2>${meeting}
+<h2>6 · Discussion with Juno <small>(internal — the advisor questioning the suggestions)</small></h2>
+<p class="muted">Juno answered from this customer’s file and the product documents. It suggests; the advisor decides.</p>${talk}
 </body></html>`
 
   const frame = document.createElement('iframe')

@@ -167,3 +167,13 @@
 .ws__tab-text { flex: 1 0 calc(100% - 40px); min-width: 0; }
 .ws__tab .ws__chip { margin-left: 38px; }
 @media (min-width: 1281px) { .ws__tab-text small { display: none; } }
+
+/* ── Discussion with Juno ─────────────────────────────────────────────── */
+.ap-disc { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.ap-disc__turn { display: grid; gap: 10px; }
+.ap-disc__q span, .ap-disc__a span { display: block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint, #8a8a98); margin-bottom: 2px; }
+.ap-disc__q p { margin: 0; font-weight: 700; }
+.ap-disc__a p { margin: 0; line-height: 1.55; }
+.ap-disc__src { display: flex; flex-wrap: wrap; gap: 6px; }
+.ap-disc__src em { font-style: normal; font-size: 0.7rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(var(--tint-rgb, 120, 120, 140), 0.25); background: rgba(var(--tint-rgb, 120, 120, 140), 0.08); }
+.ap-disc__src em.is-inferred { border-style: dashed; }

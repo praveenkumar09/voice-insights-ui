@@ -39,8 +39,10 @@ const MIN_SPEECH_MS = 450          // a shorter sound is a cough or a click, not
 const FINAL_WAIT_MS = 4500         // how long to wait for the words of a question to come back from the speech model
 const FINAL_SETTLE_MS = 900        // ...and for a further part of it, if the advisor paused mid-question
 const UNMUTE_DELAY_MS = 350        // after Juno's last word, so its own echo is not heard as a question
-const FILLER_AFTER_MS = 900        // an answer slower to start than this gets a spoken "Mm, let me think"
+const FILLER_AFTER_MS = 300        // an answer slower to start than this gets a spoken "Mm, let me think" (the model alone takes ~2 s to begin)
 const FILLERS = ['Mm, let me think.', 'Good one, give me a second.', 'Right, let me check that.']
+// If the answer is still not ready when that first one ends, a second, longer one carries the wait.
+const FILLERS_2 = ['Just pulling his file up.', 'Bear with me, putting that together.', 'One moment, checking the documents.']
 
 const KEY_VOICE_ON = 'vi_ask_voice_on'
 const KEY_VOICE = 'vi_ask_voice'
@@ -100,6 +102,7 @@ export function useAskJuno(runId: string) {
   const finalsRef = useRef<string[]>([])
   finalsRef.current = capture.finalSegments
   const consumedRef = useRef(0)
+  const serverEndAtRef = useRef(0)   // when the server last said every transcript of the question was back
 
   // The conversation currently in flight. Bumping `gen` makes every callback of the previous one stand down.
   const gen = useRef(0)
@@ -113,7 +116,21 @@ export function useAskJuno(runId: string) {
   const gotSentence = useRef(false)
   const lastFiller = useRef(-1)
   const fillerClips = useRef<(Promise<Blob | null>)[]>([])
+  const fillerClips2 = useRef<(Promise<Blob | null>)[]>([])
+  const fillerStage = useRef(0)
   const msgSeq = useRef(0)
+  // Where the time goes between a question and Juno's first words (read from the console: window.__askTiming).
+  const timing = useRef<Record<string, number>>({})
+  const stamp = (k: string) => {
+    const w = window as unknown as { __askStamps?: Record<string, number> }
+    w.__askStamps = { ...(w.__askStamps ?? {}), [k]: Math.round(performance.timeOrigin + performance.now()) }
+  }
+  const mark = (k: string) => {
+    if (timing.current[k] === undefined) {
+      timing.current[k] = Math.round(performance.now() - (timing.current.ask ?? performance.now()))
+      ;(window as unknown as { __askTiming?: unknown }).__askTiming = { ...timing.current }
+    }
+  }
 
   // ── voice settings ──
   const setVoiceOn = useCallback((on: boolean) => {
@@ -125,6 +142,7 @@ export function useAskJuno(runId: string) {
     setVoiceKindState(k)
     save(KEY_VOICE, k)
     fillerClips.current = [] // the thinking sounds are in the old voice
+    fillerClips2.current = []
   }, [])
   const setHandsFree = useCallback((on: boolean) => {
     setHandsFreeState(on)
@@ -203,6 +221,7 @@ export function useAskJuno(runId: string) {
     void (item.clip ?? Promise.resolve(null)).then((blob) => {
       if (g !== gen.current) return
       if (item.sentence) revealSentence(item.sentence.messageId, item.sentence.key)
+      mark(item.filler ? 'fillerStarts' : 'firstAnswerAudio')
       // Exactly one thing is ever speaking: whatever was playing is stopped first, and each sentence can move the conversation
       // on only once (its own end, its own safety timer, or an error — whichever comes first, never two of them).
       stopCurrent()
@@ -223,6 +242,7 @@ export function useAskJuno(runId: string) {
         audioRef.current = a
         a.onended = () => {
           URL.revokeObjectURL(url)
+          if (item.filler) moreFiller(g)
           move()
         }
         a.onerror = move
@@ -265,6 +285,15 @@ export function useAskJuno(runId: string) {
   const prefetchFillers = () => {
     if (!voiceOnRef.current || fillerClips.current.length) return
     fillerClips.current = FILLERS.map((f) => junoSpeak(f, voiceKindRef.current, 'curious', 'en'))
+    fillerClips2.current = FILLERS_2.map((f) => junoSpeak(f, voiceKindRef.current, 'warm', 'en'))
+  }
+
+  /** The first thinking sound ended and there is still no answer: a second, longer one (once). */
+  const moreFiller = (g: number) => {
+    if (g !== gen.current || gotSentence.current || fillerStage.current >= 2 || !fillerClips2.current.length) return
+    fillerStage.current = 2
+    const i = Math.floor(Math.random() * fillerClips2.current.length)
+    queue.current.unshift({ clip: fillerClips2.current[i], filler: true })
   }
 
   const playFiller = (g: number) => {
@@ -272,6 +301,7 @@ export function useAskJuno(runId: string) {
     let i = Math.floor(Math.random() * fillerClips.current.length)
     if (i === lastFiller.current) i = (i + 1) % fillerClips.current.length
     lastFiller.current = i
+    fillerStage.current = 1
     queue.current.unshift({ clip: fillerClips.current[i], filler: true })
     if (!playing.current) playNext(g)
   }
@@ -291,6 +321,8 @@ export function useAskJuno(runId: string) {
       abortRef.current = ctrl
       streamDone.current = false
       gotSentence.current = false
+      fillerStage.current = 0
+      timing.current = { ask: performance.now(), askAt: Math.round(performance.timeOrigin + performance.now()) }
       setHint(null)
       prefetchFillers()
 
@@ -309,6 +341,7 @@ export function useAskJuno(runId: string) {
       const onEvent = (ev: AskEvent) => {
         if (g !== gen.current) return
         if (ev.type === 'sentence') {
+          mark('firstSentence')
           gotSentence.current = true
           clearFillerTimer()
           const key = `${juno}s${++seq}`
@@ -348,6 +381,8 @@ export function useAskJuno(runId: string) {
   const vad = useRef({ floor: 0.02, loud: 0, lastLoud: 0, started: 0, speaking: false })
 
   const endOfUtterance = async (serverDetected = false) => {
+    stamp('endSignalAt')
+    const sentAt = performance.now()
     const g = gen.current
     vad.current.speaking = false
     setPhase('thinking')
@@ -358,7 +393,7 @@ export function useAskJuno(runId: string) {
     let seen = finalsRef.current.length
     // The server sends its end signal only after every transcript of the question has come back, so a short beat is enough.
     // After a manual "I'm done" (or the fallback) the words are still on the way: wait for them, and for a further part.
-    if (serverDetected) await new Promise((r) => window.setTimeout(r, 250))
+    if (serverDetected) await new Promise((r) => window.setTimeout(r, 100))
     while (performance.now() - start < FINAL_WAIT_MS) {
       if (g !== gen.current) return
       const n = finalsRef.current.length
@@ -366,9 +401,10 @@ export function useAskJuno(runId: string) {
         seen = n
         stableSince = performance.now()
       }
-      if (n > consumedRef.current && (serverDetected || performance.now() - stableSince > FINAL_SETTLE_MS)) break
+      if (n > consumedRef.current && (serverDetected || serverEndAtRef.current > sentAt || performance.now() - stableSince > FINAL_SETTLE_MS)) break
       await new Promise((r) => window.setTimeout(r, 100))
     }
+    stamp('finalsAt')
     const text = finalsRef.current.slice(consumedRef.current).join(' ').trim()
     consumedRef.current = finalsRef.current.length
     if (text.replace(/[^\p{L}\p{N}]/gu, '').length < 3) {
@@ -415,6 +451,7 @@ export function useAskJuno(runId: string) {
   useEffect(() => {
     capture.setRawAmpListener((a) => ampRef.current(a))
     capture.setUtteranceEndListener(() => {
+      serverEndAtRef.current = performance.now()
       const p = phaseRef.current
       if (p === 'listening' || p === 'hearing') void endRef.current(true)
     })

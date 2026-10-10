@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { generateAdvicePack, getAdvicePack, regenerateAdviceSection, reviewAdvicePack, saveAdvicePack } from '../../api/client'
+import { generateAdvicePack, getAdvicePack, getAskHistory, regenerateAdviceSection, reviewAdvicePack, saveAdvicePack, type AskTurn } from '../../api/client'
 import type { AdviceTask, AdvicePack, AdvicePackSection, AdvicePackView, FactFindField, FactSource } from '../../types'
 import { printAdvicePack } from '../../utils/advicePackPdf'
 import { AGENT_NAME } from '../../brand'
 import { countWords } from '../../utils/wordCount'
 import { relevanceLabel } from '../../utils/relevance'
+import { chipLabel, chipLabels } from '../../utils/askSources'
 
-type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting'
+type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting' | 'discussion'
 type Tone = 'warm' | 'professional' | 'brief'
 
 const SOURCE_LABEL: Record<FactSource, string> = {
@@ -35,6 +36,7 @@ interface Props {
  */
 export function AdvicePackPanel({ runId, customerName, ready }: Props) {
   const [view, setView] = useState<AdvicePackView | null>(null)
+  const [discussion, setDiscussion] = useState<AskTurn[]>([])
   const [pack, setPack] = useState<AdvicePack | null>(null)
   const [dirty, setDirty] = useState(false)
   const [part, setPart] = useState<Part>('factFind')
@@ -67,6 +69,16 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
     return () => {
       alive = false
       if (timer) clearTimeout(timer)
+    }
+  }, [runId, ready])
+
+  // The advisor's discussion with Juno about the suggestions belongs in the pack; it is read fresh each time.
+  useEffect(() => {
+    if (!ready) return
+    let alive = true
+    void getAskHistory(runId).then((t) => alive && setDiscussion(t))
+    return () => {
+      alive = false
     }
   }, [runId, ready])
 
@@ -192,7 +204,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
           ) : (
             <span className="ap-stamp">Draft · needs your review</span>
           )}
-          <button className="ghost-btn" onClick={() => printAdvicePack(pack, customerName)}>Download PDF</button>
+          <button className="ghost-btn" onClick={() => printAdvicePack(pack, customerName, discussion)}>Download PDF</button>
           <button className="ghost-btn" onClick={regenerateAll} disabled={!!busy}>{regenerating ? 'Regenerating…' : 'Regenerate all'}</button>
           {dirty && <button className="ghost-btn ap-save" onClick={save} disabled={!!busy}>{busy === 'save' ? 'Saving…' : 'Save changes'}</button>}
           {!pack.review && (
@@ -208,6 +220,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
         <NavButton active={part === 'record'} onClick={() => setPart('record')} n={2} title="Record of advice" meta={pack.recordOfAdvice ? `${pack.recordOfAdvice.items.length} product${pack.recordOfAdvice.items.length === 1 ? '' : 's'}` : 'Unavailable'} />
         <NavButton active={part === 'followUp'} onClick={() => setPart('followUp')} n={3} title="Follow-up" meta="WhatsApp · email" />
         <NavButton active={part === 'crm'} onClick={() => setPart('crm')} n={4} title="CRM note & tasks" meta={pack.crm ? `${pack.crm.tasks.length} tasks` : 'Unavailable'} />
+        <NavButton active={part === 'discussion'} onClick={() => setPart('discussion')} n={6} title="Discussion with Juno" meta={discussion.length ? `${discussion.length} question${discussion.length === 1 ? '' : 's'}` : 'None yet'} />
         <NavButton active={part === 'meeting'} onClick={() => setPart('meeting')} n={5} title="Next meeting" meta={pack.nextMeeting ? `${pack.nextMeeting.questionsToAsk.length} questions` : 'Unavailable'} />
       </nav>
 
@@ -318,6 +331,38 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
               </>
             )}
           </Section>
+        )}
+
+        {part === 'discussion' && (
+          <section className="ap-section">
+            <div className="ap-section__head">
+              <div>
+                <h4>Discussion with Juno</h4>
+                <p>Your questions about the suggestions and Juno’s answers, each with the sources it rested on. Juno suggests; you decide. Included in the PDF.</p>
+              </div>
+            </div>
+            {discussion.length === 0 ? (
+              <p className="panel-empty">You haven’t talked the suggestions through with Juno yet. Open <b>Live vs final</b> and ask it why it suggested what it did — the discussion is saved here.</p>
+            ) : (
+              <ol className="ap-disc">
+                {discussion.map((t) => {
+                  const srcs = Object.values(t.sources ?? {})
+                  const labels = chipLabels(srcs)
+                  return (
+                    <li key={t.turn} className="glass-card ap-disc__turn">
+                      <div className="ap-disc__q"><span>You asked</span><p>{t.question}</p></div>
+                      <div className="ap-disc__a"><span>Juno answered</span><p>{t.answer}</p></div>
+                      {srcs.length > 0 && (
+                        <div className="ap-disc__src">
+                          {srcs.map((s) => <em key={s.id} className={`is-${s.kind}${s.inferred ? ' is-inferred' : ''}`} title={s.text}>{labels.get(s.id) ?? chipLabel(s)}</em>)}
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ol>
+            )}
+          </section>
         )}
 
         {part === 'followUp' && (

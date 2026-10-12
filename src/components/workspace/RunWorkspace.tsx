@@ -78,7 +78,7 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
   const name = profile?.customerName
 
   const journey: JourneyStep[] = [
-    { id: 'agents', title: AGENT_NAME, hint: 'Agent orchestration · 11 agents', state: reportReady ? 'done' : running || doneCount > 0 ? 'running' : 'idle', chip: reportReady ? 'Complete' : `${doneCount}/${total}` },
+    { id: 'agents', title: AGENT_NAME, hint: 'Agent orchestration · 12 agents', state: reportReady ? 'done' : running || doneCount > 0 ? 'running' : 'idle', chip: reportReady ? 'Complete' : `${doneCount}/${total}` },
     { id: 'live', title: 'Live vs final', hint: 'Copilot vs the agents', state: finalReady ? 'done' : 'idle', chip: finalReady ? 'Compare' : 'Waiting' },
     { id: 'report', title: 'Final report', hint: 'Advisory report & proposal', state: reportReady ? 'done' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
     { id: 'future', title: 'Goals & plan', hint: 'Customer conversation page', state: reportReady ? 'new' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
@@ -102,7 +102,7 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
         <div>
           {tab === 'agents' && (
             <>
-              <StageIntro title={`Meet ${AGENT_NAME}`} text={`${AGENT_NAME} is the orchestration behind every suggestion: eleven specialist AI agents analyse the conversation in four phases. Every card shows its one-line conclusion — open it for the full reasoning.`} audience={[{ label: 'Behind the scenes', kind: 'internal' }]} />
+              <StageIntro title={`Meet ${AGENT_NAME}`} text={`${AGENT_NAME} is the orchestration behind every suggestion: twelve specialist AI agents analyse the conversation in four phases. Every card shows its one-line conclusion — open it for the full reasoning.`} audience={[{ label: 'Behind the scenes', kind: 'internal' }]} />
               <OrchestratorCanvas runId={runId} steps={steps} />
             </>
           )}

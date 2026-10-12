@@ -46,7 +46,7 @@ export function CoverageCues({ profile, copilot, text }: Props) {
     },
     {
       key: 'cover', title: 'Existing cover', hint: 'Policies they already have — or none',
-      done: (profile?.existingPolicies?.length ?? 0) > 0 || has(/\b(insurance|polic(y|ies)|cover(age)?|insured)\b/i),
+      done: profile?.coverage?.status === 'FOUND' || profile?.coverage?.status === 'NONE' || (profile?.existingPolicies?.length ?? 0) > 0 || has(/\b(insurance|polic(y|ies)|cover(age)?|insured)\b/i),
     },
   ]
   const covered = cues.filter((c) => c.done).length

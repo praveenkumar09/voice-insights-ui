@@ -23,6 +23,11 @@ export const AGENT_META: Record<AgentKey, AgentMeta> = {
     purpose: 'Prevent unsuitable suggestions.',
     question: 'What can this customer realistically afford?',
   },
+  existingCoverage: {
+    label: 'Existing Coverage Agent',
+    purpose: 'Make sure we never suggest what the customer already has.',
+    question: 'What does the customer already hold?',
+  },
   merge: {
     label: 'Synthesis Agent',
     purpose: 'Combine need, risk and affordability into one customer picture.',
@@ -65,8 +70,8 @@ export const AGENT_META: Record<AgentKey, AgentMeta> = {
   },
 }
 
-/** The three agents that run in parallel before the fan-in into merge. */
-export const PARALLEL_AGENTS: AgentKey[] = ['need', 'risk', 'affordability']
+/** The four agents that run in parallel before the fan-in into merge. */
+export const PARALLEL_AGENTS: AgentKey[] = ['need', 'risk', 'affordability', 'existingCoverage']
 
 /**
  * The single continuous chain that follows the parallel fan-in — starting
@@ -86,7 +91,7 @@ export const POST_MERGE_AGENTS: AgentKey[] = [
   'salesReport',
 ]
 
-/** The pipeline as four phases — how the 11 agents are explained to an audience. */
+/** The pipeline as four phases — how the 12 agents are explained to an audience. */
 export interface Phase {
   id: string
   n: number
@@ -96,7 +101,7 @@ export interface Phase {
 }
 
 export const PHASES: Phase[] = [
-  { id: 'understand', n: 1, title: 'Understand', blurb: 'Three specialists read the customer at the same time', agents: ['need', 'risk', 'affordability'] },
+  { id: 'understand', n: 1, title: 'Understand', blurb: 'Four specialists read the customer and their existing cover at the same time', agents: ['need', 'risk', 'affordability', 'existingCoverage'] },
   { id: 'decide', n: 2, title: 'Decide', blurb: 'Combine the picture, segment the customer, rank every product', agents: ['merge', 'persona', 'productScoring', 'productShortlist'] },
   { id: 'verify', n: 3, title: 'Verify', blurb: 'Check each claim against product documents and compliance rules', agents: ['ragValidation', 'complianceCheck'] },
   { id: 'communicate', n: 4, title: 'Communicate', blurb: 'Turn the analysis into words an advisor can use', agents: ['summary', 'salesReport'] },

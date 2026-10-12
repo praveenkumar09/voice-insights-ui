@@ -16,6 +16,7 @@ import type {
   RecommendationSummaryResult,
   RiskAnalysisResult,
   SalesReportResult,
+  ExistingCoverageResult,
 } from '../../types'
 import { AGENT_META } from './agentMeta'
 import { AgentIcon } from './agentIcons'
@@ -167,6 +168,23 @@ function AgentResultView({ agentKey, result, runId }: { agentKey: AgentKey; resu
             </div>
           )}
           <p className="agent-card__rationale">{r.rationale}</p>
+        </div>
+      )
+    }
+    case 'existingCoverage': {
+      const r = result as ExistingCoverageResult
+      const label = { FOUND: 'Policies found', NONE: 'No existing policies', UNAVAILABLE: 'Could not check', NOT_CHECKED: 'Not checked' }[r.status]
+      return (
+        <div className="agent-card__result">
+          <span className="merged-panel__pill">{label}</span>
+          {r.heldProducts.length > 0 && <Section title="Already held (in force)" items={r.heldProducts} />}
+          {r.excludedFromShortlist.length > 0 && <Section title="Kept out of the suggestions" items={r.excludedFromShortlist} />}
+          {r.heldCategories.length > 0 && (
+            <div className="profile-card__tags">
+              {r.heldCategories.map((c) => <span className="profile-card__tag" key={c}>{c.replace(/_/g, ' ').toLowerCase()}</span>)}
+            </div>
+          )}
+          <p className="agent-card__rationale">{r.note}</p>
         </div>
       )
     }

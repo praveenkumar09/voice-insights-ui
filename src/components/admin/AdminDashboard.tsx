@@ -165,7 +165,7 @@ function Body({ data, days, onViewRun }: { data: AnalyticsResult; days: number; 
     () => [
       { label: 'Conversations captured', value: t.conversations, note: 'Every voice session started in this period' },
       { label: 'Analysed live', value: t.analysed, note: 'Sessions that produced a transcript and live insights' },
-      { label: 'Suggestion run', value: t.recommendations, note: `Analysed by ${AGENT_NAME}, the 11-agent team` },
+      { label: 'Suggestion run', value: t.recommendations, note: `Analysed by ${AGENT_NAME}, the 12-agent team` },
       { label: 'Advice pack drafted', value: ops?.packsGenerated ?? 0, note: 'Fact-find, record of advice, follow-up and CRM note built' },
       { label: 'Signed off by the advisor', value: ops?.packsReviewed ?? 0, note: 'Reviewed and confirmed by the advisor' },
     ],

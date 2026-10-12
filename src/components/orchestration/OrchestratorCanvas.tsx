@@ -14,7 +14,7 @@ interface Props {
 type PhaseState = 'idle' | 'running' | 'done'
 
 /**
- * The 11-agent pipeline as four phases — Understand, Decide, Verify, Communicate — each a band of cards.
+ * The 12-agent pipeline as four phases — Understand, Decide, Verify, Communicate — each a band of cards.
  * Within a phase the agents are laid side by side (the first phase genuinely runs in parallel); between phases a
  * flowing link shows the hand-off. Every card shows its one-line outcome and opens to the full result on click.
  */
@@ -33,7 +33,7 @@ export function OrchestratorCanvas({ runId, steps }: Props) {
         <span className="phases__conductor-icon">{done === total ? <CheckIcon /> : done > 0 || states.includes('running') ? <SpinnerIcon /> : <span />}</span>
         <div>
           <strong>{AGENT_NAME}</strong>
-          <small>{done === total ? 'Orchestrator · all 11 agents have reported back' : done > 0 || states.includes('running') ? `Orchestrator · coordinating 11 specialist agents · ${done} complete` : 'Orchestrator · ready to dispatch 11 specialist agents'}</small>
+          <small>{done === total ? 'Orchestrator · all 12 agents have reported back' : done > 0 || states.includes('running') ? `Orchestrator · coordinating 12 specialist agents · ${done} complete` : 'Orchestrator · ready to dispatch 12 specialist agents'}</small>
         </div>
       </div>
 

@@ -3,7 +3,7 @@ import { getCustomerProfile, getRecommendationRun } from '../api/client'
 import { RunWorkspace } from '../components/workspace/RunWorkspace'
 import { PIPELINE_ORDER } from '../hooks/useRecommendationStream'
 import type { AgentState } from '../hooks/useRecommendationStream'
-import type { AgentKey, CustomerProfile, RecommendationRunView } from '../types'
+import type { AgentKey, CustomerProfile, ExistingCoverageResult, RecommendationRunView } from '../types'
 
 interface Props {
   runId: string
@@ -54,6 +54,12 @@ function toSteps(run: RecommendationRunView): Record<AgentKey, AgentState> {
   const steps = {} as Record<AgentKey, AgentState>
   for (const key of PIPELINE_ORDER) {
     const row = byKey.get(key)
+    // A run from before the policy check existed has no such step: show it as not checked, not as stuck.
+    if (!row && key === 'existingCoverage' && run.status === 'COMPLETED') {
+      const legacy: ExistingCoverageResult = { status: 'NOT_CHECKED', heldProducts: [], heldCategories: [], excludedFromShortlist: [], note: 'This run took place before existing policies were checked.' }
+      steps[key] = { status: 'done', result: legacy, error: null }
+      continue
+    }
     steps[key] = row
       ? { status: row.status === 'COMPLETED' ? 'done' : row.status === 'FAILED' ? 'failed' : 'running', result: row.output, error: null }
       : { status: 'idle', result: null, error: null }

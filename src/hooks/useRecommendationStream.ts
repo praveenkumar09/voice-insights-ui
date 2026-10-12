@@ -13,6 +13,7 @@ export const PIPELINE_ORDER: AgentKey[] = [
   'need',
   'risk',
   'affordability',
+  'existingCoverage',
   'merge',
   'persona',
   'productScoring',

@@ -1,4 +1,4 @@
-import type { AdvicePack, AdvicePackSection, AdvicePackView, AnalyticsResult, CopilotInsights, CustomerProfile, LifeMapData, ProposalResult, ProtectionStory, CustomerSummary, PageResult, RecommendationRunView } from '../types'
+import type { CoverageSnapshot, AdvicePack, AdvicePackSection, AdvicePackView, AnalyticsResult, CopilotInsights, CustomerProfile, LifeMapData, ProposalResult, ProtectionStory, CustomerSummary, PageResult, RecommendationRunView } from '../types'
 
 const API_BASE = (import.meta.env.VITE_VOICE_API_BASE_URL as string | undefined) ?? 'http://localhost:8084'
 const WS_BASE = API_BASE.replace(/^http/, 'ws')
@@ -280,6 +280,17 @@ export async function saveCustomerProfile(profile: CustomerProfile): Promise<Cus
   return res.json()
 }
 
+/** Checks what the customer already holds. The NRIC is sent once, over this call, and is not kept by the server. */
+export async function lookUpCoverage(customerId: string, nric: string, consent: boolean): Promise<CoverageSnapshot> {
+  const res = await fetch(`${API_BASE}/api/customers/${customerId}/coverage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ nric, consent }),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Could not check existing policies (${res.status})`))
+  return res.json()
+}
+
 export async function updateTranscript(
   customerId: string,
   transcript: string,
@@ -414,7 +425,7 @@ export async function junoPhrases(lang: LangId): Promise<JunoPhrases | null> {
 /** Where one of Juno's statements comes from: what the customer shared, the agents' analysis, compliance, or a product document. */
 export interface AskSource {
   id: string
-  kind: 'customer' | 'analysis' | 'compliance' | 'document' | 'calc'
+  kind: 'customer' | 'analysis' | 'compliance' | 'document' | 'calc' | 'coverage'
   label: string
   text: string
   file?: string | null

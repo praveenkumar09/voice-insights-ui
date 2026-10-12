@@ -4,6 +4,7 @@ const P: Record<AgentKey, string> = {
   need: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 3a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
   risk: 'M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3zm0 5v4m0 3h.01',
   affordability: 'M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8zm0 2h16m-4 5h.01',
+  existingCoverage: 'M8 3h9a2 2 0 0 1 2 2v13H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM6 7H5v11a2 2 0 0 0 2 2h9M10 9h6m-6 3h6m-6 3h3',
   merge: 'M12 3l9 5-9 5-9-5 9-5zm-9 9l9 5 9-5m-18 4l9 5 9-5',
   persona: 'M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-4 3.6-6 8-6s8 2 8 6',
   productScoring: 'M5 20V10m5 10V4m5 16v-7m5 7v-11',

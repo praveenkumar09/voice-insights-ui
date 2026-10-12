@@ -7,6 +7,7 @@ export const KIND_LABEL: Record<AskSource['kind'], string> = {
   compliance: 'Compliance',
   document: 'Product document',
   calc: 'Calculated',
+  coverage: 'Policy system',
 }
 
 /** A short, readable name for a source chip: what the source actually is ("Protection gaps", "Existing cover"), or for a document which product and section. */

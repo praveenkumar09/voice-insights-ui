@@ -1,3 +1,34 @@
+/** One policy the policy system says the customer holds. */
+export interface HeldPolicy {
+  policyNumber: string | null
+  productName: string | null
+  category: string | null
+  status: string | null
+  sumAssured: string | null
+  insurer: string | null
+}
+
+/**
+ * What the policy system said about the customer's existing cover. UNAVAILABLE means cover is unknown (not "none").
+ * The NRIC is never stored or returned, only its masked form.
+ */
+export interface CoverageSnapshot {
+  status: 'FOUND' | 'NONE' | 'UNAVAILABLE'
+  nricMasked: string
+  policies: HeldPolicy[]
+  fetchedAt: string
+  advisorConsented: boolean
+}
+
+/** Output of the Existing Coverage Agent in a recommendation run. */
+export interface ExistingCoverageResult {
+  status: 'FOUND' | 'NONE' | 'UNAVAILABLE' | 'NOT_CHECKED'
+  heldProducts: string[]
+  heldCategories: string[]
+  excludedFromShortlist: string[]
+  note: string
+}
+
 export interface CustomerProfile {
   id?: string
   agentUserId?: string
@@ -14,6 +45,8 @@ export interface CustomerProfile {
   notes?: string | null
   rawTranscript?: string | null
   liveInsights?: { latest: CopilotInsights; history: SignalPoint[] } | null
+  /** Set by the policy-system lookup only. */
+  coverage?: CoverageSnapshot | null
   createdAt?: string
   updatedAt?: string
 }
@@ -193,6 +226,7 @@ export type AgentKey =
   | 'need'
   | 'risk'
   | 'affordability'
+  | 'existingCoverage'
   | 'merge'
   | 'persona'
   | 'productScoring'

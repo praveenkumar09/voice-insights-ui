@@ -19,9 +19,16 @@ interface Props {
  * missed, and corrects the Life Map. Nothing here is required — but the agents work from exactly what is
  * confirmed on this screen.
  */
+/** One line of what the policy system confirmed, or null when it was not checked or could not be reached. */
+function verifiedCover(p: CustomerProfile): string | null {
+  const c = p.coverage
+  if (!c || (c.status !== 'FOUND' && c.status !== 'NONE')) return null
+  return c.policies.length === 0 ? 'no policies on record' : c.policies.filter((x) => x.status === 'IN_FORCE').map((x) => x.productName).join(', ') || 'none in force'
+}
+
 export function ReviewPanel({ profile, copilot, onProfileSaved, onSaveLifeMap }: Props) {
   const missing = [profile.age, profile.occupation, profile.incomeBand, profile.dependents, profile.budgetNotes]
-    .filter((v) => v == null || String(v).trim() === '').length + ((profile.existingPolicies ?? []).length === 0 ? 1 : 0)
+    .filter((v) => v == null || String(v).trim() === '').length + ((profile.existingPolicies ?? []).length === 0 && !verifiedCover(profile) ? 1 : 0)
   return (
     <div className="review">
       <div className="review__head">
@@ -87,10 +94,10 @@ function DetailsForm({ profile, onSaved }: { profile: CustomerProfile; onSaved: 
   }
 
   const field = (label: string, key: keyof typeof f, opts: { type?: string; placeholder?: string; wide?: boolean } = {}) => (
-    <label className={`review__field${opts.wide ? ' is-wide' : ''}${f[key].trim() === '' ? ' is-missing' : ''}`}>
+    <label className={`review__field${opts.wide ? ' is-wide' : ''}${f[key].trim() === '' && !(key === 'existingPolicies' && verifiedCover(profile)) ? ' is-missing' : ''}`}>
       <span>
         {label}
-        {f[key].trim() === '' && <em>missing</em>}
+        {f[key].trim() === '' && !(key === 'existingPolicies' && verifiedCover(profile)) && <em>missing</em>}
       </span>
       <input type={opts.type ?? 'text'} value={f[key]} onChange={set(key)} placeholder={opts.placeholder} />
     </label>
@@ -106,7 +113,7 @@ function DetailsForm({ profile, onSaved }: { profile: CustomerProfile; onSaved: 
         {field('Income', 'incomeBand', { placeholder: 'e.g. S$6,000–8,000 / month' })}
         {field('Dependants', 'dependents', { type: 'number' })}
         {field('Budget', 'budgetNotes', { placeholder: 'e.g. around S$400 a month' })}
-        {field('Existing cover', 'existingPolicies', { placeholder: 'Comma-separated, or leave blank if none', wide: true })}
+        {field('Existing cover', 'existingPolicies', { placeholder: verifiedCover(profile) ? `Verified in the policy system: ${verifiedCover(profile)}` : 'Comma-separated, or leave blank if none', wide: true })}
       </div>
       <div className="review__tip">
         <b>Why it matters</b>

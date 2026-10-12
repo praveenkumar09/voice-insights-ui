@@ -1,9 +1,9 @@
 import type { WhatIfChange, WhatIfProduct, WhatIfView } from '../../api/client'
 import { changeText } from '../../utils/whatIf'
 
-const STEPS = ['need', 'risk', 'affordability', 'merge', 'persona', 'productScoring', 'productShortlist', 'ragValidation', 'complianceCheck']
+const STEPS = ['need', 'risk', 'affordability', 'existingCoverage', 'merge', 'persona', 'productScoring', 'productShortlist', 'ragValidation', 'complianceCheck']
 const STEP_LABEL: Record<string, string> = {
-  need: 'Needs', risk: 'Risk', affordability: 'Affordability', merge: 'Putting it together', persona: 'Customer type',
+  need: 'Needs', risk: 'Risk', affordability: 'Affordability', existingCoverage: 'Existing cover', merge: 'Putting it together', persona: 'Customer type',
   productScoring: 'Weighing products', productShortlist: 'Shortlisting', ragValidation: 'Checking the documents', complianceCheck: 'Compliance',
 }
 
@@ -27,7 +27,7 @@ interface Props {
 export function ScenarioCard({ stage, changes, view, onRun, onDrop }: Props) {
   const done = view?.progress.filter((p) => STEPS.includes(p.agent) && p.status === 'COMPLETED').length ?? 0
   const finished = new Set(view?.progress.filter((p) => p.status === 'COMPLETED').map((p) => p.agent))
-  const current = STEPS.find((a) => !finished.has(a) && (a === 'need' || a === 'risk' || a === 'affordability' ? true : STEPS.slice(0, STEPS.indexOf(a)).every((b) => finished.has(b) || ['need', 'risk', 'affordability'].includes(b))))
+  const current = STEPS.find((a) => !finished.has(a) && (a === 'need' || a === 'risk' || a === 'affordability' || a === 'existingCoverage' ? true : STEPS.slice(0, STEPS.indexOf(a)).every((b) => finished.has(b) || ['need', 'risk', 'affordability', 'existingCoverage'].includes(b))))
   const result = view?.result ?? null
   return (
     <div className={`wi wi--${stage}`} role="group" aria-label="What if scenario">

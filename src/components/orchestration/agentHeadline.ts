@@ -3,6 +3,7 @@ import type {
   AgentKey,
   ComplianceCheckResult,
   CustomerPersonaResult,
+  ExistingCoverageResult,
   MergedInsights,
   NeedAnalysisResult,
   ProductScoringResult,
@@ -34,6 +35,13 @@ export function agentHeadline(agent: AgentKey, result: unknown): string | null {
       case 'affordability': {
         const r = result as AffordabilityResult
         return r.affordablePremiumRange ? `Comfortable range · ${r.affordablePremiumRange}` : null
+      }
+      case 'existingCoverage': {
+        const r = result as ExistingCoverageResult
+        if (r.status === 'FOUND') return `${r.heldProducts.length} held · ${r.excludedFromShortlist.length} kept out of the suggestions`
+        if (r.status === 'NONE') return 'No existing policies · confirmed'
+        if (r.status === 'UNAVAILABLE') return 'Could not be checked · using what was said'
+        return 'Not checked · no NRIC entered'
       }
       case 'merge': {
         const r = result as MergedInsights

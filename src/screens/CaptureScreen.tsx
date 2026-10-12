@@ -7,7 +7,6 @@ import { JunoStage, JunoTranscript } from '../components/juno/JunoStage'
 import { useJuno } from '../hooks/useJuno'
 import { ConfirmChips } from '../components/capture/ConfirmChips'
 import { DebriefFollowUp } from '../components/capture/DebriefFollowUp'
-import { ExistingCoverPanel } from '../components/capture/ExistingCoverPanel'
 import { ReviewPanel } from '../components/capture/ReviewPanel'
 import { useElapsed } from '../components/capture/useElapsed'
 import { CustomerProfileCard } from '../components/CustomerProfileCard'
@@ -184,6 +183,7 @@ export function CaptureScreen({ onReady }: Props) {
           amplitude={amplitude}
           partialText={partialText}
           profile={profile}
+          onProfilePatch={voice.patchProfile}
           copilot={copilot}
           canRecommend={canRecommend}
           advancing={advancing}
@@ -271,18 +271,17 @@ export function CaptureScreen({ onReady }: Props) {
         </div>
         {!safe && (
           <div className="capture-grid__col">
-            <ExistingCoverPanel profile={profile} onSaved={voice.patchProfile} />
             {debrief || withJuno ? (
               <>
                 <CoverageCues profile={profile} copilot={copilot} text={spoken} />
-                <CustomerProfileCard profile={profile} />
+                <CustomerProfileCard profile={profile} onProfilePatch={voice.patchProfile} />
               </>
             ) : (
               <>
                 <SignalGauges copilot={copilot} history={signalHistory} />
                 <NeedTags needs={copilot?.needs ?? []} />
                 <ComplianceWatch flags={copilot?.complianceFlags ?? []} active={!!copilot} />
-                <CustomerProfileCard profile={profile} />
+                <CustomerProfileCard profile={profile} onProfilePatch={voice.patchProfile} />
               </>
             )}
           </div>

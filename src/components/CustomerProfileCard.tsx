@@ -1,7 +1,10 @@
 import type { CustomerProfile } from '../types'
+import { CoverCheck } from './capture/CoverCheck'
 
 interface Props {
   profile: CustomerProfile | null
+  /** Lets the card check existing policies with the policy system (and show the result). */
+  onProfilePatch?: (patch: Partial<CustomerProfile>) => void
 }
 
 const FIELDS: { key: keyof CustomerProfile; label: string }[] = [
@@ -12,7 +15,7 @@ const FIELDS: { key: keyof CustomerProfile; label: string }[] = [
   { key: 'dependents', label: 'Dependents' },
 ]
 
-export function CustomerProfileCard({ profile }: Props) {
+export function CustomerProfileCard({ profile, onProfilePatch }: Props) {
   const rows = FIELDS.filter((f) => {
     const value = profile?.[f.key]
     return value !== null && value !== undefined && value !== ''
@@ -53,9 +56,16 @@ export function CustomerProfileCard({ profile }: Props) {
         </div>
       )}
 
+      {onProfilePatch && (
+        <div className="profile-card__section">
+          <span className="profile-card__section-label">Existing cover</span>
+          <CoverCheck profile={profile} onSaved={onProfilePatch} />
+        </div>
+      )}
+
       {profile?.existingPolicies && profile.existingPolicies.length > 0 && (
         <div className="profile-card__section">
-          <span className="profile-card__section-label">Existing policies</span>
+          <span className="profile-card__section-label">{onProfilePatch ? 'Mentioned in the conversation' : 'Existing policies'}</span>
           <div className="profile-card__tags">
             {profile.existingPolicies.map((p, i) => (
               <span className="profile-card__tag profile-card__tag--muted" key={i}>

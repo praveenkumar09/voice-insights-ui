@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef } from 'react'
 import { JUNO_TOPICS, LANGUAGES, type useJuno } from '../../hooks/useJuno'
 import type { CopilotInsights, CustomerProfile } from '../../types'
+import { CoverCheck } from '../capture/CoverCheck'
 import { JunoCanvas, type FieldMode } from './JunoCanvas'
 
 type Juno = ReturnType<typeof useJuno>
@@ -13,6 +14,8 @@ interface Props {
   /** What the advisor is saying right now (not yet a finished sentence). */
   partialText: string
   profile: CustomerProfile | null
+  /** Applies a change to the profile held on screen (the existing-policies check uses it). */
+  onProfilePatch?: (patch: Partial<CustomerProfile>) => void
   copilot: CopilotInsights | null
   /** The debrief has been saved and is ready to review and analyse. */
   canRecommend: boolean
@@ -61,8 +64,14 @@ function topicFacts(key: string, p: CustomerProfile | null, c: CopilotInsights |
       return (map?.worries ?? []).map((w) => w.label)
     case 'money':
       return [p?.incomeBand, p?.budgetNotes].filter(Boolean) as string[]
-    case 'cover':
-      return (p?.existingPolicies ?? []).filter(Boolean)
+    case 'cover': {
+      // What the policy system confirmed comes first; what was said follows.
+      const c = p?.coverage
+      const verified = !c || (c.status !== 'FOUND' && c.status !== 'NONE') ? []
+        : c.policies.length === 0 ? ['None on record (policy system)']
+        : c.policies.filter((x) => x.status === 'IN_FORCE').map((x) => `${x.productName} (policy system)`)
+      return [...verified, ...(p?.existingPolicies ?? []).filter(Boolean)]
+    }
     default:
       return []
   }
@@ -84,7 +93,7 @@ const TOPIC_ICON: Record<string, JSX.Element> = {
  * panel that fills in as the advisor describes the customer, so the gaps are visible. When the debrief is over the
  * advisor reviews it, and alone can start the analysis.
  */
-export function JunoStage({ k, amplitude, partialText, profile, copilot, canRecommend, advancing, onRecommend, onBrief, noVoice, safe = false }: Props) {
+export function JunoStage({ k, amplitude, partialText, profile, onProfilePatch, copilot, canRecommend, advancing, onRecommend, onBrief, noVoice, safe = false }: Props) {
   const { stage, speaking, thinking, listening, covered, line, revealed } = k
   const mode: FieldMode = stage === 'finished' ? 'done' : speaking ? 'speaking' : thinking ? 'thinking' : listening ? 'listening' : 'idle'
   const step = stepIndex(stage)
@@ -393,6 +402,7 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
                       </AnimatePresence>
                       {items.length === 0 && <span className="jn__none">{done ? 'Covered' : 'Not mentioned yet'}</span>}
                     </div>
+                    {t.key === 'cover' && onProfilePatch && <CoverCheck profile={profile} onSaved={onProfilePatch} tone="dark" showTags={false} />}
                   </div>
                 </li>
               )

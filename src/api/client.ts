@@ -436,10 +436,90 @@ export interface AskTurn {
   at: string
 }
 
+/** One fact that would be different in a "what if". */
+export interface WhatIfChange {
+  field: string
+  op: 'set' | 'add' | 'remove'
+  value: string
+  label: string
+  from: string
+  to: string
+}
+
+export interface WhatIfProduct {
+  name: string
+  before: number | null
+  after: number | null
+  relevanceBefore: string | null
+  relevanceAfter: string | null
+  movement: 'NEW' | 'DROPPED' | 'UP' | 'DOWN' | 'SAME'
+  why: string
+}
+
+export interface WhatIfResult {
+  products: WhatIfProduct[]
+  complianceBefore: boolean | null
+  complianceAfter: boolean | null
+  summary: string
+  changedAnything: boolean
+}
+
+export interface WhatIfView {
+  id: string
+  status: 'PROPOSED' | 'RUNNING' | 'DONE' | 'FAILED' | 'CANCELLED'
+  question: string
+  changes: WhatIfChange[]
+  result: WhatIfResult | null
+  error: string | null
+  progress: { agent: string; status: string }[]
+  createdAt: string
+}
+
 export type AskEvent =
   | { type: 'sentence'; text: string; sources: AskSource[] }
   | { type: 'done'; turn: number }
   | { type: 'error'; message: string }
+  | { type: 'scenario_proposal'; id: string; changes: WhatIfChange[] }
+  | { type: 'scenario_started'; id: string }
+  | { type: 'scenario_cancelled'; id: string }
+
+export async function getWhatIfs(runId: string): Promise<WhatIfView[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/recommendations/${runId}/whatif`, { headers: authHeaders() })
+    return res.ok ? await res.json() : []
+  } catch {
+    return []
+  }
+}
+
+export async function getWhatIf(runId: string, id: string): Promise<WhatIfView | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/recommendations/${runId}/whatif/${id}`, { headers: authHeaders() })
+    return res.ok ? await res.json() : null
+  } catch {
+    return null
+  }
+}
+
+/** The "Run it" button; resolves to an error message, or null when the analysis has started. */
+export async function runWhatIf(runId: string, id: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/recommendations/${runId}/whatif/${id}/run`, { method: 'POST', headers: authHeaders() })
+    if (res.ok) return null
+    const body = await res.json().catch(() => ({}))
+    return (body as { error?: string }).error ?? "I couldn't start that analysis."
+  } catch {
+    return "I couldn't start that analysis."
+  }
+}
+
+export async function cancelWhatIf(runId: string, id: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/recommendations/${runId}/whatif/${id}`, { method: 'DELETE', headers: authHeaders() })
+  } catch {
+    // The proposal simply expires.
+  }
+}
 
 export async function getAskStarters(runId: string): Promise<AskStarter[]> {
   try {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AskSource } from '../../api/client'
 import { useAskJuno, type AskMessage, type AskPhase } from '../../hooks/useAskJuno'
 import { chipLabel, chipLabels } from '../../utils/askSources'
+import { ScenarioCard } from './ScenarioCard'
 import '../../ask.css'
 
 interface Props {
@@ -59,7 +60,7 @@ export function AskJuno({ runId, customerName }: Props) {
   useEffect(() => {
     const el = threadRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-  }, [k.messages, k.phase])
+  }, [k.messages, k.phase, k.scenario])
 
   const level = Math.min(1, k.amplitude * 3)
   const name = customerName?.trim() || 'the customer'
@@ -210,10 +211,11 @@ export function AskJuno({ runId, customerName }: Props) {
             {!hasThread && (
               <div className="ask__msg ask__msg--juno ask__msg--intro">
                 <span className="ask__who"><i aria-hidden /> Juno</span>
-                <p>I was in the room when the agents worked this out. Ask me why I suggested what I did — I’ll answer from {name}’s file and the product documents, and I’ll tell you plainly when something isn’t there.</p>
+                <p>I was in the room when the agents worked this out. Ask me why I suggested what I did, or “what if…” something about {name} were different — I’ll answer from {name}’s file and the product documents, and I’ll tell you plainly when something isn’t there.</p>
               </div>
             )}
             {k.messages.map(renderMessage)}
+            {k.scenario && <ScenarioCard stage={k.scenario.stage} changes={k.scenario.changes} view={k.scenario.view} onRun={() => void k.runScenario()} onDrop={k.dropScenario} />}
           </div>
 
           {k.starters.length > 0 && (

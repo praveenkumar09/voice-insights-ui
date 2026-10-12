@@ -1,4 +1,5 @@
-import type { AskTurn } from '../api/client'
+import type { AskTurn, WhatIfView } from '../api/client'
+import { changeLine } from './whatIf'
 import { chipLabel, chipLabels } from './askSources'
 import { relevanceLabel } from './relevance'
 import type { AdvicePack } from '../types'
@@ -11,7 +12,7 @@ const nl = (s: unknown) => esc(s).replace(/\n/g, '<br>')
 const SOURCE: Record<string, string> = { customer: 'Customer said', profile: 'From conversation', advisor: 'Added by advisor', missing: 'Not mentioned' }
 
 /** Opens the print dialog ("Save as PDF") on the whole advice pack: fact-find, record of advice, follow-up, CRM, next meeting. */
-export function printAdvicePack(pack: AdvicePack, customerName?: string | null, discussion: AskTurn[] = []) {
+export function printAdvicePack(pack: AdvicePack, customerName?: string | null, discussion: AskTurn[] = [], scenarios: WhatIfView[] = []) {
   const talk = discussion.length
     ? discussion
         .map((t) => {
@@ -21,6 +22,17 @@ export function printAdvicePack(pack: AdvicePack, customerName?: string | null, 
         })
         .join('')
     : '<p class="muted">The advisor did not discuss the suggestions with Juno.</p>'
+  const whatIfs = scenarios.length
+    ? `<h3>What-ifs explored <small>(not the customer’s actual situation; the suggestions were not changed)</small></h3>` +
+      scenarios
+        .map((w) => {
+          const rows = (w.result?.products ?? [])
+            .map((p) => `<tr><td>${esc(p.name)}</td><td>${p.before ? `#${p.before} ${esc(p.relevanceBefore ?? '')}` : 'Not shortlisted'}</td><td>${p.after ? `#${p.after} ${esc(p.relevanceAfter ?? '')}` : 'Not shortlisted'}${p.why ? `<div class="muted">${esc(p.why)}</div>` : ''}</td></tr>`)
+            .join('')
+          return `<div class="card"><div class="lab">What if</div><div>${esc(w.changes.map(changeLine).join(' · '))}</div><div class="lab">Juno’s read</div><div>${nl(w.result?.summary ?? '')}</div><table><tr><td class="k">Product</td><td class="k">Original</td><td class="k">With the change</td></tr>${rows}</table></div>`
+        })
+        .join('')
+    : ''
   const reviewed = pack.review
     ? `Reviewed by ${esc(pack.review.reviewedBy)} on ${esc(new Date(pack.review.reviewedAt).toLocaleString())}`
     : 'DRAFT — not yet reviewed by the advisor'
@@ -109,7 +121,7 @@ ${nm.gapsToFill.length ? `<h4>Information still missing</h4><ul>${nm.gapsToFill.
 <h2>4 · CRM note and tasks</h2>${crmHtml}
 <h2>5 · Next-meeting brief</h2>${meeting}
 <h2>6 · Discussion with Juno <small>(internal — the advisor questioning the suggestions)</small></h2>
-<p class="muted">Juno answered from this customer’s file and the product documents. It suggests; the advisor decides.</p>${talk}
+<p class="muted">Juno answered from this customer’s file and the product documents. It suggests; the advisor decides.</p>${talk}${whatIfs}
 </body></html>`
 
   const frame = document.createElement('iframe')

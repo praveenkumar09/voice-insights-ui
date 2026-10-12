@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { askJuno, clearAskHistory, getAskHistory, getAskStarters, junoSpeak, junoVoiceStatus, type AskEvent, type AskSource, type AskStarter, type LangId } from '../api/client'
+import { askJuno, cancelWhatIf, clearAskHistory, getAskHistory, getAskStarters, getWhatIf, junoSpeak, junoVoiceStatus, runWhatIf, type AskEvent, type AskSource, type AskStarter, type LangId, type WhatIfChange, type WhatIfView } from '../api/client'
 import { useVoiceCapture } from './useVoiceCapture'
 
 /**
@@ -31,6 +31,16 @@ export interface AskMessage {
 }
 
 export type VoiceKind = 'female' | 'male'
+
+/** A "what if" in progress: proposed (waiting for the advisor's yes), running, or finished. */
+export interface Scenario {
+  id: string
+  stage: 'proposed' | 'running' | 'done' | 'failed'
+  changes: WhatIfChange[]
+  view: WhatIfView | null
+}
+
+const SCENARIO_POLL_MS = 1500
 
 // The server tells us when a question is finished (it judges the pause against the speaker). This long a silence by our own,
 // cruder measure is only a fallback if that message never comes.
@@ -83,6 +93,7 @@ export function useAskJuno(runId: string) {
   }, [])
 
   const [messages, setMessages] = useState<AskMessage[]>([])
+  const [scenario, setScenario] = useState<Scenario | null>(null)
   const [earlier, setEarlier] = useState<AskMessage[]>([])
   const [starters, setStarters] = useState<AskStarter[]>([])
   const [hint, setHint] = useState<string | null>(null)
@@ -309,6 +320,22 @@ export function useAskJuno(runId: string) {
   // ── asking ──
   const sessionOpen = useRef(false)
 
+  /** Juno says something on her own (a what-if finished): shown in the thread and, when she can speak without cutting the advisor off, spoken. */
+  const sayAsJuno = (text: string) => {
+    const g = gen.current
+    const id = `j${++msgSeq.current}`
+    const key = `${id}s1`
+    const p = phaseRef.current
+    const spoken = voiceOnRef.current && p !== 'hearing' && p !== 'starting'
+    setMessages((ms) => [...ms, { id, role: 'juno', sentences: [{ key, text, sources: [], shown: !spoken }], done: true }])
+    if (!spoken) return
+    streamDone.current = true
+    queue.current.push({ sentence: { messageId: id, key, text }, clip: junoSpeak(text, voiceKindRef.current, 'warm', langOf(text)) })
+    if (!playing.current) playNext(g)
+  }
+  const sayRef = useRef(sayAsJuno)
+  sayRef.current = sayAsJuno
+
   const ask = useCallback(
     async (question: string) => {
       const q = question.trim()
@@ -353,6 +380,12 @@ export function useAskJuno(runId: string) {
           } else if (phaseRef.current === 'thinking') {
             setPhase('speaking')
           }
+        } else if (ev.type === 'scenario_proposal') {
+          setScenario({ id: ev.id, stage: 'proposed', changes: ev.changes, view: null })
+        } else if (ev.type === 'scenario_started') {
+          setScenario((sc) => (sc && sc.id === ev.id ? { ...sc, stage: 'running' } : sc))
+        } else if (ev.type === 'scenario_cancelled') {
+          setScenario(null)
         } else if (ev.type === 'error') {
           clearFillerTimer()
           setMessages((ms) => ms.map((m) => (m.id === juno ? { ...m, error: ev.message, done: true } : m)))
@@ -537,8 +570,53 @@ export function useAskJuno(runId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // While a what-if is running, watch it; when it lands Juno tells the advisor what changed.
+  const scenarioId = scenario?.stage === 'running' ? scenario.id : null
+  useEffect(() => {
+    if (!scenarioId) return
+    let alive = true
+    const timer = window.setInterval(async () => {
+      const v = await getWhatIf(runId, scenarioId)
+      if (!alive || !v) return
+      if (v.status === 'DONE' && v.result) {
+        window.clearInterval(timer)
+        setScenario((sc) => (sc && sc.id === scenarioId ? { ...sc, stage: 'done', view: v } : sc))
+        sayRef.current(v.result.summary)
+      } else if (v.status === 'FAILED') {
+        window.clearInterval(timer)
+        setScenario((sc) => (sc && sc.id === scenarioId ? { ...sc, stage: 'failed', view: v } : sc))
+        sayRef.current("I couldn't finish that analysis. Nothing has changed — you could ask me again.")
+      } else {
+        setScenario((sc) => (sc && sc.id === scenarioId ? { ...sc, view: v } : sc))
+      }
+    }, SCENARIO_POLL_MS)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [scenarioId, runId])
+
+  /** The "Run it" button (the same as saying yes). */
+  const runScenario = useCallback(async () => {
+    const sc = scenario
+    if (!sc || sc.stage !== 'proposed') return
+    const err = await runWhatIf(runId, sc.id)
+    if (err) {
+      sayRef.current(err)
+      return
+    }
+    setScenario({ ...sc, stage: 'running' })
+    sayRef.current('Running that through the analysis now. It takes about half a minute.')
+  }, [scenario, runId])
+
+  const dropScenario = useCallback(() => {
+    if (scenario && scenario.stage === 'proposed') void cancelWhatIf(runId, scenario.id)
+    setScenario(null)
+  }, [scenario, runId])
+
   const newDiscussion = useCallback(() => {
     interrupt()
+    setScenario(null)
     setMessages([])
     setEarlier([])
     void clearAskHistory(runId)
@@ -562,7 +640,7 @@ export function useAskJuno(runId: string) {
   const caption = [...capture.finalSegments.slice(consumedRef.current), capture.partialText].filter(Boolean).join(' ').trim()
 
   return {
-    phase, messages, earlier, starters, hint, caption, amplitude: capture.amplitude,
+    phase, messages, scenario, runScenario, dropScenario, earlier, starters, hint, caption, amplitude: capture.amplitude,
     voiceOn, voiceKind, handsFree, neuralVoice,
     setVoiceOn, setVoiceKind, setHandsFree,
     tapOrb, ask, interrupt, end, newDiscussion,

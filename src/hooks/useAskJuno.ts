@@ -49,6 +49,7 @@ const MIN_SPEECH_MS = 450          // a shorter sound is a cough or a click, not
 const FINAL_WAIT_MS = 4500         // how long to wait for the words of a question to come back from the speech model
 const FINAL_SETTLE_MS = 900        // ...and for a further part of it, if the advisor paused mid-question
 const UNMUTE_DELAY_MS = 200        // after Juno's last word, so its own echo is not heard as a question
+const FILLER_AFTER_VOICE_MS = 1400  // a spoken question is held open this long: if the advisor was only pausing they carry on, and the answer is withdrawn
 const FILLER_AFTER_MS = 300        // an answer slower to start than this gets a spoken "Mm, let me think" (the model alone takes ~2 s to begin)
 const FILLERS = ['Mm, let me think.', 'Good one, give me a second.', 'Right, let me check that.']
 // If the answer is still not ready when that first one ends, a second, longer one carries the wait.
@@ -113,6 +114,9 @@ export function useAskJuno(runId: string) {
   const finalsRef = useRef<string[]>([])
   finalsRef.current = capture.finalSegments
   const consumedRef = useRef(0)
+  // A spoken question that has been sent but not yet answered aloud: the microphone stays open for it, so that if the advisor was
+  // only pausing and carries on, the question can be withdrawn and asked again with everything they said.
+  const turnRef = useRef<{ g: number; prevConsumed: number; advisorId: string; junoId: string } | null>(null)
   const serverEndAtRef = useRef(0)   // when the server last said every transcript of the question was back
 
   // The conversation currently in flight. Bumping `gen` makes every callback of the previous one stand down.
@@ -229,6 +233,10 @@ export function useAskJuno(runId: string) {
     playing.current = true
     setPhase('speaking')
     capture.setMicMuted(true)
+    if (turnRef.current?.g === g) {
+      capture.turnTaken() // from here on the question is answered: what was heard after it belongs to no question
+      turnRef.current = null
+    }
     void (item.clip ?? Promise.resolve(null)).then((blob) => {
       if (g !== gen.current) return
       if (item.sentence) revealSentence(item.sentence.messageId, item.sentence.key)
@@ -337,7 +345,7 @@ export function useAskJuno(runId: string) {
   sayRef.current = sayAsJuno
 
   const ask = useCallback(
-    async (question: string) => {
+    async (question: string, opts?: { voice?: boolean; prevConsumed?: number }) => {
       const q = question.trim()
       if (!q) return
       stopAudio()
@@ -360,10 +368,15 @@ export function useAskJuno(runId: string) {
         { id: `a${base}`, role: 'advisor', text: q, sentences: [], done: true },
         { id: juno, role: 'juno', sentences: [], done: false },
       ])
-      capture.setMicMuted(true)
-      capture.turnTaken()
+      if (opts?.voice) {
+        turnRef.current = { g, prevConsumed: opts.prevConsumed ?? consumedRef.current, advisorId: `a${base}`, junoId: juno }
+      } else {
+        turnRef.current = null
+        capture.setMicMuted(true)
+        capture.turnTaken()
+      }
       setPhase('thinking')
-      fillerTimer.current = window.setTimeout(() => playFiller(g), FILLER_AFTER_MS)
+      fillerTimer.current = window.setTimeout(() => playFiller(g), opts?.voice ? FILLER_AFTER_VOICE_MS : FILLER_AFTER_MS)
 
       let seq = 0
       const onEvent = (ev: AskEvent) => {
@@ -440,14 +453,33 @@ export function useAskJuno(runId: string) {
     }
     stamp('finalsAt')
     const text = finalsRef.current.slice(consumedRef.current).join(' ').trim()
+    const prevConsumed = consumedRef.current
     consumedRef.current = finalsRef.current.length
     if (text.replace(/[^\p{L}\p{N}]/gu, '').length < 3) {
       setHint("I didn't quite catch that — say it again?")
       setPhase(handsFreeRef.current ? 'listening' : 'ready')
       return
     }
-    void ask(text)
+    void ask(text, { voice: true, prevConsumed })
   }
+
+  /** They were only pausing: take the question back (stop the answer being written) and wait for the rest of what they say. */
+  const withdrawQuestion = () => {
+    const t = turnRef.current
+    if (!t || t.g !== gen.current || playing.current) return
+    turnRef.current = null
+    gen.current++
+    abortRef.current?.abort()
+    clearFillerTimer()
+    stopAudio()
+    consumedRef.current = t.prevConsumed
+    setMessages((ms) => ms.filter((m) => m.id !== t.advisorId && m.id !== t.junoId))
+    const now = performance.now()
+    vad.current = { floor: vad.current.floor, loud: 2, lastLoud: now, started: now, speaking: true }
+    setPhase('hearing')
+  }
+  const withdrawRef = useRef(withdrawQuestion)
+  withdrawRef.current = withdrawQuestion
 
   const onAmp = (amp: number) => {
     const phaseNow = phaseRef.current
@@ -484,14 +516,18 @@ export function useAskJuno(runId: string) {
   endRef.current = endOfUtterance
   useEffect(() => {
     capture.setRawAmpListener((a) => ampRef.current(a))
+    capture.setSpeechResumedListener(() => withdrawRef.current())
     capture.setUtteranceEndListener(() => {
       serverEndAtRef.current = performance.now()
+      // Another end of utterance while the last question is still unanswered means they carried on: take it back and ask once, with all of it.
+      if (turnRef.current) withdrawRef.current()
       const p = phaseRef.current
       if (p === 'listening' || p === 'hearing') void endRef.current(true)
     })
     return () => {
       capture.setRawAmpListener(null)
       capture.setUtteranceEndListener(null)
+      capture.setSpeechResumedListener(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

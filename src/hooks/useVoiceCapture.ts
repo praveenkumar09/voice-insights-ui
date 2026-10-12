@@ -62,6 +62,7 @@ export function useVoiceCapture() {
   const heldRef = useRef<ArrayBuffer[]>([])
   const rawListener = useRef<((amp: number) => void) | null>(null)
   const utteranceEndListener = useRef<(() => void) | null>(null)
+  const speechResumedListener = useRef<(() => void) | null>(null)
   const lastSavedLevel = useRef(0)
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -174,6 +175,10 @@ export function useVoiceCapture() {
   }, [])
 
   /** Calls back when the server hears the speaker finish an utterance (ask mode). */
+  const setSpeechResumedListener = useCallback((fn: (() => void) | null) => {
+    speechResumedListener.current = fn
+  }, [])
+
   const setUtteranceEndListener = useCallback((fn: (() => void) | null) => {
     utteranceEndListener.current = fn
   }, [])
@@ -278,6 +283,10 @@ export function useVoiceCapture() {
             case 'utterance_end':
               // The server heard the speaker finish what they were saying (a question for Juno): its words are on the way.
               utteranceEndListener.current?.()
+              break
+            case 'speech_resumed':
+              // They carried on after a pause the server took for the end of a question.
+              speechResumedListener.current?.()
               break
             case 'session_started':
               setProfile((p) => ({ ...(p ?? {}), id: msg.customerProfileId as string, captureMode: mode === 'debrief' ? 'DEBRIEF' : mode === 'juno-debrief' ? 'JUNO_DEBRIEF' : 'LIVE' }))
@@ -428,6 +437,6 @@ export function useVoiceCapture() {
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
     noiseFilter, setNoiseFilter, backgroundIgnored,
-    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, releaseHeld, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
+    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, setSpeechResumedListener, releaseHeld, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

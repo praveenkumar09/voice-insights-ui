@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { generateAdvicePack, getAdvicePack, getAskHistory, regenerateAdviceSection, reviewAdvicePack, saveAdvicePack, type AskTurn } from '../../api/client'
+import { generateAdvicePack, getAdvicePack, getAskHistory, getWhatIfs, regenerateAdviceSection, reviewAdvicePack, saveAdvicePack, type AskTurn, type WhatIfView } from '../../api/client'
 import type { AdviceTask, AdvicePack, AdvicePackSection, AdvicePackView, FactFindField, FactSource } from '../../types'
 import { printAdvicePack } from '../../utils/advicePackPdf'
 import { AGENT_NAME } from '../../brand'
 import { countWords } from '../../utils/wordCount'
 import { relevanceLabel } from '../../utils/relevance'
 import { chipLabel, chipLabels } from '../../utils/askSources'
+import { changeLine } from '../../utils/whatIf'
 
 type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting' | 'discussion'
 type Tone = 'warm' | 'professional' | 'brief'
@@ -37,6 +38,7 @@ interface Props {
 export function AdvicePackPanel({ runId, customerName, ready }: Props) {
   const [view, setView] = useState<AdvicePackView | null>(null)
   const [discussion, setDiscussion] = useState<AskTurn[]>([])
+  const [scenarios, setScenarios] = useState<WhatIfView[]>([])
   const [pack, setPack] = useState<AdvicePack | null>(null)
   const [dirty, setDirty] = useState(false)
   const [part, setPart] = useState<Part>('factFind')
@@ -77,6 +79,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
     if (!ready) return
     let alive = true
     void getAskHistory(runId).then((t) => alive && setDiscussion(t))
+    void getWhatIfs(runId).then((w) => alive && setScenarios(w.filter((x) => x.status === 'DONE' && x.result)))
     return () => {
       alive = false
     }
@@ -204,7 +207,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
           ) : (
             <span className="ap-stamp">Draft · needs your review</span>
           )}
-          <button className="ghost-btn" onClick={() => printAdvicePack(pack, customerName, discussion)}>Download PDF</button>
+          <button className="ghost-btn" onClick={() => printAdvicePack(pack, customerName, discussion, scenarios)}>Download PDF</button>
           <button className="ghost-btn" onClick={regenerateAll} disabled={!!busy}>{regenerating ? 'Regenerating…' : 'Regenerate all'}</button>
           {dirty && <button className="ghost-btn ap-save" onClick={save} disabled={!!busy}>{busy === 'save' ? 'Saving…' : 'Save changes'}</button>}
           {!pack.review && (
@@ -220,7 +223,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
         <NavButton active={part === 'record'} onClick={() => setPart('record')} n={2} title="Record of advice" meta={pack.recordOfAdvice ? `${pack.recordOfAdvice.items.length} product${pack.recordOfAdvice.items.length === 1 ? '' : 's'}` : 'Unavailable'} />
         <NavButton active={part === 'followUp'} onClick={() => setPart('followUp')} n={3} title="Follow-up" meta="WhatsApp · email" />
         <NavButton active={part === 'crm'} onClick={() => setPart('crm')} n={4} title="CRM note & tasks" meta={pack.crm ? `${pack.crm.tasks.length} tasks` : 'Unavailable'} />
-        <NavButton active={part === 'discussion'} onClick={() => setPart('discussion')} n={6} title="Discussion with Juno" meta={discussion.length ? `${discussion.length} question${discussion.length === 1 ? '' : 's'}` : 'None yet'} />
+        <NavButton active={part === 'discussion'} onClick={() => setPart('discussion')} n={6} title="Discussion with Juno" meta={discussion.length || scenarios.length ? `${discussion.length} question${discussion.length === 1 ? '' : 's'}${scenarios.length ? ` · ${scenarios.length} what-if${scenarios.length === 1 ? '' : 's'}` : ''}` : 'None yet'} />
         <NavButton active={part === 'meeting'} onClick={() => setPart('meeting')} n={5} title="Next meeting" meta={pack.nextMeeting ? `${pack.nextMeeting.questionsToAsk.length} questions` : 'Unavailable'} />
       </nav>
 
@@ -361,6 +364,32 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
                   )
                 })}
               </ol>
+            )}
+            {scenarios.length > 0 && (
+              <>
+                <h4 className="ap-wi__title">What-ifs explored</h4>
+                <p className="ap-wi__note">Scenarios the advisor ran with Juno. They are explored, not the customer’s actual situation, and the suggestions above were not changed by them.</p>
+                <ol className="ap-disc">
+                  {scenarios.map((w) => (
+                    <li key={w.id} className="glass-card ap-disc__turn">
+                      <div className="ap-disc__q"><span>What if</span><p>{w.changes.map(changeLine).join(' · ')}</p></div>
+                      <div className="ap-disc__a"><span>Juno’s read</span><p>{w.result?.summary}</p></div>
+                      <table className="ap-wi">
+                        <thead><tr><th>Product</th><th>Original</th><th>With the change</th></tr></thead>
+                        <tbody>
+                          {w.result?.products.map((p) => (
+                            <tr key={p.name}>
+                              <td>{p.name}</td>
+                              <td>{p.before ? `#${p.before} ${p.relevanceBefore ?? ''}` : 'Not shortlisted'}</td>
+                              <td>{p.after ? `#${p.after} ${p.relevanceAfter ?? ''}` : 'Not shortlisted'}{p.why ? <em> — {p.why}</em> : null}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </li>
+                  ))}
+                </ol>
+              </>
             )}
           </section>
         )}

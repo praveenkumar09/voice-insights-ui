@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AskSource } from '../../api/client'
 import { useAskJuno, type AskMessage, type AskPhase } from '../../hooks/useAskJuno'
 import { chipLabel, chipLabels } from '../../utils/askSources'
+import { ScenarioCard } from './ScenarioCard'
 import '../../ask.css'
 
 interface Props {
@@ -39,6 +40,7 @@ function Icon({ kind }: { kind: AskSource['kind'] }) {
   const common = { width: 12, height: 12, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true }
   if (kind === 'customer') return <svg {...common}><circle cx="8" cy="5.5" r="2.6" /><path d="M2.8 13.6c.6-2.6 2.6-3.9 5.2-3.9s4.6 1.3 5.2 3.9" /></svg>
   if (kind === 'document') return <svg {...common}><path d="M4 1.8h5.4L12.6 5v9.2H4z" /><path d="M9.2 1.8V5.2h3.4M6 8.4h4.6M6 10.8h4.6" /></svg>
+  if (kind === 'calc') return <svg {...common}><rect x="3" y="1.8" width="10" height="12.4" rx="1.6" /><path d="M5.4 5h5.2M5.6 8h.1M8 8h.1M10.4 8h.1M5.6 10.6h.1M8 10.6h.1M10.4 10.6h.1" /></svg>
   if (kind === 'compliance') return <svg {...common}><path d="M8 1.6l5.2 2v4.2c0 3-2.2 5.4-5.2 6.6-3-1.2-5.2-3.6-5.2-6.6V3.6z" /><path d="M5.6 8l1.7 1.7L10.6 6.4" /></svg>
   return <svg {...common}><path d="M2.5 13.5V8M7 13.5V3M11.5 13.5V6" /></svg>
 }
@@ -59,7 +61,7 @@ export function AskJuno({ runId, customerName }: Props) {
   useEffect(() => {
     const el = threadRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-  }, [k.messages, k.phase])
+  }, [k.messages, k.phase, k.scenario])
 
   const level = Math.min(1, k.amplitude * 3)
   const name = customerName?.trim() || 'the customer'
@@ -110,7 +112,7 @@ export function AskJuno({ runId, customerName }: Props) {
         {shown.length > 0 && (
           <p aria-live="polite">
             {shown.map((s) => (
-              <span key={s.key} className={`ask__sentence${open && s.sources.some((x) => x.id === open.id) ? ' is-cited' : ''}${isUnsourced(s.text, s.sources) ? ' is-unsourced' : ''}`} title={isUnsourced(s.text, s.sources) ? 'Juno could not point to a source in the file for this' : undefined}>{s.text} </span>
+              <span key={s.key} className={`ask__sentence${open && s.sources.some((x) => x.id === open.id) ? ' is-cited' : ''}${isUnsourced(s.text, s.sources) || s.figures === false ? ' is-unsourced' : ''}`} title={s.figures === false ? 'This includes a figure that is not in the file or the documents — please check it' : isUnsourced(s.text, s.sources) ? 'Juno could not point to a source in the file for this' : undefined}>{s.text} </span>
             ))}
             {m.interrupted && <em className="ask__cut"> — you cut in</em>}
           </p>
@@ -210,10 +212,11 @@ export function AskJuno({ runId, customerName }: Props) {
             {!hasThread && (
               <div className="ask__msg ask__msg--juno ask__msg--intro">
                 <span className="ask__who"><i aria-hidden /> Juno</span>
-                <p>I was in the room when the agents worked this out. Ask me why I suggested what I did — I’ll answer from {name}’s file and the product documents, and I’ll tell you plainly when something isn’t there.</p>
+                <p>I was in the room when the agents worked this out. Ask me why I suggested what I did, or “what if…” something about {name} were different — I’ll answer from {name}’s file and the product documents, and I’ll tell you plainly when something isn’t there.</p>
               </div>
             )}
             {k.messages.map(renderMessage)}
+            {k.scenario && <ScenarioCard stage={k.scenario.stage} changes={k.scenario.changes} view={k.scenario.view} onRun={() => void k.runScenario()} onDrop={k.dropScenario} />}
           </div>
 
           {k.starters.length > 0 && (

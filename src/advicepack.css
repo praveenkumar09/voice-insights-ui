@@ -177,3 +177,11 @@
 .ap-disc__src { display: flex; flex-wrap: wrap; gap: 6px; }
 .ap-disc__src em { font-style: normal; font-size: 0.7rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(var(--tint-rgb, 120, 120, 140), 0.25); background: rgba(var(--tint-rgb, 120, 120, 140), 0.08); }
 .ap-disc__src em.is-inferred { border-style: dashed; }
+
+/* What-ifs explored */
+.ap-wi__title { margin: 22px 0 4px; }
+.ap-wi__note { margin: 0 0 10px; font-size: 0.82rem; color: var(--muted, #6b7280); }
+.ap-wi { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.84rem; }
+.ap-wi th { text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted, #6b7280); padding: 4px 8px; }
+.ap-wi td { padding: 7px 8px; border-top: 1px solid rgba(128, 128, 128, 0.25); vertical-align: top; }
+.ap-wi td em { display: block; font-style: normal; font-size: 0.78rem; color: var(--muted, #6b7280); margin-top: 2px; }

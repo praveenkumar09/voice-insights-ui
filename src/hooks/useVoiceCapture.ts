@@ -231,6 +231,12 @@ export function useVoiceCapture() {
   }, [])
 
   /** Ask the server to finalise whatever speech it has buffered (so nothing leaks into the next turn). */
+  /** A question was handed over: anything the server is still holding of what was said after it belongs to no question. */
+  const turnTaken = useCallback(() => {
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'turn_taken' }))
+  }, [])
+
   const commitNow = useCallback(() => {
     const ws = wsRef.current
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'commit' }))
@@ -422,6 +428,6 @@ export function useVoiceCapture() {
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
     noiseFilter, setNoiseFilter, backgroundIgnored,
-    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, releaseHeld, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
+    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, releaseHeld, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

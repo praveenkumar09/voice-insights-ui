@@ -48,7 +48,7 @@ const FALLBACK_SILENCE_MS = 4500
 const MIN_SPEECH_MS = 450          // a shorter sound is a cough or a click, not a question
 const FINAL_WAIT_MS = 4500         // how long to wait for the words of a question to come back from the speech model
 const FINAL_SETTLE_MS = 900        // ...and for a further part of it, if the advisor paused mid-question
-const UNMUTE_DELAY_MS = 350        // after Juno's last word, so its own echo is not heard as a question
+const UNMUTE_DELAY_MS = 200        // after Juno's last word, so its own echo is not heard as a question
 const FILLER_AFTER_MS = 300        // an answer slower to start than this gets a spoken "Mm, let me think" (the model alone takes ~2 s to begin)
 const FILLERS = ['Mm, let me think.', 'Good one, give me a second.', 'Right, let me check that.']
 // If the answer is still not ready when that first one ends, a second, longer one carries the wait.
@@ -361,6 +361,7 @@ export function useAskJuno(runId: string) {
         { id: juno, role: 'juno', sentences: [], done: false },
       ])
       capture.setMicMuted(true)
+      capture.turnTaken()
       setPhase('thinking')
       fillerTimer.current = window.setTimeout(() => playFiller(g), FILLER_AFTER_MS)
 

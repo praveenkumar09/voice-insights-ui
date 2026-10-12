@@ -16,6 +16,8 @@ export interface AskSentence {
   key: string
   text: string
   sources: AskSource[]
+  /** False when the sentence states a figure that is nowhere in the file (the server checks every number Juno says). */
+  figures?: boolean
   /** A spoken sentence appears on screen when its audio starts, so the words and the voice stay together. */
   shown: boolean
 }
@@ -387,7 +389,7 @@ export function useAskJuno(runId: string) {
           clearFillerTimer()
           const key = `${juno}s${++seq}`
           const spoken = voiceOnRef.current
-          setMessages((ms) => ms.map((m) => (m.id === juno ? { ...m, sentences: [...m.sentences, { key, text: ev.text, sources: ev.sources, shown: !spoken }] } : m)))
+          setMessages((ms) => ms.map((m) => (m.id === juno ? { ...m, sentences: [...m.sentences, { key, text: ev.text, sources: ev.sources, figures: ev.figures, shown: !spoken }] } : m)))
           if (spoken) {
             queue.current.push({ sentence: { messageId: juno, key, text: ev.text }, clip: junoSpeak(ev.text, voiceKindRef.current, 'warm', langOf(ev.text)) })
             if (!playing.current) playNext(g)

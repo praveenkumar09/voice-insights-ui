@@ -414,7 +414,7 @@ export async function junoPhrases(lang: LangId): Promise<JunoPhrases | null> {
 /** Where one of Juno's statements comes from: what the customer shared, the agents' analysis, compliance, or a product document. */
 export interface AskSource {
   id: string
-  kind: 'customer' | 'analysis' | 'compliance' | 'document'
+  kind: 'customer' | 'analysis' | 'compliance' | 'document' | 'calc'
   label: string
   text: string
   file?: string | null
@@ -444,6 +444,8 @@ export interface WhatIfChange {
   label: string
   from: string
   to: string
+  say?: string
+  working?: string
 }
 
 export interface WhatIfProduct {
@@ -476,7 +478,7 @@ export interface WhatIfView {
 }
 
 export type AskEvent =
-  | { type: 'sentence'; text: string; sources: AskSource[] }
+  | { type: 'sentence'; text: string; sources: AskSource[]; figures?: boolean }
   | { type: 'done'; turn: number }
   | { type: 'error'; message: string }
   | { type: 'scenario_proposal'; id: string; changes: WhatIfChange[] }

@@ -58,7 +58,7 @@
 .ask__chip { font: inherit; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px 4px 9px; border-radius: 999px; cursor: pointer; text-transform: capitalize;
   color: var(--dim); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--edge); transition: all 0.2s ease; max-width: 100%; }
 .ask__chip:hover { color: #fff; border-color: rgba(255, 255, 255, 0.34); }
-.ask__chip--customer { --c: 255, 86, 120; } .ask__chip--analysis { --c: 190, 140, 255; } .ask__chip--compliance { --c: 255, 212, 121; } .ask__chip--document { --c: 61, 224, 176; }
+.ask__chip--customer { --c: 255, 86, 120; } .ask__chip--analysis { --c: 190, 140, 255; } .ask__chip--compliance { --c: 255, 212, 121; } .ask__chip--document { --c: 61, 224, 176; } .ask__chip--calc { --c: 120, 190, 255; }
 .ask__chip svg { color: rgb(var(--c)); flex-shrink: 0; }
 .ask__chip.is-on { color: #fff; border-color: rgba(var(--c), 0.7); background: rgba(var(--c), 0.16); }
 .ask__source { margin: 10px 0 0; padding: 10px 13px; border-left: 3px solid var(--teal); border-radius: 4px 10px 10px 4px; background: rgba(255, 255, 255, 0.045); display: grid; gap: 4px; font-size: 0.82rem; line-height: 1.5; color: var(--dim); animation: ask-in 0.3s ease both; }
@@ -131,3 +131,5 @@
 @keyframes wi-slide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (max-width: 720px) { .wi__row { grid-template-columns: 1fr 1fr; } .wi__name { grid-column: 1 / -1; } .wi__row--head span:first-child { display: none; } }
 @media (prefers-reduced-motion: reduce) { .wi, .wi__row { animation: none; } }
+
+.wi__work { color: var(--faint); font-size: 0.74rem; }

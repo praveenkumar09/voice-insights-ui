@@ -38,7 +38,7 @@ export function ScenarioCard({ stage, changes, view, onRun, onDrop }: Props) {
 
       <ul className="wi__changes">
         {changes.map((c, i) => (
-          <li key={i}><b>{c.label}</b><span>{changeText(c)}</span></li>
+          <li key={i}><b>{c.label}</b><span>{changeText(c)}{c.working ? <small className="wi__work" title="How this figure was worked out"> ({c.working})</small> : null}</span></li>
         ))}
       </ul>
 

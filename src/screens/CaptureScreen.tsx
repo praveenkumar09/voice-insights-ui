@@ -5,8 +5,7 @@ import { LiveWaveform } from '../components/capture/LiveWaveform'
 import { ModeSwitch, type HomeMode } from '../components/capture/ModeSwitch'
 import { JunoStage, JunoTranscript } from '../components/juno/JunoStage'
 import { useJuno } from '../hooks/useJuno'
-import { ConfirmChips } from '../components/capture/ConfirmChips'
-import { DebriefFollowUp } from '../components/capture/DebriefFollowUp'
+import { DebriefSignOff } from '../components/juno/DebriefSignOff'
 import { ReviewPanel } from '../components/capture/ReviewPanel'
 import { useElapsed } from '../components/capture/useElapsed'
 import { CustomerProfileCard } from '../components/CustomerProfileCard'
@@ -56,6 +55,8 @@ export function CaptureScreen({ onReady }: Props) {
   const canRecommend = status === 'stopped' && !!profile?.id
   const safe = safeView && mode === 'live'
   const spoken = finalSegments.join(' ')
+  // After a debrief with Juno the transcript, the facts to confirm and the follow-up become one sign-off document.
+  const signOff = withJuno && status === 'stopped' && juno.stage === 'finished'
 
   useEffect(() => {
     const el = consoleRef.current
@@ -184,9 +185,8 @@ export function CaptureScreen({ onReady }: Props) {
           partialText={partialText}
           profile={profile}
           copilot={copilot}
+          transcript={spoken}
           canRecommend={canRecommend}
-          advancing={advancing}
-          onRecommend={handleGetRecommendations}
           onBrief={() => printMeetingBrief(profile, copilot)}
           noVoice={typeof speechSynthesis === 'undefined'}
           safe={safe}
@@ -257,7 +257,24 @@ export function CaptureScreen({ onReady }: Props) {
         matches={copilot?.productMatches}
       />
 
-      <div className={safe ? 'capture-safe' : 'capture-grid'}>
+      {signOff && profile?.id && (
+        <DebriefSignOff
+          profile={profile}
+          copilot={copilot}
+          segments={finalSegments}
+          turns={juno.turns}
+          readiness={juno.readiness}
+          elapsedMs={juno.elapsedMs}
+          advancing={advancing}
+          onApprove={() => void handleGetRecommendations()}
+          onBrief={() => printMeetingBrief(profile, copilot)}
+          onProfileSaved={voice.patchProfile}
+          onSaveLifeMap={voice.saveLifeMapEdit}
+          onSaveTranscript={voice.saveTranscriptEdit}
+        />
+      )}
+
+      {!signOff && <div className={safe ? 'capture-safe' : 'capture-grid'}>
         <div className="capture-grid__col">
           {withJuno && juno.turns.length > 0 && <JunoTranscript turns={juno.turns} />}
           <TranscriptPanel
@@ -272,7 +289,7 @@ export function CaptureScreen({ onReady }: Props) {
           <div className="capture-grid__col">
             {debrief || withJuno ? (
               <>
-                <CoverageCues profile={profile} copilot={copilot} text={spoken} />
+                {debrief && <CoverageCues profile={profile} copilot={copilot} text={spoken} />}
                 <CustomerProfileCard profile={profile} />
               </>
             ) : (
@@ -285,12 +302,10 @@ export function CaptureScreen({ onReady }: Props) {
             )}
           </div>
         )}
-      </div>
+      </div>}
 
-      {(debrief || withJuno) && status === 'stopped' && profile?.id && (
+      {debrief && status === 'stopped' && profile?.id && (
         <>
-          {withJuno && <ConfirmChips profile={profile} onSaved={voice.patchProfile} />}
-          {withJuno && <DebriefFollowUp key={profile.id} profileId={profile.id} customerName={profile.customerName ?? ''} />}
           <ReviewPanel
             profile={profile}
             copilot={copilot}
@@ -300,7 +315,7 @@ export function CaptureScreen({ onReady }: Props) {
         </>
       )}
 
-      {!safe && canRecommend && !consoleVisible && (
+      {!safe && !signOff && canRecommend && !consoleVisible && (
         <div className="recommend-dock" role="region" aria-label="Next step">
           <span>
             <strong>Captured and ready.</strong> Get the detailed suggestions, report and proposal.

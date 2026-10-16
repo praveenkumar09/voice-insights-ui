@@ -585,3 +585,60 @@ export async function askJuno(runId: string, question: string, onEvent: (e: AskE
     }
   }
 }
+
+// ── Dress Rehearsal: practising the next meeting against the debriefed customer ──
+
+export interface RehearsalBrief {
+  customerName: string
+  /** What Juno says aloud. */
+  script: string
+  /** The same briefing as cards: who they are, what matters, what was said, still open, open with. */
+  points: { label: string; text: string }[]
+  /** The voice the simulated customer uses. */
+  customerVoice: 'female' | 'male'
+  /** The debrief held too little to make a lifelike customer. */
+  thin: boolean
+}
+
+export interface RehearsalLine {
+  role: 'advisor' | 'customer'
+  text: string
+}
+
+export interface RehearsalCoachFlag {
+  severity: 'high' | 'caution'
+  statement: string
+  advice: string
+}
+
+export interface RehearsalTurn {
+  say: string
+  mood: string
+  coach: RehearsalCoachFlag | null
+}
+
+export interface RehearsalScorecard {
+  summary: string
+  rating: string
+  handled: { need: string; how: string }[]
+  missed: { need: string; tip: string }[]
+  slips: { quote: string; why: string; better: string }[]
+  strong: { quote: string; why: string }[]
+  opener: string
+}
+
+async function rehearsalPost<T>(path: string, body: unknown, fallback: string): Promise<T> {
+  const res = await fetch(`${API_BASE}/api/juno/rehearsal/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `${fallback} (${res.status})`))
+  return res.json()
+}
+
+export const rehearsalBrief = (profileId: string) => rehearsalPost<RehearsalBrief>('brief', { profileId }, 'Could not prepare the briefing')
+export const rehearsalTurn = (profileId: string, lines: RehearsalLine[], lang: LangId = 'en') =>
+  rehearsalPost<RehearsalTurn>('turn', { profileId, lines, lang }, 'The customer did not answer')
+export const rehearsalScore = (profileId: string, lines: RehearsalLine[]) =>
+  rehearsalPost<RehearsalScorecard>('score', { profileId, lines }, "Could not write the coach's notes")

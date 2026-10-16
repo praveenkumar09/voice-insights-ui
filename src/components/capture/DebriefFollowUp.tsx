@@ -126,7 +126,13 @@ export function DebriefFollowUp({ profileId, customerName = '' }: Props) {
       )}
       {draft && !loading && !error && (
         <>
-          <textarea className="fu__text" value={text} onChange={(e) => setText(e.target.value)} rows={7} aria-label="Follow-up message draft" lang={lang} />
+          <div className="fu__phone">
+            <div className="fu__phone-bar"><span className="fu__avatar" aria-hidden>{(customerName.trim()[0] ?? '?').toUpperCase()}</span><b>{customerName.trim() || 'Customer'}</b><small>draft · not sent</small></div>
+            <div className="fu__phone-chat">
+              <textarea className="fu__text" value={text} onChange={(e) => setText(e.target.value)} rows={7} aria-label="Follow-up message draft" lang={lang} />
+              {draft.conduct?.correction && text.includes(draft.conduct.correction) && <small className="fu__clar">Includes the clarifying sentence from the conduct note</small>}
+            </div>
+          </div>
           {lang !== 'en' && (
             <details className="fu__check">
               <summary>Check what it says in English</summary>

@@ -1,0 +1,69 @@
+/* ── Juno stage, light theme ───────────────────────────────────────────────────────────────────────
+   Daylight rather than a dimmed dark mode: a white ground, a slow rose / lilac / peach aurora, frosted white panels with a faint rose
+   shadow, and a glass-pearl orb that floats over its own reflection. Colour keeps its meaning: teal = heard, rose = Juno, violet = thinking.
+   Dark mode is untouched (it keeps the rules in juno.css). */
+:root[data-theme='light'] .jn { --you: #0b6b50; --ground: #fffafb; --mesh: 0.34; --ink: #1b1220; --dim: rgba(27, 18, 32, 0.64); --faint: rgba(27, 18, 32, 0.46);
+  --glass: rgba(255, 255, 255, 0.78); --edge: rgba(27, 18, 32, 0.1);
+  background: linear-gradient(180deg, #ffffff 0%, #fff6f9 100%);
+  box-shadow: 0 44px 90px -44px rgba(211, 17, 69, 0.38), 0 0 0 1px rgba(211, 17, 69, 0.09), inset 0 1px 0 #fff; }
+
+:root[data-theme='light'] .jn .jn__mesh {
+  background:
+    radial-gradient(40% 46% at 10% 14%, rgba(255, 86, 120, 0.36), transparent 70%),
+    radial-gradient(42% 48% at 90% 84%, rgba(139, 108, 255, 0.3), transparent 72%),
+    radial-gradient(34% 38% at 62% 6%, rgba(255, 176, 120, 0.34), transparent 70%),
+    radial-gradient(30% 34% at 26% 92%, rgba(90, 210, 190, 0.18), transparent 70%),
+    #fffafb; }
+
+:root[data-theme='light'] .jn .jn__bar { background: rgba(255, 255, 255, 0.62); border-bottom: 1px solid rgba(211, 17, 69, 0.08); backdrop-filter: blur(16px) saturate(1.3); }
+:root[data-theme='light'] .jn .jn__step-node { background: #fff; border-color: rgba(27, 18, 32, 0.16); box-shadow: 0 2px 6px rgba(27, 18, 32, 0.08); }
+:root[data-theme='light'] .jn .jn__steps li.is-now .jn__step-node { background: var(--rose); border-color: var(--rose); color: #fff; box-shadow: 0 0 0 5px rgba(211, 17, 69, 0.16), 0 8px 18px -6px rgba(211, 17, 69, 0.5); }
+:root[data-theme='light'] .jn .jn__steps li.is-done .jn__step-node { background: var(--teal); border-color: var(--teal); color: #fff; }
+:root[data-theme='light'] .jn .jn__steps li::before, :root[data-theme='light'] .jn .jn__steps li + li::before { background: rgba(27, 18, 32, 0.12); }
+:root[data-theme='light'] .jn .jn__brand b { color: #1b1220; }
+
+/* The orb: larger, floating, with a soft reflection */
+:root[data-theme='light'] .jn .jn__orb { width: 176px; height: 176px; }
+:root[data-theme='light'] .jn .jn__orb::after { content: ''; position: absolute; left: 50%; bottom: -30px; width: 150px; height: 20px; margin-left: -75px; border-radius: 50%; z-index: 0;
+  background: radial-gradient(ellipse, rgba(211, 17, 69, 0.3), transparent 70%); filter: blur(7px); }
+:root[data-theme='light'] .jn .jn__orb--idle .jn__orb-core { animation: jn-breathe 4.4s ease-in-out infinite, jn-float 6s ease-in-out infinite; }
+:root[data-theme='light'] .jn .jn__orb--listening::after, :root[data-theme='light'] .jn .jn__orb--done::after { background: radial-gradient(ellipse, rgba(27, 175, 122, 0.3), transparent 70%); }
+:root[data-theme='light'] .jn .jn__orb--thinking::after { background: radial-gradient(ellipse, rgba(123, 79, 214, 0.3), transparent 70%); }
+@keyframes jn-float { 50% { translate: 0 -7px; } }
+
+/* Words */
+:root[data-theme='light'] .jn .jn__idle h3 { color: #1b1220; font-size: clamp(1.7rem, 3vw, 2.5rem); font-weight: 750; letter-spacing: -0.032em; }
+:root[data-theme='light'] .jn .jn__idle p { color: rgba(27, 18, 32, 0.66); font-size: 1.02rem; }
+:root[data-theme='light'] .jn .jn__line { color: #1b1220; }
+:root[data-theme='light'] .jn .jn__state { background: rgba(255, 255, 255, 0.85); border-color: rgba(27, 18, 32, 0.1); box-shadow: 0 4px 14px -8px rgba(27, 18, 32, 0.25); color: #3a2c40; }
+:root[data-theme='light'] .jn .jn__promises li { background: rgba(255, 255, 255, 0.85); border-color: rgba(27, 18, 32, 0.09); color: #3a2c40; box-shadow: 0 4px 12px -8px rgba(27, 18, 32, 0.25); }
+:root[data-theme='light'] .jn .jn__you { background: rgba(27, 175, 122, 0.1); border-color: rgba(27, 175, 122, 0.38); }
+
+/* Controls: white glass with a hairline, so they read as objects on the aurora */
+:root[data-theme='light'] .jn :is(.jn__ghost, .jn__end, .jn__no, .jn__quick button, .jn__pill, .jn__seg) { background: rgba(255, 255, 255, 0.82); border-color: rgba(27, 18, 32, 0.1); color: #2a1f30; box-shadow: 0 4px 14px -8px rgba(27, 18, 32, 0.28); }
+:root[data-theme='light'] .jn .jn__seg button { background: transparent; color: #4a3d50; box-shadow: none; }
+:root[data-theme='light'] .jn .jn__seg button.is-on { background: #fff; color: #1b1220; box-shadow: 0 2px 8px rgba(27, 18, 32, 0.18); }
+:root[data-theme='light'] .jn .jn__pill.is-on { color: #0b6b50; background: rgba(27, 175, 122, 0.12); }
+:root[data-theme='light'] .jn .jn__quick button:hover { background: rgba(27, 175, 122, 0.14); }
+:root[data-theme='light'] .jn .jn__start { box-shadow: 0 20px 44px -12px rgba(211, 17, 69, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+
+/* The ledger: a frosted white sheet */
+:root[data-theme='light'] .jn .jn__insight { background: rgba(255, 255, 255, 0.74); border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 34px 64px -38px rgba(211, 17, 69, 0.4), 0 2px 0 rgba(255, 255, 255, 0.9) inset; backdrop-filter: blur(24px) saturate(1.35); }
+:root[data-theme='light'] .jn .jn__insight h4 { color: #1b1220; }
+:root[data-theme='light'] .jn .jn__ready, :root[data-theme='light'] .jn .jn__comply, :root[data-theme='light'] .jn .jn__pulse div { background: rgba(255, 255, 255, 0.82); border-color: rgba(27, 18, 32, 0.08); }
+:root[data-theme='light'] .jn .jn__ready-bar { background: rgba(27, 18, 32, 0.08); }
+:root[data-theme='light'] .jn .jn__ring-track { stroke: rgba(27, 18, 32, 0.1); }
+:root[data-theme='light'] .jn .jn__learn-ic { background: rgba(27, 18, 32, 0.06); color: #4a3d50; }
+:root[data-theme='light'] .jn .jn__learn li.is-active { background: rgba(211, 17, 69, 0.07); }
+:root[data-theme='light'] .jn .jn__chip { background: #fff; border-color: rgba(27, 18, 32, 0.1); color: #1b1220; box-shadow: 0 2px 8px -4px rgba(27, 18, 32, 0.25); }
+:root[data-theme='light'] .jn .jn__learn li.is-done .jn__chip { background: rgba(27, 175, 122, 0.12); border-color: rgba(27, 175, 122, 0.45); color: #0b5a43; }
+:root[data-theme='light'] .jn .jn__src { color: rgba(27, 18, 32, 0.5); }
+:root[data-theme='light'] .jn .jn__open li { color: #a8650f; border-color: rgba(184, 116, 26, 0.55); background: rgba(255, 255, 255, 0.7); }
+:root[data-theme='light'] .jn .jn__qdots i { background: rgba(27, 18, 32, 0.14); }
+:root[data-theme='light'] .jn .jn__qdots i.is-on { background: #14a37a; }
+
+/* The slim receipt bar */
+:root[data-theme='light'] .jn--slim .jn__slim-text b { color: #1b1220; }
+:root[data-theme='light'] .jn--slim .jn__slim-text small { color: rgba(27, 18, 32, 0.6); }
+@media (prefers-reduced-motion: reduce) { :root[data-theme='light'] .jn .jn__orb--idle .jn__orb-core { animation: none; } }

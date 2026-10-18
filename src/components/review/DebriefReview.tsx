@@ -201,6 +201,22 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
       return `${queue.length ? `${queue.length} thing${queue.length === 1 ? ' is' : 's are'} still to check, but you can approve anyway. ` : ''}Press Approve when you’re ready. I can’t press it for you.`
     },
   })
+  // "Hey Juno, add Ethan as his son": adds the person to the Life map and saves it (Juno asks for a yes first, as it changes the record).
+  const RELATIVES = ['wife', 'husband', 'partner', 'daughter', 'son', 'child', 'mother', 'father', 'parent', 'sibling', 'other']
+  useJunoAction({
+    id: 'add_person', description: 'Add a family member to the life map and save it, by name and relationship (wife, husband, son, daughter, mother, father, sibling…)', risk: 'change',
+    params: { name: { type: 'string' }, relationship: { type: 'enum', values: RELATIVES } },
+    run: async (p) => {
+      const name = (p.name ?? '').trim()
+      const relation = RELATIVES.includes((p.relationship ?? '').toLowerCase()) ? p.relationship.toLowerCase() : 'other'
+      const rel = relation.charAt(0).toUpperCase() + relation.slice(1)
+      if (!name) return 'I didn’t catch the name, so I haven’t added anyone.'
+      const base = draftMap ?? copilot?.lifeMap ?? { people: [], dreams: [], worries: [] }
+      if (base.people.some((x) => (x.name ?? '').toLowerCase() === name.toLowerCase() && x.relation.toLowerCase() === relation)) return `${name} is already on the map.`
+      await onSaveLifeMap({ ...base, people: [...base.people, { relation: rel, name, said: 'Added by the advisor' }] })
+      return `Added ${name} as ${relation} and saved the map.`
+    },
+  })
   useJunoAction({
     id: 'correct_record', description: 'Change a detail: the name, age, job, dependants or budget', risk: 'change',
     params: { instruction: { type: 'string' } },

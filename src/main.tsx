@@ -10,8 +10,14 @@ import './lifemap.css'
 import './modes.css'
 import './advicepack.css'
 import './juno.css'
+import './juno-light.css'
+import './signoff.css'
+import './rehearsal.css'
+import './review.css'
 import './exec.css'
 import './admin.css'
+import './design.css'
+import './junomode.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,0 +1,51 @@
+/* ── Debrief with Juno: ledger, status row and the follow-up phone ──────────────────────────────
+   Meaning is carried by colour: teal = heard / confirmed, amber = check it, red = a risky promise. Motion is opacity/transform only. */
+
+/* Slim receipt bar the dark stage collapses into once the conversation is over */
+.jn--slim { margin-bottom: 16px; border-radius: 22px; }
+.jn__slim { position: relative; z-index: 1; display: flex; align-items: center; gap: 18px; padding: 16px 22px; flex-wrap: wrap; }
+.jn__slim .jn__badge { width: 44px; height: 44px; flex-shrink: 0; box-shadow: 0 0 28px rgba(61, 224, 176, 0.45); }
+.jn__slim .jn__badge svg { width: 22px; height: 22px; }
+.jn__slim-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 220px; }
+.jn__slim-text b { font-size: 1.05rem; }
+.jn__slim-text small { color: var(--dim); font-size: 0.78rem; }
+.jn__slim .jn__actions { margin: 0; justify-content: flex-end; }
+.jn__slim .jn__ghost { padding: 9px 18px; font-size: 0.85rem; }
+
+/* Ledger: question progress, source quotes, open slots */
+.jn__qdots { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.72rem; color: var(--faint); }
+.jn__qdots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); transition: background 0.3s ease, transform 0.3s ease; }
+.jn__qdots i.is-on { background: var(--teal); transform: scale(1.15); }
+.jn__qdots span { margin-left: 6px; }
+.jn__src { display: block; margin: 5px 0 0; font-size: 0.72rem; line-height: 1.4; font-style: italic; color: var(--faint); quotes: '“' '”'; }
+.jn__open { display: flex; flex-direction: column; gap: 6px; }
+.jn__open small { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.jn__open ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.jn__open li { font-size: 0.74rem; padding: 3px 10px; border-radius: 999px; color: var(--gold); border: 1px dashed rgba(255, 212, 121, 0.5); }
+
+
+
+
+
+
+
+/* Follow-up as a phone message */
+.fu__phone { max-width: 520px; border-radius: 24px; overflow: hidden; border: 1px solid var(--hairline); background: #e9e3d8; box-shadow: 0 14px 34px -18px rgba(var(--shadow-rgb), 0.45); }
+.fu__phone-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #0f6b5c; color: #fff; }
+.fu__phone-bar small { margin-left: auto; opacity: 0.75; font-size: 0.7rem; }
+.fu__avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.22); font-weight: 700; font-size: 0.85rem; }
+.fu__phone-chat { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.fu__phone .fu__text { background: #dcf8c6; color: #111; border: none; border-radius: 14px 14px 4px 14px; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.12); width: 92%; min-height: 150px; }
+.fu__clar { font-size: 0.72rem; color: #6b5a2a; padding-right: 4px; }
+
+@media (prefers-reduced-motion: reduce) { .jn__qdots i { transition: none; } }
+
+/* The orb, shrunk to a status dot once the conversation is over */
+.jn--dot { border-radius: 18px; margin-bottom: 18px; }
+.jn--dot .jn__mesh { opacity: 0.55; }
+.jn__slim--dot { padding: 12px 18px; gap: 14px; flex-wrap: nowrap; }
+.jn__slim--dot .jn__slim-text { min-width: 0; flex-direction: row; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.jn__slim--dot .jn__slim-text b { font-size: 0.98rem; }
+.jn__slim--dot .jn__slim-text small { font-size: 0.82rem; }
+.jn__dot { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; background: radial-gradient(circle at 32% 26%, #bffff2 0%, #35d3a7 40%, #0c7d68 100%); box-shadow: 0 0 0 5px rgba(61, 224, 176, 0.18), 0 0 18px rgba(61, 224, 176, 0.5); }
+.jn__slim--dot .jn__ghost { padding: 8px 16px; font-size: 0.84rem; margin-left: auto; min-height: 36px; }

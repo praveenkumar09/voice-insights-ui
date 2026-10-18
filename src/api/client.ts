@@ -585,3 +585,130 @@ export async function askJuno(runId: string, question: string, onEvent: (e: AskE
     }
   }
 }
+
+// ── Dress Rehearsal: practising the next meeting against the debriefed customer ──
+
+export interface RehearsalBrief {
+  customerName: string
+  /** What Juno says aloud. */
+  script: string
+  /** The same briefing as cards: who they are, what matters, what was said, still open, open with. */
+  points: { label: string; text: string }[]
+  /** The voice the simulated customer uses. */
+  customerVoice: 'female' | 'male'
+  /** The debrief held too little to make a lifelike customer. */
+  thin: boolean
+}
+
+export interface RehearsalLine {
+  role: 'advisor' | 'customer'
+  text: string
+}
+
+export interface RehearsalCoachFlag {
+  severity: 'high' | 'caution'
+  statement: string
+  advice: string
+}
+
+export interface RehearsalTurn {
+  say: string
+  mood: string
+  coach: RehearsalCoachFlag | null
+}
+
+export interface RehearsalScorecard {
+  summary: string
+  rating: string
+  handled: { need: string; how: string }[]
+  missed: { need: string; tip: string }[]
+  slips: { quote: string; why: string; better: string }[]
+  strong: { quote: string; why: string }[]
+  opener: string
+}
+
+async function rehearsalPost<T>(path: string, body: unknown, fallback: string): Promise<T> {
+  const res = await fetch(`${API_BASE}/api/juno/rehearsal/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `${fallback} (${res.status})`))
+  return res.json()
+}
+
+export const rehearsalBrief = (profileId: string) => rehearsalPost<RehearsalBrief>('brief', { profileId }, 'Could not prepare the briefing')
+export const rehearsalTurn = (profileId: string, lines: RehearsalLine[], lang: LangId = 'en') =>
+  rehearsalPost<RehearsalTurn>('turn', { profileId, lines, lang }, 'The customer did not answer')
+export const rehearsalScore = (profileId: string, lines: RehearsalLine[]) =>
+  rehearsalPost<RehearsalScorecard>('score', { profileId, lines }, "Could not write the coach's notes")
+
+// ── Spoken corrections on the debrief review page ──
+
+export interface SpokenCorrection {
+  /** The field to change, or "none" when the words were not a correction. */
+  field: 'customerName' | 'age' | 'occupation' | 'dependents' | 'budgetNotes' | 'none'
+  value: string
+  /** Juno's one-line reply. */
+  say: string
+}
+
+export async function junoCorrection(profileId: string, utterance: string): Promise<SpokenCorrection> {
+  const res = await fetch(`${API_BASE}/api/juno/correction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ profileId, utterance }),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Could not work out the correction (${res.status})`))
+  return res.json()
+}
+
+// ── Juno mode: "Hey Juno, open Follow-up" ──
+
+export interface JunoActionParam {
+  type: 'enum' | 'string'
+  values?: string[]
+}
+
+export interface JunoActionSpec {
+  id: string
+  description: string
+  /** open: navigation. change: changes or copies data (Juno asks first). guide: points at something. info: reads something out. */
+  risk: 'open' | 'change' | 'guide' | 'info'
+  params?: Record<string, JunoActionParam>
+}
+
+export interface JunoCommandResult {
+  action: string
+  params: Record<string, string>
+  /** A short announcement of what Juno is doing, or its reply when it cannot. */
+  say: string
+  /** For an action that changes data: the yes/no question. Otherwise empty. */
+  ask: string
+}
+
+export async function junoCommand(utterance: string, screen: string, customerName: string | null, actions: JunoActionSpec[]): Promise<JunoCommandResult> {
+  const res = await fetch(`${API_BASE}/api/juno/command`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ utterance, screen, customerName, actions }),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Could not work out the request (${res.status})`))
+  return res.json()
+}
+
+// ── Juno reads aloud ──
+
+export type ReadDoc = 'brief' | 'report' | 'fact-find' | 'record-of-advice' | 'follow-up' | 'crm' | 'next-meeting' | 'pack'
+
+export interface Reading {
+  title: string
+  sections: { heading: string; text: string }[]
+}
+
+/** The spoken-ready text of a briefing, the report, or a part of the advice pack. */
+export async function getReading(runId: string, doc: ReadDoc): Promise<Reading> {
+  const res = await fetch(`${API_BASE}/api/juno/reading/${encodeURIComponent(runId)}/${doc}`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `There is nothing to read for that yet (${res.status})`))
+  return res.json()
+}

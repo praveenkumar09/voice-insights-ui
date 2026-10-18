@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { junoFollowUp, type FollowUpDraft, type LangId } from '../../api/client'
 import { LANGUAGES } from '../../hooks/useJuno'
+import { useJunoAction, useJunoScreen } from '../juno/mode/JunoMode'
 
 interface Props {
   profileId: string
@@ -98,6 +99,15 @@ export function DebriefFollowUp({ profileId, customerName = '' }: Props) {
     }
   }
 
+  useJunoScreen('The follow-up message for the customer')
+  useJunoAction({
+    id: 'set_followup_language', description: 'Show the follow-up in English, Mandarin, Malay or Tamil', risk: 'open',
+    params: { language: { type: 'enum', values: ['en', 'zh', 'ms', 'ta'] } },
+    run: (p) => { choose(p.language as LangId); return `Showing it in ${LANGUAGES.find((x) => x.id === p.language)?.name ?? p.language}.` },
+  })
+  useJunoAction(draft ? { id: 'read_followup', description: 'Read the follow-up message out loud', risk: 'info', run: () => draft.english } : null)
+  useJunoAction(draft ? { id: 'copy_followup', description: 'Copy the follow-up message', risk: 'change', run: async () => { await copy(); return 'Copied. Nothing has been sent.' } } : null)
+
   return (
     <div className="glass-card fu">
       <div className="fu__head">
@@ -126,7 +136,13 @@ export function DebriefFollowUp({ profileId, customerName = '' }: Props) {
       )}
       {draft && !loading && !error && (
         <>
-          <textarea className="fu__text" value={text} onChange={(e) => setText(e.target.value)} rows={7} aria-label="Follow-up message draft" lang={lang} />
+          <div className="fu__phone">
+            <div className="fu__phone-bar"><span className="fu__avatar" aria-hidden>{(customerName.trim()[0] ?? '?').toUpperCase()}</span><b>{customerName.trim() || 'Customer'}</b><small>draft · not sent</small></div>
+            <div className="fu__phone-chat">
+              <textarea className="fu__text" value={text} onChange={(e) => setText(e.target.value)} rows={7} aria-label="Follow-up message draft" lang={lang} />
+              {draft.conduct?.correction && text.includes(draft.conduct.correction) && <small className="fu__clar">Includes the clarifying sentence from the conduct note</small>}
+            </div>
+          </div>
           {lang !== 'en' && (
             <details className="fu__check">
               <summary>Check what it says in English</summary>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AdminDashboard } from '../components/admin/AdminDashboard'
 import { AdminSessions } from '../components/admin/AdminSessions'
+import { useJunoAction } from '../components/juno/mode/JunoMode'
 
 interface Props {
   onBack: () => void
@@ -9,6 +10,9 @@ interface Props {
 
 export function AdminScreen({ onBack, onViewRun }: Props) {
   const [tab, setTab] = useState<'dashboard' | 'sessions'>('dashboard')
+
+  useJunoAction({ id: 'admin_view', description: 'Show the Admin dashboard or the voice sessions', risk: 'open', params: { view: { type: 'enum', values: ['dashboard', 'sessions'] } },
+    run: (p) => { setTab(p.view === 'sessions' ? 'sessions' : 'dashboard') } })
 
   return (
     <section className="adm">

@@ -3,8 +3,10 @@ import { relevanceLabel } from '../../utils/relevance'
 import type { AgentState } from '../../hooks/useRecommendationStream'
 import type { AgentKey, ComplianceCheckResult, CustomerPersonaResult, CustomerProfile, ProductScoringResult, ProductShortlistResult } from '../../types'
 import { AGENT_NAME } from '../../brand'
+import { ReadAloudButtons } from '../juno/mode/ReadAloud'
 
 interface Props {
+  reportReady?: boolean
   runId: string | null
   steps: Record<AgentKey, AgentState>
   profile: CustomerProfile | null
@@ -16,7 +18,7 @@ interface Props {
 }
 
 /** The first thing the room sees: who this is for, how far the analysis is, and the headline results as they land. */
-export function RunHero({ runId, steps, profile, status, doneCount, total, elapsed }: Props) {
+export function RunHero({ reportReady, runId, steps, profile, status, doneCount, total, elapsed }: Props) {
   const name = profile?.customerName
   const shortlist = steps.productShortlist.status === 'done' ? (steps.productShortlist.result as ProductShortlistResult) : null
   const scoring = steps.productScoring.status === 'done' ? (steps.productScoring.result as ProductScoringResult) : null
@@ -72,6 +74,7 @@ export function RunHero({ runId, steps, profile, status, doneCount, total, elaps
         <span className={`hero__pill hero__pill--${status}`}>
           {status === 'complete' ? 'Analysis complete' : status === 'failed' ? 'Run failed' : status === 'running' ? `${AGENT_NAME} is analysing` : 'Starting'}
         </span>
+        {reportReady && runId && <ReadAloudButtons runId={runId} name={name} />}
         {elapsed != null && elapsed > 0 && <span className="hero__time">{status === 'complete' ? `Analysed in ${elapsed}s` : `${elapsed}s elapsed`}</span>}
       </div>
 

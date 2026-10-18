@@ -5,8 +5,8 @@ import { LiveWaveform } from '../components/capture/LiveWaveform'
 import { ModeSwitch, type HomeMode } from '../components/capture/ModeSwitch'
 import { JunoStage, JunoTranscript } from '../components/juno/JunoStage'
 import { useJuno } from '../hooks/useJuno'
-import { ConfirmChips } from '../components/capture/ConfirmChips'
-import { DebriefFollowUp } from '../components/capture/DebriefFollowUp'
+import { useJunoAction, useJunoScreen } from '../components/juno/mode/JunoMode'
+import { DebriefReview } from '../components/review/DebriefReview'
 import { ReviewPanel } from '../components/capture/ReviewPanel'
 import { useElapsed } from '../components/capture/useElapsed'
 import { CustomerProfileCard } from '../components/CustomerProfileCard'
@@ -56,6 +56,18 @@ export function CaptureScreen({ onReady }: Props) {
   const canRecommend = status === 'stopped' && !!profile?.id
   const safe = safeView && mode === 'live'
   const spoken = finalSegments.join(' ')
+  // After a debrief with Juno the transcript, the facts to confirm and the follow-up become one sign-off document.
+  const signOff = withJuno && status === 'stopped' && juno.stage === 'finished'
+  const lifeMapNode = (
+    <LifeMap
+      customerName={profile?.customerName}
+      lifeMap={copilot?.lifeMap}
+      listening={status === 'listening' || status === 'connecting'}
+      safe={safe}
+      debrief={debrief || withJuno}
+      matches={copilot?.productMatches}
+    />
+  )
 
   useEffect(() => {
     const el = consoleRef.current
@@ -79,6 +91,20 @@ export function CaptureScreen({ onReady }: Props) {
       // Not remembering the choice is fine.
     }
   }
+
+  const MODE_BY_NAME: Record<string, HomeMode> = { after_the_meeting: 'debrief', with_the_customer: 'live', debrief_with_juno: 'juno' }
+  const MODE_NAME: Record<HomeMode, string> = { debrief: 'After the meeting', live: 'With the customer', juno: 'Debrief with Juno' }
+  useJunoScreen(signOff ? 'The debrief review page' : `The home screen, ${MODE_NAME[mode]} mode${busy ? ' (recording in progress)' : ''}`)
+  useJunoAction({
+    id: 'switch_mode', description: 'Switch the home screen mode: After the meeting, With the customer, or Debrief with Juno', risk: 'open',
+    params: { mode: { type: 'enum', values: Object.keys(MODE_BY_NAME) } },
+    run: (p) => {
+      if (busy) return 'Finish the recording first, then I can switch modes.'
+      changeMode(MODE_BY_NAME[p.mode])
+      return `Switched to ${MODE_NAME[MODE_BY_NAME[p.mode]]}.`
+    },
+  })
+  useJunoAction(signOff ? { id: 'new_debrief', description: 'Start a new debrief', risk: 'change', run: () => { juno.reset(); return 'Ready for a new debrief.' } } : null)
 
   async function begin() {
     setTake(1)
@@ -184,10 +210,7 @@ export function CaptureScreen({ onReady }: Props) {
           partialText={partialText}
           profile={profile}
           copilot={copilot}
-          canRecommend={canRecommend}
-          advancing={advancing}
-          onRecommend={handleGetRecommendations}
-          onBrief={() => printMeetingBrief(profile, copilot)}
+          transcript={spoken}
           noVoice={typeof speechSynthesis === 'undefined'}
           safe={safe}
         />
@@ -248,16 +271,27 @@ export function CaptureScreen({ onReady }: Props) {
 
       {mode === 'live' && !safe && <NextQuestions questions={copilot?.nextQuestions ?? []} context={copilot?.askContext} />}
 
-      <LifeMap
-        customerName={profile?.customerName}
-        lifeMap={copilot?.lifeMap}
-        listening={status === 'listening' || status === 'connecting'}
-        safe={safe}
-        debrief={debrief || withJuno}
-        matches={copilot?.productMatches}
-      />
+      {!signOff && lifeMapNode}
 
-      <div className={safe ? 'capture-safe' : 'capture-grid'}>
+      {signOff && profile?.id && (
+        <DebriefReview
+          lifeMap={lifeMapNode}
+          profile={profile}
+          copilot={copilot}
+          segments={finalSegments}
+          turns={juno.turns}
+          readiness={juno.readiness}
+          elapsedMs={juno.elapsedMs}
+          advancing={advancing}
+          onApprove={() => void handleGetRecommendations()}
+          onBrief={() => printMeetingBrief(profile, copilot)}
+          onProfileSaved={voice.patchProfile}
+          onSaveLifeMap={voice.saveLifeMapEdit}
+          onSaveTranscript={voice.saveTranscriptEdit}
+        />
+      )}
+
+      {!signOff && <div className={safe ? 'capture-safe' : 'capture-grid'}>
         <div className="capture-grid__col">
           {withJuno && juno.turns.length > 0 && <JunoTranscript turns={juno.turns} />}
           <TranscriptPanel
@@ -272,7 +306,7 @@ export function CaptureScreen({ onReady }: Props) {
           <div className="capture-grid__col">
             {debrief || withJuno ? (
               <>
-                <CoverageCues profile={profile} copilot={copilot} text={spoken} />
+                {debrief && <CoverageCues profile={profile} copilot={copilot} text={spoken} />}
                 <CustomerProfileCard profile={profile} />
               </>
             ) : (
@@ -285,12 +319,10 @@ export function CaptureScreen({ onReady }: Props) {
             )}
           </div>
         )}
-      </div>
+      </div>}
 
-      {(debrief || withJuno) && status === 'stopped' && profile?.id && (
+      {debrief && status === 'stopped' && profile?.id && (
         <>
-          {withJuno && <ConfirmChips profile={profile} onSaved={voice.patchProfile} />}
-          {withJuno && <DebriefFollowUp key={profile.id} profileId={profile.id} customerName={profile.customerName ?? ''} />}
           <ReviewPanel
             profile={profile}
             copilot={copilot}
@@ -300,7 +332,7 @@ export function CaptureScreen({ onReady }: Props) {
         </>
       )}
 
-      {!safe && canRecommend && !consoleVisible && (
+      {!safe && !signOff && canRecommend && !consoleVisible && (
         <div className="recommend-dock" role="region" aria-label="Next step">
           <span>
             <strong>Captured and ready.</strong> Get the detailed suggestions, report and proposal.

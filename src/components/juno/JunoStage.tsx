@@ -2,7 +2,11 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef } from 'react'
 import { JUNO_TOPICS, LANGUAGES, type useJuno } from '../../hooks/useJuno'
 import type { CopilotInsights, CustomerProfile } from '../../types'
-import { JunoCanvas, type FieldMode } from './JunoCanvas'
+import { useJunoAction } from './mode/JunoMode'
+import { quoteFor } from '../../utils/debriefMarks'
+import { rememberChips } from '../../utils/flyIn'
+
+type FieldMode = 'idle' | 'listening' | 'speaking' | 'thinking' | 'done'
 
 type Juno = ReturnType<typeof useJuno>
 
@@ -14,24 +18,12 @@ interface Props {
   partialText: string
   profile: CustomerProfile | null
   copilot: CopilotInsights | null
-  /** The debrief has been saved and is ready to review and analyse. */
-  canRecommend: boolean
-  advancing: boolean
-  /** Called only for a real click by the advisor — see the analysis button. */
-  onRecommend: () => void
-  onBrief: () => void
+  /** Everything the advisor has said so far, to show where each fact came from. */
+  transcript: string
   /** The browser has no speech synthesis, so Juno can only caption. */
   noVoice: boolean
   /** Hides internal signals (mood). */
   safe?: boolean
-}
-
-/** The manual write-up a debrief replaces: the POC planning assumption (to be measured in the July baseline study). */
-const MANUAL_MINUTES = 45
-
-function duration(ms: number): string {
-  const s = Math.max(1, Math.round(ms / 1000))
-  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
 }
 
 const STEPS = ['Dictate', 'Juno checks', 'Read-back', 'Review'] as const
@@ -84,10 +76,15 @@ const TOPIC_ICON: Record<string, JSX.Element> = {
  * panel that fills in as the advisor describes the customer, so the gaps are visible. When the debrief is over the
  * advisor reviews it, and alone can start the analysis.
  */
-export function JunoStage({ k, amplitude, partialText, profile, copilot, canRecommend, advancing, onRecommend, onBrief, noVoice, safe = false }: Props) {
+export function JunoStage({ k, amplitude, partialText, profile, copilot, transcript, noVoice, safe = false }: Props) {
   const { stage, speaking, thinking, listening, covered, line, revealed } = k
   const mode: FieldMode = stage === 'finished' ? 'done' : speaking ? 'speaking' : thinking ? 'thinking' : listening ? 'listening' : 'idle'
   const step = stepIndex(stage)
+  // "Hey Juno, start the debrief": starts it for real, a moment after Juno has said so (the debrief takes over the microphone).
+  useJunoAction(stage === 'idle' && !noVoice ? {
+    id: 'start_juno_debrief', description: 'Start the debrief with Juno (press the Start the debrief button)', risk: 'open',
+    run: () => { window.setTimeout(() => k.start(), 2200); return undefined },
+  } : null)
   const live = stage !== 'idle' && stage !== 'finished' && stage !== 'error'
   const orbRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLElement>(null)
@@ -127,13 +124,43 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
   // A topic counts as covered once Juno has facts for it from the dictation, or once it has been asked about and answered.
   const isDone = (key: string) => covered.includes(key) || (facts[key]?.length ?? 0) > 0
   const progress = JUNO_TOPICS.filter((t) => isDone(t.key)).length
+  // Where each topic's first fact came from, quoted from what the advisor said.
+  const quotes = useMemo(
+    () => Object.fromEntries(JUNO_TOPICS.map((t) => [t.key, facts[t.key]?.[0] ? quoteFor(transcript, facts[t.key][0]) : null])),
+    [facts, transcript],
+  )
   const nextTopic = JUNO_TOPICS.find((t) => !isDone(t.key))?.key
+  const ringValue = k.readiness ? k.readiness.captured : progress
+  const ringMax = k.readiness ? k.readiness.total : JUNO_TOPICS.length
+  const ringLabel = k.readiness ? `${ringValue} of ${ringMax} fact-find fields` : `${ringValue} of ${ringMax} topics`
+  const questionsAsked = k.turns.filter((t) => t.role === 'juno').length
+  // While the ledger is on screen its chips are remembered, so the review page can fly them in when it appears.
+  const asideRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (stage === 'finished') return
+    const id = requestAnimationFrame(() => rememberChips(asideRef.current))
+    return () => cancelAnimationFrame(id)
+  })
+
+  // Once the conversation is over the orb shrinks to a status dot and the stage steps aside: the review below is the page.
+  if (stage === 'finished') {
+    return (
+      <section ref={stageRef} className="jn jn--done jn--slim jn--dot" aria-label="Juno conversation">
+        <div className="jn__slim jn__slim--dot">
+          <span className="jn__dot" aria-hidden />
+          <div className="jn__slim-text">
+            <b>Debrief complete</b>
+            <small>{k.readiness ? `${k.readiness.captured} of ${k.readiness.total} fact-find fields captured` : `${progress} of ${JUNO_TOPICS.length} topics have details`}</small>
+          </div>
+          <button className="jn__ghost" onClick={k.reset}>New debrief</button>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section ref={stageRef} className={`jn jn--${mode}${live ? ' is-live' : ''}`} aria-label="Juno conversation">
       <div className="jn__mesh" />
-      <div className="jn__grid" />
-      <JunoCanvas mode={mode} level={amplitude} anchor={orbRef} />
 
       <header className="jn__bar">
         <div className="jn__brand">
@@ -229,10 +256,25 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
                     ) : null}
                   </div>
 
+                  {stage === 'discovery' && (
+                    <div className="jn__qdots" aria-label={`Question ${Math.min(questionsAsked, 5)} of up to 5`}>
+                      {Array.from({ length: 5 }, (_, i) => <i key={i} className={i < questionsAsked ? 'is-on' : ''} />)}
+                      <span>Question {Math.min(Math.max(questionsAsked, 1), 5)} of up to 5</span>
+                    </div>
+                  )}
                   {stage === 'discovery' && listening && (
                     <div className="jn__quick" role="group" aria-label="Quick answers">
-                      <button onClick={() => k.answerQuick('Yes.')}>Yes</button>
-                      <button onClick={() => k.answerQuick('No.')}>No</button>
+                      {/\b(month|year|monthly|yearly|annual)/i.test(line) ? (
+                        <>
+                          <button onClick={() => k.answerQuick('Per month.')}>Per month</button>
+                          <button onClick={() => k.answerQuick('Per year.')}>Per year</button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => k.answerQuick('Yes.')}>Yes</button>
+                          <button onClick={() => k.answerQuick('No.')}>No</button>
+                        </>
+                      )}
                       <button onClick={() => k.answerQuick('Not discussed.')}>Not discussed</button>
                       <small>or just answer out loud</small>
                     </div>
@@ -258,48 +300,6 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
                 </motion.div>
               )}
 
-              {stage === 'finished' && (
-                <motion.div key="done" className="jn__idle jn__handoff" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                  <div className="jn__sparks" aria-hidden>
-                    {Array.from({ length: 14 }, (_, i) => <i key={i} style={{ ['--n' as string]: i }} />)}
-                  </div>
-                  <div className="jn__badge">
-                    <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-                  </div>
-                  <span className="jn__eyebrow">Debrief complete</span>
-                  <h3>Over to you for the review</h3>
-                  <p>
-                    {progress} of {JUNO_TOPICS.length} topics have details. What Juno has is on the right. Names can be misheard, so check and correct anything in the review below, then start the analysis yourself.
-                  </p>
-                  {k.elapsedMs != null && (
-                    <div className="jn__time" title={`Planning assumption: a manual write-up takes about ${MANUAL_MINUTES} minutes. To be measured in the July baseline study.`}>
-                      <b>{duration(k.elapsedMs)}</b> debrief
-                      <span>vs about {MANUAL_MINUTES} min by hand (planning assumption)</span>
-                    </div>
-                  )}
-                  <div className="jn__lock">
-                    <svg viewBox="0 0 24 24" aria-hidden><path d="M7 11V8a5 5 0 0110 0v3M6 11h12v9H6z" /></svg>
-                    Only the advisor can start the analysis. Juno cannot.
-                  </div>
-                  <div className="jn__actions">
-                    {canRecommend ? (
-                      <button
-                        className="jn__start jn__start--go"
-                        disabled={advancing}
-                        // A synthetic click (script or automation) is ignored: only a real press by a person counts.
-                        onClick={(e) => e.isTrusted && onRecommend()}
-                      >
-                        <span className="jn__start-glow" />
-                        {advancing ? 'Preparing…' : 'Approve & prepare the pack'}
-                      </button>
-                    ) : (
-                      <button className="jn__start jn__start--go" disabled>Saving the conversation…</button>
-                    )}
-                    <button className="jn__ghost" onClick={onBrief} disabled={!canRecommend}>Download brief (PDF)</button>
-                    <button className="jn__ghost" onClick={k.reset}>New debrief</button>
-                  </div>
-                </motion.div>
-              )}
             </AnimatePresence>
           </div>
 
@@ -329,26 +329,22 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
         </div>
 
         {/* Live understanding */}
-        <aside className="jn__insight" aria-label="What Juno has">
+        <aside ref={asideRef} className="jn__insight" aria-label="What Juno has">
           <div className="jn__insight-head">
             <div>
-              <span className="jn__eyebrow">Live understanding</span>
+              <span className="jn__eyebrow">Fact-find ledger</span>
               <h4>What Juno has so far</h4>
             </div>
-            <div className="jn__ring" aria-label={`${progress} of ${JUNO_TOPICS.length} topics`}>
+            <div className="jn__ring" aria-label={ringLabel}>
               <svg viewBox="0 0 44 44">
                 <circle cx="22" cy="22" r="18" className="jn__ring-track" />
-                <motion.circle cx="22" cy="22" r="18" className="jn__ring-fill" strokeDasharray={113.1} initial={{ strokeDashoffset: 113.1 }} animate={{ strokeDashoffset: 113.1 * (1 - progress / JUNO_TOPICS.length) }} transition={{ duration: 0.8, ease: 'easeOut' }} />
+                <motion.circle cx="22" cy="22" r="18" className="jn__ring-fill" strokeDasharray={113.1} initial={{ strokeDashoffset: 113.1 }} animate={{ strokeDashoffset: 113.1 * (1 - ringValue / ringMax) }} transition={{ duration: 0.8, ease: 'easeOut' }} />
               </svg>
-              <b>{progress}<small>/{JUNO_TOPICS.length}</small></b>
+              <b>{ringValue}<small>/{ringMax}</small></b>
             </div>
           </div>
 
           <div className="jn__ready" title="An estimate of how much of the advice pack's 26-field fact-find this debrief has captured. The pack makes the final count.">
-            <div className="jn__ready-top">
-              <span>Fact-find readiness</span>
-              <b key={k.readiness?.captured ?? 'none'} className={k.readiness ? 'is-pop' : ''}>{k.readiness ? `${k.readiness.captured}/${k.readiness.total}` : '—'}</b>
-            </div>
             <div className="jn__ready-bar" role="progressbar" aria-valuemin={0} aria-valuemax={k.readiness?.total ?? 26} aria-valuenow={k.readiness?.captured ?? 0}>
               <i style={{ width: `${k.readiness ? (k.readiness.captured / k.readiness.total) * 100 : 0}%` }} />
               {k.readiness?.baseline != null && k.readiness.baseline < k.readiness.captured && (
@@ -393,11 +389,19 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, canReco
                       </AnimatePresence>
                       {items.length === 0 && <span className="jn__none">{done ? 'Covered' : 'Not mentioned yet'}</span>}
                     </div>
+                    {items[0] && quotes[t.key] && <q className="jn__src">{quotes[t.key]}</q>}
                   </div>
                 </li>
               )
             })}
           </ol>
+
+          {k.readiness && k.readiness.missing.length > 0 && (
+            <div className="jn__open" aria-label="Still open">
+              <small>Still open</small>
+              <ul>{k.readiness.missing.slice(0, 5).map((m) => <li key={m}>{m}</li>)}</ul>
+            </div>
+          )}
 
           {copilot && (
             <div className={`jn__comply${copilot.complianceFlags.length ? ' has-flags' : ''}`} aria-label="Compliance watch">

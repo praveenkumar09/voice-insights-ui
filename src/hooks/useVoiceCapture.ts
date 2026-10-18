@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { updateLifeMap, updateTranscript, wsVoiceUrl } from '../api/client'
 import type { CopilotInsights, CustomerProfile, LifeMapData, SignalPoint } from '../types'
+import { voiceLock } from '../utils/voiceLock'
 
 export type VoiceCaptureStatus = 'idle' | 'connecting' | 'listening' | 'paused' | 'stopping' | 'stopped' | 'error'
 
@@ -41,8 +42,13 @@ interface VoiceMessage {
 // worklet (public/pcm-worklet.js) resamples itself if the browser refuses.
 const TARGET_SAMPLE_RATE = 24000
 
-export function useVoiceCapture() {
+/**
+ * @param options.assistant Juno mode's own listener. Every other voice feature claims the microphone while it is active (so Juno mode
+ * steps aside); the assistant does not claim it, or it would wait for itself.
+ */
+export function useVoiceCapture(options: { assistant?: boolean } = {}) {
   const [status, setStatus] = useState<VoiceCaptureStatus>('idle')
+  const lockId = useRef(`vc-${Math.random().toString(36).slice(2)}`)
   const [amplitude, setAmplitude] = useState(0)
   const [partialText, setPartialText] = useState('')
   const [finalSegments, setFinalSegments] = useState<string[]>([])
@@ -54,6 +60,13 @@ export function useVoiceCapture() {
   const [backgroundIgnored, setBackgroundIgnored] = useState(false)
   const noiseFilterRef = useRef<NoiseFilter>(noiseFilter)
   noiseFilterRef.current = noiseFilter
+  useEffect(() => {
+    if (options.assistant) return
+    const active = status === 'connecting' || status === 'listening' || status === 'paused' || status === 'stopping'
+    if (active) voiceLock.claim(lockId.current)
+    else voiceLock.release(lockId.current)
+  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => voiceLock.release(lockId.current), [])
   const gatedRun = useRef(0)
   // While Juno is speaking aloud the microphone must not feed its own voice back into the transcript.
   const mutedRef = useRef(false)

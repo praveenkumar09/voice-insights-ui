@@ -5,7 +5,7 @@ import { LiveWaveform } from '../components/capture/LiveWaveform'
 import { ModeSwitch, type HomeMode } from '../components/capture/ModeSwitch'
 import { JunoStage, JunoTranscript } from '../components/juno/JunoStage'
 import { useJuno } from '../hooks/useJuno'
-import { DebriefSignOff } from '../components/juno/DebriefSignOff'
+import { DebriefReview } from '../components/review/DebriefReview'
 import { ReviewPanel } from '../components/capture/ReviewPanel'
 import { useElapsed } from '../components/capture/useElapsed'
 import { CustomerProfileCard } from '../components/CustomerProfileCard'
@@ -57,6 +57,16 @@ export function CaptureScreen({ onReady }: Props) {
   const spoken = finalSegments.join(' ')
   // After a debrief with Juno the transcript, the facts to confirm and the follow-up become one sign-off document.
   const signOff = withJuno && status === 'stopped' && juno.stage === 'finished'
+  const lifeMapNode = (
+    <LifeMap
+      customerName={profile?.customerName}
+      lifeMap={copilot?.lifeMap}
+      listening={status === 'listening' || status === 'connecting'}
+      safe={safe}
+      debrief={debrief || withJuno}
+      matches={copilot?.productMatches}
+    />
+  )
 
   useEffect(() => {
     const el = consoleRef.current
@@ -186,8 +196,6 @@ export function CaptureScreen({ onReady }: Props) {
           profile={profile}
           copilot={copilot}
           transcript={spoken}
-          canRecommend={canRecommend}
-          onBrief={() => printMeetingBrief(profile, copilot)}
           noVoice={typeof speechSynthesis === 'undefined'}
           safe={safe}
         />
@@ -248,17 +256,11 @@ export function CaptureScreen({ onReady }: Props) {
 
       {mode === 'live' && !safe && <NextQuestions questions={copilot?.nextQuestions ?? []} context={copilot?.askContext} />}
 
-      <LifeMap
-        customerName={profile?.customerName}
-        lifeMap={copilot?.lifeMap}
-        listening={status === 'listening' || status === 'connecting'}
-        safe={safe}
-        debrief={debrief || withJuno}
-        matches={copilot?.productMatches}
-      />
+      {!signOff && lifeMapNode}
 
       {signOff && profile?.id && (
-        <DebriefSignOff
+        <DebriefReview
+          lifeMap={lifeMapNode}
           profile={profile}
           copilot={copilot}
           segments={finalSegments}

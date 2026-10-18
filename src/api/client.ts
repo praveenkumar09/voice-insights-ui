@@ -642,3 +642,23 @@ export const rehearsalTurn = (profileId: string, lines: RehearsalLine[], lang: L
   rehearsalPost<RehearsalTurn>('turn', { profileId, lines, lang }, 'The customer did not answer')
 export const rehearsalScore = (profileId: string, lines: RehearsalLine[]) =>
   rehearsalPost<RehearsalScorecard>('score', { profileId, lines }, "Could not write the coach's notes")
+
+// ── Spoken corrections on the debrief review page ──
+
+export interface SpokenCorrection {
+  /** The field to change, or "none" when the words were not a correction. */
+  field: 'customerName' | 'age' | 'occupation' | 'dependents' | 'budgetNotes' | 'none'
+  value: string
+  /** Juno's one-line reply. */
+  say: string
+}
+
+export async function junoCorrection(profileId: string, utterance: string): Promise<SpokenCorrection> {
+  const res = await fetch(`${API_BASE}/api/juno/correction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ profileId, utterance }),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Could not work out the correction (${res.status})`))
+  return res.json()
+}

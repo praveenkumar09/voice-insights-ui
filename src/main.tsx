@@ -13,8 +13,10 @@ import './juno.css'
 import './juno-light.css'
 import './signoff.css'
 import './rehearsal.css'
+import './review.css'
 import './exec.css'
 import './admin.css'
+import './design.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

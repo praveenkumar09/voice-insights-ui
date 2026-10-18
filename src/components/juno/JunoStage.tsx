@@ -2,7 +2,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef } from 'react'
 import { JUNO_TOPICS, LANGUAGES, type useJuno } from '../../hooks/useJuno'
 import type { CopilotInsights, CustomerProfile } from '../../types'
-import { MANUAL_MINUTES, duration, quoteFor } from '../../utils/debriefMarks'
+import { quoteFor } from '../../utils/debriefMarks'
+import { rememberChips } from '../../utils/flyIn'
 
 type FieldMode = 'idle' | 'listening' | 'speaking' | 'thinking' | 'done'
 
@@ -18,9 +19,6 @@ interface Props {
   copilot: CopilotInsights | null
   /** Everything the advisor has said so far, to show where each fact came from. */
   transcript: string
-  /** The debrief has been saved and is ready to review and analyse. */
-  canRecommend: boolean
-  onBrief: () => void
   /** The browser has no speech synthesis, so Juno can only caption. */
   noVoice: boolean
   /** Hides internal signals (mood). */
@@ -77,7 +75,7 @@ const TOPIC_ICON: Record<string, JSX.Element> = {
  * panel that fills in as the advisor describes the customer, so the gaps are visible. When the debrief is over the
  * advisor reviews it, and alone can start the analysis.
  */
-export function JunoStage({ k, amplitude, partialText, profile, copilot, transcript, canRecommend, onBrief, noVoice, safe = false }: Props) {
+export function JunoStage({ k, amplitude, partialText, profile, copilot, transcript, noVoice, safe = false }: Props) {
   const { stage, speaking, thinking, listening, covered, line, revealed } = k
   const mode: FieldMode = stage === 'finished' ? 'done' : speaking ? 'speaking' : thinking ? 'thinking' : listening ? 'listening' : 'idle'
   const step = stepIndex(stage)
@@ -130,28 +128,25 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
   const ringMax = k.readiness ? k.readiness.total : JUNO_TOPICS.length
   const ringLabel = k.readiness ? `${ringValue} of ${ringMax} fact-find fields` : `${ringValue} of ${ringMax} topics`
   const questionsAsked = k.turns.filter((t) => t.role === 'juno').length
+  // While the ledger is on screen its chips are remembered, so the review page can fly them in when it appears.
+  const asideRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (stage === 'finished') return
+    const id = requestAnimationFrame(() => rememberChips(asideRef.current))
+    return () => cancelAnimationFrame(id)
+  })
 
-  // Once the conversation is over the stage steps aside: the sign-off below is the document, this is just the receipt line.
+  // Once the conversation is over the orb shrinks to a status dot and the stage steps aside: the review below is the page.
   if (stage === 'finished') {
     return (
-      <section ref={stageRef} className="jn jn--done jn--slim" aria-label="Juno conversation">
-        <div className="jn__mesh" />
-        <div className="jn__slim">
-          <span className="jn__badge" aria-hidden><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+      <section ref={stageRef} className="jn jn--done jn--slim jn--dot" aria-label="Juno conversation">
+        <div className="jn__slim jn__slim--dot">
+          <span className="jn__dot" aria-hidden />
           <div className="jn__slim-text">
-            <span className="jn__eyebrow">Debrief complete</span>
-            <b>{k.readiness ? `${k.readiness.captured} of ${k.readiness.total} fact-find fields captured` : `${progress} of ${JUNO_TOPICS.length} topics have details`}</b>
-            {k.elapsedMs != null && (
-              <small title={`Planning assumption: a manual write-up takes about ${MANUAL_MINUTES} minutes. To be measured in the July baseline study.`}>
-                {duration(k.elapsedMs)} with Juno · about {MANUAL_MINUTES} min by hand (planning assumption)
-              </small>
-            )}
+            <b>Debrief complete</b>
+            <small>{k.readiness ? `${k.readiness.captured} of ${k.readiness.total} fact-find fields captured` : `${progress} of ${JUNO_TOPICS.length} topics have details`}</small>
           </div>
-          <div className="jn__actions">
-            <button className="jn__ghost" onClick={() => document.getElementById('debrief-signoff')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Review &amp; approve ↓</button>
-            <button className="jn__ghost" onClick={onBrief} disabled={!canRecommend}>Download brief (PDF)</button>
-            <button className="jn__ghost" onClick={k.reset}>New debrief</button>
-          </div>
+          <button className="jn__ghost" onClick={k.reset}>New debrief</button>
         </div>
       </section>
     )
@@ -328,7 +323,7 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
         </div>
 
         {/* Live understanding */}
-        <aside className="jn__insight" aria-label="What Juno has">
+        <aside ref={asideRef} className="jn__insight" aria-label="What Juno has">
           <div className="jn__insight-head">
             <div>
               <span className="jn__eyebrow">Fact-find ledger</span>

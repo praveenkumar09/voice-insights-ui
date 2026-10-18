@@ -7,6 +7,7 @@ import type { CopilotInsights, CustomerProfile, LifeMapData } from '../../types'
 import { duration, entitiesFor, findMarks, MANUAL_MINUTES, type Entity } from '../../utils/debriefMarks'
 import { flyIn } from '../../utils/flyIn'
 import { MicIcon } from '../icons'
+import { useJunoAction, useJunoScreen } from '../juno/mode/JunoMode'
 import { DebriefFollowUp } from '../capture/DebriefFollowUp'
 import { ReviewPanel } from '../capture/ReviewPanel'
 import { JunoTranscript } from '../juno/JunoStage'
@@ -127,22 +128,23 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
       : f === 'dependents' ? { dependents: profile.dependents } : f === 'budgetNotes' ? { budgetNotes: profile.budgetNotes } : {}
 
   /** What the advisor said, turned into one change: applied with a plain-words confirmation and an Undo. */
-  async function applySpoken(text: string, asSpelling: boolean) {
+  async function applySpoken(text: string, asSpelling: boolean): Promise<string> {
     setApplying(true)
     try {
       const r = await junoCorrection(profile.id!, asSpelling ? `The customer's name is spelled: ${text}` : text)
       if (r.field === 'none') {
         setToast({ text: r.say })
-        void speakShort(r.say)
-        return
+        return r.say
       }
       const before = currentFor(r.field)
       await save(patchFor(r.field, r.value))
       if (r.field === 'customerName') resolve('name')
       setToast({ text: r.say, undo: () => void save(before).then(() => setToast({ text: 'Undone.' })) })
-      void speakShort(r.say)
+      return r.say
     } catch (e) {
-      setToast({ text: e instanceof Error ? e.message : 'Could not apply that.' })
+      const msg = e instanceof Error ? e.message : 'Could not apply that.'
+      setToast({ text: msg })
+      return msg
     } finally {
       setApplying(false)
     }
@@ -153,7 +155,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
     setToast(null)
     const text = await voice.listen()
     if (!text) return setToast({ text: 'I didn’t hear anything. Tap the microphone and try again.' })
-    await applySpoken(text, asSpelling)
+    void speakShort(await applySpoken(text, asSpelling))
   }
   const micBusy = voice.phase === 'starting' || voice.phase === 'thinking' || applying
 
@@ -172,6 +174,34 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
   }
 
   const spring = reduce ? { duration: 0 } : { type: 'spring' as const, stiffness: 420, damping: 38 }
+
+  // What Juno can do on this page.
+  const TAB_BY_NAME: Record<string, Tab> = { summary: 'summary', follow_up: 'followup', rehearse: 'rehearse', details: 'details' }
+  useJunoScreen(`The debrief review for ${profile.customerName ?? 'the customer'}, ${tab} tab${queue.length ? `, ${queue.length} thing${queue.length === 1 ? '' : 's'} to check` : ', everything checked'}`)
+  useJunoAction({ id: 'open_tab', description: 'Open a tab: Summary, Follow-up, Rehearse, or Details', risk: 'open', params: { tab: { type: 'enum', values: Object.keys(TAB_BY_NAME) } }, run: (p) => { setTab(TAB_BY_NAME[p.tab]) } })
+  useJunoAction(queue.length > 0 ? { id: 'review_items', description: 'Go through the things to check', risk: 'open', run: () => { reviewNow() } } : null)
+  useJunoAction({
+    id: 'read_summary', description: 'Read out the summary of this customer', risk: 'info',
+    run: () => {
+      const bits = [profile.customerName, profile.age != null ? `${profile.age} years old` : null, profile.occupation, profile.dependents != null ? `${profile.dependents} dependant${profile.dependents === 1 ? '' : 's'}` : null].filter(Boolean).join(', ')
+      return [bits, wants.length ? `Wants ${wants.join(' and ')}.` : '', worries.length ? `Worried about ${worries.join(' and ')}.` : '', profile.budgetNotes ? `Budget: ${profile.budgetNotes.replace(/[.\s]+$/, '')}.` : ''].filter(Boolean).join('. ').replace(/\.\./g, '.')
+    },
+  })
+  useJunoAction({
+    id: 'show_approve', description: 'Show me the Approve button', risk: 'guide',
+    run: () => {
+      const btn = document.querySelector<HTMLElement>('.rv__bar .cta-btn, .rv__bar .rv__link')
+      document.querySelector('.rv__dock')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+      document.querySelector('.rv__bar')?.animate([{ boxShadow: '0 0 0 0 rgba(211,17,69,0.55)' }, { boxShadow: '0 0 0 14px rgba(211,17,69,0)' }], { duration: 1300, iterations: 2 })
+      btn?.focus({ preventScroll: true })
+      return `${queue.length ? `${queue.length} thing${queue.length === 1 ? ' is' : 's are'} still to check, but you can approve anyway. ` : ''}Press Approve when you’re ready. I can’t press it for you.`
+    },
+  })
+  useJunoAction({
+    id: 'correct_record', description: 'Change a detail: the name, age, job, dependants or budget', risk: 'change',
+    params: { instruction: { type: 'string' } },
+    run: (p) => applySpoken(p.instruction, false),
+  })
 
   return (
     <section ref={rootRef} className="rv" id="debrief-signoff" aria-label="Review the debrief">

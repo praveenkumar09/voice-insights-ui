@@ -16,6 +16,8 @@ import { ReportSpotlight } from './ReportSpotlight'
 import { RunHero } from './RunHero'
 import { StageIntro } from './StageIntro'
 import { AGENT_NAME } from '../../brand'
+import { useJunoAction, useJunoScreen } from '../juno/mode/JunoMode'
+import { rememberRun } from '../../utils/lastRun'
 
 type Tab = JourneyId
 type ReportView = 'advisory' | 'proposal'
@@ -76,6 +78,20 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
 
   const status = runFailed ? 'failed' : reportReady ? 'complete' : running || doneCount > 0 ? 'running' : 'pending'
   const name = profile?.customerName
+  useEffect(() => { if (runId && reportReady) rememberRun(runId, name) }, [runId, reportReady, name])
+
+  const STAGE: Record<string, Tab> = { agents: 'agents', live_vs_final: 'live', report: 'report', goals_and_plan: 'future', advice_pack: 'advice' }
+  useJunoScreen(`The suggestion workspace${name ? ` for ${name}` : ''}, ${tab} stage`)
+  useJunoAction({
+    id: 'open_stage', description: 'Open a stage: Agents, Live vs final, Report, Goals and plan, or Advice pack', risk: 'open',
+    params: { stage: { type: 'enum', values: Object.keys(STAGE) } },
+    run: (p) => { pick(STAGE[p.stage]) },
+  })
+  useJunoAction(tab === 'report' && report ? {
+    id: 'open_document', description: 'Show the advisory report or the customer proposal', risk: 'open',
+    params: { document: { type: 'enum', values: ['advisory_report', 'customer_proposal'] } },
+    run: (p) => { setReportView(p.document === 'customer_proposal' ? 'proposal' : 'advisory') },
+  } : null)
 
   const journey: JourneyStep[] = [
     { id: 'agents', title: AGENT_NAME, hint: 'Agent orchestration · 11 agents', state: reportReady ? 'done' : running || doneCount > 0 ? 'running' : 'idle', chip: reportReady ? 'Complete' : `${doneCount}/${total}` },
@@ -87,7 +103,7 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
 
   return (
     <div className="ws">
-      <RunHero runId={runId} steps={steps} profile={profile} status={status} doneCount={doneCount} total={total} elapsed={watched ? elapsed : null} />
+      <RunHero reportReady={reportReady} runId={runId} steps={steps} profile={profile} status={status} doneCount={doneCount} total={total} elapsed={watched ? elapsed : null} />
 
       {(runFailed || failedAgent) && (
         <p className="orchestration-screen__error">

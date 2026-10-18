@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { junoFollowUp, type FollowUpDraft, type LangId } from '../../api/client'
 import { LANGUAGES } from '../../hooks/useJuno'
+import { useJunoAction, useJunoScreen } from '../juno/mode/JunoMode'
 
 interface Props {
   profileId: string
@@ -97,6 +98,15 @@ export function DebriefFollowUp({ profileId, customerName = '' }: Props) {
       // Clipboard can be blocked; the text stays selectable on screen.
     }
   }
+
+  useJunoScreen('The follow-up message for the customer')
+  useJunoAction({
+    id: 'set_followup_language', description: 'Show the follow-up in English, Mandarin, Malay or Tamil', risk: 'open',
+    params: { language: { type: 'enum', values: ['en', 'zh', 'ms', 'ta'] } },
+    run: (p) => { choose(p.language as LangId); return `Showing it in ${LANGUAGES.find((x) => x.id === p.language)?.name ?? p.language}.` },
+  })
+  useJunoAction(draft ? { id: 'read_followup', description: 'Read the follow-up message out loud', risk: 'info', run: () => draft.english } : null)
+  useJunoAction(draft ? { id: 'copy_followup', description: 'Copy the follow-up message', risk: 'change', run: async () => { await copy(); return 'Copied. Nothing has been sent.' } } : null)
 
   return (
     <div className="glass-card fu">

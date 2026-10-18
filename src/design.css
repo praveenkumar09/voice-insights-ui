@@ -148,3 +148,11 @@
 @media (max-width: 1100px) { .ap-nav { display: flex; } }
 
 .hero--complete .hero__ring-fill { stroke: var(--ds-ok); }
+
+/* Read aloud, in the hero */
+.hero__read { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hero__read-btn { min-height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--hairline); background: rgba(var(--tint-rgb), 0.05); color: var(--ink); font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: background 0.15s, transform 0.15s; }
+.hero__read-btn:hover:not(:disabled) { background: rgba(var(--tint-rgb), 0.1); } .hero__read-btn:active:not(:disabled) { transform: scale(0.97); } .hero__read-btn:disabled { opacity: 0.55; cursor: default; }
+.hero__read-btn--main { background: var(--ink); color: var(--surface-solid); border-color: transparent; } .hero__read-btn--main:hover:not(:disabled) { background: var(--ink); opacity: 0.88; }
+.hero__read-btn:focus-visible { outline: 3px solid rgba(211, 17, 69, 0.38); outline-offset: 2px; }
+.hero__read-err { font-size: 0.85rem; color: #c0392b; }

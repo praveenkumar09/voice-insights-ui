@@ -5,6 +5,7 @@ import { LiveWaveform } from '../components/capture/LiveWaveform'
 import { ModeSwitch, type HomeMode } from '../components/capture/ModeSwitch'
 import { JunoStage, JunoTranscript } from '../components/juno/JunoStage'
 import { useJuno } from '../hooks/useJuno'
+import { useJunoAction, useJunoScreen } from '../components/juno/mode/JunoMode'
 import { DebriefReview } from '../components/review/DebriefReview'
 import { ReviewPanel } from '../components/capture/ReviewPanel'
 import { useElapsed } from '../components/capture/useElapsed'
@@ -90,6 +91,20 @@ export function CaptureScreen({ onReady }: Props) {
       // Not remembering the choice is fine.
     }
   }
+
+  const MODE_BY_NAME: Record<string, HomeMode> = { after_the_meeting: 'debrief', with_the_customer: 'live', debrief_with_juno: 'juno' }
+  const MODE_NAME: Record<HomeMode, string> = { debrief: 'After the meeting', live: 'With the customer', juno: 'Debrief with Juno' }
+  useJunoScreen(signOff ? 'The debrief review page' : `The home screen, ${MODE_NAME[mode]} mode${busy ? ' (recording in progress)' : ''}`)
+  useJunoAction({
+    id: 'switch_mode', description: 'Switch the home screen mode: After the meeting, With the customer, or Debrief with Juno', risk: 'open',
+    params: { mode: { type: 'enum', values: Object.keys(MODE_BY_NAME) } },
+    run: (p) => {
+      if (busy) return 'Finish the recording first, then I can switch modes.'
+      changeMode(MODE_BY_NAME[p.mode])
+      return `Switched to ${MODE_NAME[MODE_BY_NAME[p.mode]]}.`
+    },
+  })
+  useJunoAction(signOff ? { id: 'new_debrief', description: 'Start a new debrief', risk: 'change', run: () => { juno.reset(); return 'Ready for a new debrief.' } } : null)
 
   async function begin() {
     setTake(1)

@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Children, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useRehearsal, type Beat } from '../../hooks/useRehearsal'
+import { useJunoAction } from '../juno/mode/JunoMode'
 
 interface Props {
   profileId: string
@@ -24,6 +25,8 @@ export function DressRehearsal({ profileId, customerName }: Props) {
   const r = useRehearsal(profileId)
   const first = customerName.trim().split(/\s+/)[0] || 'the customer'
   const steps = ['Brief', 'Rehearse', 'Coach’s notes'] as const
+  useJunoAction(r.stage === 'idle' ? { id: 'brief_me', description: 'Brief me on the next meeting', risk: 'open', run: () => { void r.startBrief() } } : null)
+  useJunoAction(r.stage === 'brief' ? { id: 'start_rehearsal', description: 'Start the rehearsal', risk: 'open', run: () => { void r.startRehearsal(); return `Starting the rehearsal. I’ll step aside while you talk to ${first}.` } } : null)
   const stepNow = r.stage === 'idle' ? -1 : r.stage === 'briefing' || r.stage === 'brief' ? 0 : r.stage === 'rehearsing' ? 1 : 2
 
   return (

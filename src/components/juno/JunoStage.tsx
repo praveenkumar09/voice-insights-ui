@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef } from 'react'
 import { JUNO_TOPICS, LANGUAGES, type useJuno } from '../../hooks/useJuno'
 import type { CopilotInsights, CustomerProfile } from '../../types'
+import { useJunoAction } from './mode/JunoMode'
 import { quoteFor } from '../../utils/debriefMarks'
 import { rememberChips } from '../../utils/flyIn'
 
@@ -79,6 +80,11 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
   const { stage, speaking, thinking, listening, covered, line, revealed } = k
   const mode: FieldMode = stage === 'finished' ? 'done' : speaking ? 'speaking' : thinking ? 'thinking' : listening ? 'listening' : 'idle'
   const step = stepIndex(stage)
+  // "Hey Juno, start the debrief": starts it for real, a moment after Juno has said so (the debrief takes over the microphone).
+  useJunoAction(stage === 'idle' && !noVoice ? {
+    id: 'start_juno_debrief', description: 'Start the debrief with Juno (press the Start the debrief button)', risk: 'open',
+    run: () => { window.setTimeout(() => k.start(), 2200); return undefined },
+  } : null)
   const live = stage !== 'idle' && stage !== 'finished' && stage !== 'error'
   const orbRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLElement>(null)

@@ -17,6 +17,7 @@ import './review.css'
 import './exec.css'
 import './admin.css'
 import './design.css'
+import './junomode.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

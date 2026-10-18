@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useJunoAction } from '../juno/mode/JunoMode'
 import { generateAdvicePack, getAdvicePack, getAskHistory, getWhatIfs, regenerateAdviceSection, reviewAdvicePack, saveAdvicePack, type AskTurn, type WhatIfView } from '../../api/client'
 import type { AdviceTask, AdvicePack, AdvicePackSection, AdvicePackView, FactFindField, FactSource } from '../../types'
 import { printAdvicePack } from '../../utils/advicePackPdf'
@@ -42,6 +43,12 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
   const [pack, setPack] = useState<AdvicePack | null>(null)
   const [dirty, setDirty] = useState(false)
   const [part, setPart] = useState<Part>('factFind')
+  const PARTS: Record<string, Part> = { fact_find: 'factFind', record_of_advice: 'record', follow_up: 'followUp', crm_note: 'crm', discussion: 'discussion', next_meeting: 'meeting' }
+  useJunoAction({
+    id: 'open_pack_section', description: 'Open an advice pack section: Fact-find, Record of advice, Follow-up, CRM note, Discussion, or Next meeting', risk: 'open',
+    params: { section: { type: 'enum', values: Object.keys(PARTS) } },
+    run: (p) => { setPart(PARTS[p.section]) },
+  })
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)

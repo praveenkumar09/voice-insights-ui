@@ -49,6 +49,32 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
     params: { section: { type: 'enum', values: Object.keys(PARTS) } },
     run: (p) => { setPart(PARTS[p.section]) },
   })
+  // "Hey Juno, the customer's retirement age is 55": fills one fact-find field and saves the pack (Juno asks for a yes first).
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const allFields = pack?.factFind?.flatMap((sec, si) => sec.fields.map((f, fi) => ({ f, si, fi }))) ?? []
+  const missingLabels = allFields.filter((x) => x.f.source === 'missing').map((x) => x.f.label)
+  useJunoAction(pack && allFields.length > 0 ? {
+    id: 'fill_fact_find', risk: 'change', params: { field: { type: 'string' }, value: { type: 'string' } },
+    description: `Fill in a fact-find field and save it. Fields still missing: ${missingLabels.slice(0, 14).join('; ') || 'none'}. Say which field and the value`,
+    run: async (p) => {
+      const q = norm(p.field ?? '')
+      const value = (p.value ?? '').trim()
+      if (!q || !value) return 'I didn’t catch which field or what to put in it, so I haven’t changed anything.'
+      const hit = allFields.find((x) => norm(x.f.label) === q) ?? allFields.find((x) => x.f.source === 'missing' && (norm(x.f.label).includes(q) || q.includes(norm(x.f.label))))
+        ?? allFields.find((x) => norm(x.f.label).includes(q) || q.includes(norm(x.f.label)))
+      if (!hit) return `I couldn’t find a field called ${p.field}.`
+      const next = setField(pack!, hit.si, hit.fi, value)
+      setPack(next)
+      const saved = await saveAdvicePack(runId, next)
+      setPack(saved)
+      setDirty(false)
+      return `Saved ${hit.f.label}: ${value}.`
+    },
+  } : null)
+  useJunoAction(pack ? {
+    id: 'download_advice_pack', description: 'Download the advice pack as a PDF', risk: 'open',
+    run: () => { printAdvicePack(pack, customerName, discussion, scenarios); return undefined },
+  } : null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)

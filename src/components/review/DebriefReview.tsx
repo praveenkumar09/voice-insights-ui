@@ -217,6 +217,27 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
       return `Added ${name} as ${relation} and saved the map.`
     },
   })
+  // "Hey Juno, the income is six thousand a month": fills in or changes one customer detail and saves it (after a yes).
+  useJunoAction({
+    id: 'set_detail', risk: 'change', params: { field: { type: 'enum', values: ['income', 'budget', 'existing_cover', 'age', 'occupation', 'dependants'] }, value: { type: 'string' } },
+    description: 'Fill in or change a customer detail and save it: income, budget, existing cover, age, occupation or dependants',
+    run: async (p) => {
+      const value = (p.value ?? '').trim()
+      if (!value) return 'I didn’t catch the value, so I haven’t changed anything.'
+      const num = Number(value.replace(/[^0-9.]/g, ''))
+      const patch: Partial<CustomerProfile> =
+        p.field === 'income' ? { incomeBand: value }
+        : p.field === 'budget' ? { budgetNotes: value }
+        : p.field === 'existing_cover' ? { existingPolicies: value.split(/,| and /i).map((x) => x.trim()).filter(Boolean) }
+        : p.field === 'occupation' ? { occupation: value }
+        : p.field === 'age' && num > 0 ? { age: num }
+        : p.field === 'dependants' && num >= 0 ? { dependents: num }
+        : {}
+      if (Object.keys(patch).length === 0) return 'I couldn’t use that value, so I haven’t changed anything.'
+      await save(patch)
+      return `Saved ${p.field.replace('_', ' ')}: ${value}.`
+    },
+  })
   useJunoAction({
     id: 'correct_record', description: 'Change a detail: the name, age, job, dependants or budget', risk: 'change',
     params: { instruction: { type: 'string' } },

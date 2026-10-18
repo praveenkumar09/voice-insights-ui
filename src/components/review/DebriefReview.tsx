@@ -1,3 +1,5 @@
+import { TheirWorld } from '../lifemap/TheirWorld'
+import { Constellation } from '../lifemap/Constellation'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { junoCorrection, saveCustomerProfile, type FactFindReadiness, type SpokenCorrection } from '../../api/client'
@@ -47,9 +49,11 @@ const TABS: { id: Tab; label: string }[] = [
  * that need a person, one card at a time. The details: every field, the Life Map and the transcript, one tap away. One button at the
  * bottom changes with where the advisor is, and only a real click by a person can approve.
  */
-export function DebriefReview({ profile, copilot, segments, turns, readiness, elapsedMs, advancing, onApprove, onBrief, onProfileSaved, onSaveLifeMap, onSaveTranscript, lifeMap }: Props) {
+export function DebriefReview({ profile, copilot, segments, turns, readiness, elapsedMs, advancing, onApprove, onBrief, onProfileSaved, onSaveLifeMap, onSaveTranscript }: Props) {
   const reduce = useReducedMotion()
   const [tab, setTab] = useState<Tab>('summary')
+  // The Life map as the advisor is editing it, shown on the map before it is saved.
+  const [draftMap, setDraftMap] = useState<LifeMapData | null>(null)
   const [resolved, setResolved] = useState<Set<string>>(new Set())
   const [skipped, setSkipped] = useState<string[]>([])
   const [focus, setFocus] = useState<string | null>(null)
@@ -271,6 +275,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
                   onSpell={() => void talk(true)} spellPhase={applying ? 'thinking' : voice.phase}
                   onShowInText={(s) => { setShowAll(true); const i = flags.findIndex((f) => f.statement === s); setFocus(null); document.getElementById(`rv-mark-flag-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} />
               </div>
+              <TheirWorld customerName={profile.customerName} lifeMap={draftMap ?? copilot?.lifeMap} />
               <div className="rv__card rv__said">
                 <div className="rv__card-head">
                   <h3>What you said</h3>
@@ -304,8 +309,8 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
           {tab === 'rehearse' && <DressRehearsal key={profile.id} profileId={profile.id!} customerName={profile.customerName ?? ''} />}
           {tab === 'details' && (
             <div className="rv__details">
-              {lifeMap}
-              <ReviewPanel profile={profile} copilot={copilot} onProfileSaved={onProfileSaved} onSaveLifeMap={onSaveLifeMap} />
+              <Constellation customerName={profile.customerName} lifeMap={draftMap ?? copilot?.lifeMap} unsaved={!!draftMap} />
+              <ReviewPanel profile={profile} copilot={copilot} onProfileSaved={onProfileSaved} onSaveLifeMap={onSaveLifeMap} onDraft={setDraftMap} />
               <TranscriptEditor text={text} onSave={onSaveTranscript} />
               {turns.length > 0 && <JunoTranscript turns={turns} />}
             </div>

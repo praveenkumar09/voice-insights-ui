@@ -1,0 +1,41 @@
+/* Their world: the life map as calm cards, one per person. Self-contained tokens so it sits in the review page and the live stage alike. */
+.tw { --tw-ink: rgb(var(--tint-rgb)); --tw-soft: rgba(var(--tint-rgb), 0.62); --tw-faint: rgba(var(--tint-rgb), 0.42); --tw-line: rgba(var(--tint-rgb), 0.1); --tw-fill: rgba(var(--tint-rgb), 0.045);
+  --tw-hope: 27, 175, 122; --tw-worry: 214, 140, 20; --tw-red: #d31145;
+  position: relative; padding: 22px 24px 24px; border-radius: 22px; background: rgba(var(--glass-rgb), 0.92); border: 1px solid var(--tw-line); color: var(--tw-ink); font-size: 15px; line-height: 1.45; overflow: hidden; }
+.tw--live { padding: 18px 20px 20px; }
+.tw__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.tw__head h3 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.012em; display: flex; align-items: center; gap: 10px; }
+.tw__head p { margin: 3px 0 0; font-size: 13.5px; color: var(--tw-faint); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.tw__live { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: rgb(var(--tw-hope)); background: rgba(var(--tw-hope), 0.12); }
+.tw__live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: tw-pulse 1.6s ease-in-out infinite; }
+@keyframes tw-pulse { 50% { opacity: 0.35; transform: scale(0.8); } }
+.tw__empty { margin: 4px 0 6px; color: var(--tw-faint); font-size: 14.5px; }
+
+.tw__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.tw__card { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 18px; background: var(--tw-fill); border: 1px solid transparent; transition: border-color 0.2s, background 0.2s; }
+.tw__card:hover { border-color: var(--tw-line); background: rgba(var(--tint-rgb), 0.06); }
+.tw__card.is-self { background: linear-gradient(160deg, rgba(211, 17, 69, 0.09), rgba(var(--tint-rgb), 0.04)); }
+.tw__who { display: flex; align-items: center; gap: 12px; } .tw__who b { display: block; font-size: 15.5px; font-weight: 650; letter-spacing: -0.01em; } .tw__who small { display: block; font-size: 12.5px; color: var(--tw-faint); }
+.tw__avatar { width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 16px; font-weight: 700; color: var(--tw-ink); background: rgba(var(--tint-rgb), 0.09); box-shadow: inset 0 0 0 1px var(--tw-line); }
+.tw__avatar.is-child { width: 34px; height: 34px; font-size: 14px; margin: 3px; } .tw__avatar.is-self { color: #fff; background: radial-gradient(circle at 32% 26%, #ff8aa4, #d31145 60%, #8e0c33); box-shadow: 0 6px 16px -6px rgba(211, 17, 69, 0.55); }
+.tw__none { margin: 0; font-size: 13.5px; color: var(--tw-faint); } .tw__none q { quotes: '“' '”'; }
+.tw__items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tw__item { width: 100%; display: flex; align-items: flex-start; gap: 9px; text-align: left; min-height: 36px; padding: 7px 12px 7px 10px; border: none; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 500; color: var(--tw-ink); cursor: pointer; transition: background 0.15s, transform 0.15s; }
+.tw__item:active { transform: scale(0.985); } .tw__item:focus-visible { outline: 2px solid var(--tw-red); outline-offset: 2px; }
+.tw__item i { flex-shrink: 0; width: 20px; height: 20px; margin-top: 0; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; }
+.tw__item--hope { background: rgba(var(--tw-hope), 0.1); } .tw__item--hope:hover { background: rgba(var(--tw-hope), 0.17); } .tw__item--hope i { color: rgb(var(--tw-hope)); background: rgba(var(--tw-hope), 0.18); }
+.tw__item--worry { background: rgba(var(--tw-worry), 0.11); } .tw__item--worry:hover { background: rgba(var(--tw-worry), 0.18); } .tw__item--worry i { color: rgb(var(--tw-worry)); background: rgba(var(--tw-worry), 0.2); }
+.tw__more { overflow: hidden; } .tw__more q { display: block; quotes: '“' '”'; margin: 6px 4px 2px; font-size: 13.5px; font-style: italic; color: var(--tw-soft); }
+.tw__idea { display: flex; align-items: center; gap: 7px; margin: 8px 4px 2px; font-size: 12.5px; color: var(--tw-soft); } .tw__idea svg { width: 14px; height: 16px; flex-shrink: 0; fill: none; stroke: var(--tw-red); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 520px) { .tw { padding: 18px 16px; } .tw__grid { grid-template-columns: 1fr; } .tw__head p { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) { .tw__live i { animation: none; } }
+
+.tw__item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tw__item-idea { display: inline-flex; align-items: center; gap: 5px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--tw-red); min-width: 0; }
+.tw__item-idea svg { width: 11px; height: 12px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Brighter product red on dark surfaces */
+:root[data-theme="dark"] .tw__item-idea, :root[data-theme="dark"] .cs__pill-text em { color: #ff7a9c; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tw__item-idea, :root:not([data-theme="light"]) .cs__pill-text em { color: #ff7a9c; } }
+
+.tw__unsaved { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: rgb(var(--tw-worry)); background: rgba(var(--tw-worry), 0.13); }

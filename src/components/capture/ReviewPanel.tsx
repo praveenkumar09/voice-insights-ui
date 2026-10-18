@@ -12,6 +12,8 @@ interface Props {
   copilot: CopilotInsights | null
   onProfileSaved: (p: CustomerProfile) => void
   onSaveLifeMap: (m: LifeMapData) => Promise<void>
+  /** The map as the advisor is editing it (null once saved or when they leave), so the page can show their changes at once. */
+  onDraft?: (m: LifeMapData | null) => void
 }
 
 /**
@@ -19,7 +21,7 @@ interface Props {
  * missed, and corrects the Life Map. Nothing here is required — but the agents work from exactly what is
  * confirmed on this screen.
  */
-export function ReviewPanel({ profile, copilot, onProfileSaved, onSaveLifeMap }: Props) {
+export function ReviewPanel({ profile, copilot, onProfileSaved, onSaveLifeMap, onDraft }: Props) {
   const missing = [profile.age, profile.occupation, profile.incomeBand, profile.dependents, profile.budgetNotes]
     .filter((v) => v == null || String(v).trim() === '').length + ((profile.existingPolicies ?? []).length === 0 ? 1 : 0)
   return (
@@ -35,7 +37,7 @@ export function ReviewPanel({ profile, copilot, onProfileSaved, onSaveLifeMap }:
       </div>
       <div className="review__grid">
         <DetailsForm profile={profile} onSaved={onProfileSaved} />
-        <LifeMapEditor map={copilot?.lifeMap ?? null} onSave={onSaveLifeMap} />
+        <LifeMapEditor map={copilot?.lifeMap ?? null} onSave={onSaveLifeMap} onDraft={onDraft} />
       </div>
     </div>
   )
@@ -123,7 +125,7 @@ function DetailsForm({ profile, onSaved }: { profile: CustomerProfile; onSaved: 
   )
 }
 
-function LifeMapEditor({ map, onSave }: { map: LifeMapData | null; onSave: (m: LifeMapData) => Promise<void> }) {
+function LifeMapEditor({ map, onSave, onDraft }: { map: LifeMapData | null; onSave: (m: LifeMapData) => Promise<void>; onDraft?: (m: LifeMapData | null) => void }) {
   const [draft, setDraft] = useState<LifeMapData>(map ?? { people: [], dreams: [], worries: [] })
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -133,6 +135,10 @@ function LifeMapEditor({ map, onSave }: { map: LifeMapData | null; onSave: (m: L
   useEffect(() => {
     if (!dirty && map) setDraft(map)
   }, [map]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show the advisor's changes on the map straight away, saved or not; stop when they save or leave.
+  useEffect(() => { onDraft?.(dirty ? draft : null) }, [draft, dirty]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => onDraft?.(null), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [rel, setRel] = useState('Wife')
   const [pname, setPname] = useState('')

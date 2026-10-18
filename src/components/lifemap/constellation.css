@@ -1,0 +1,41 @@
+/* Constellation: the customer's ring, joined by hairlines to equal columns, one per person. */
+.cs { padding-bottom: 20px; }
+.cs__stage { position: relative; width: 100%; min-height: 110px; }
+.cs__lines { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 0; }
+.cs__line { fill: none; stroke: rgba(var(--tint-rgb), 0.17); stroke-width: 1.5; stroke-linecap: round; }
+.cs__empty { margin: 0; padding: 38px 8px; text-align: center; color: var(--tw-faint); font-size: 14.5px; }
+
+.cs__me { position: relative; z-index: 1; width: 160px; margin: 0 auto 44px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.cs__core { position: relative; z-index: 1; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-size: 21px; font-weight: 700; color: #fff; background: radial-gradient(circle at 32% 26%, #ff8aa4, #d31145 60%, #8e0c33); box-shadow: 0 10px 24px -8px rgba(211, 17, 69, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+.cs__ring { position: absolute; top: -9px; width: 72px; height: 72px; border-radius: 50%; border: 1.5px solid rgba(211, 17, 69, 0.28); }
+.cs.is-live .cs__ring { animation: cs-breathe 2.8s ease-in-out infinite; }
+@keyframes cs-breathe { 0%, 100% { transform: scale(0.96); opacity: 0.9; } 50% { transform: scale(1.12); opacity: 0.35; } }
+.cs__me small { font-size: 13px; font-weight: 600; color: var(--tw-soft); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.cs__grid { list-style: none; margin: 0; padding: 0; position: relative; z-index: 1; display: grid; grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.cs__col { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px; border-radius: 18px; background: var(--tw-fill); border: 1px solid transparent; transition: border-color 0.2s, background 0.2s; }
+.cs__col:hover { border-color: var(--tw-line); background: rgba(var(--tint-rgb), 0.06); }
+.cs__col.is-self { background: linear-gradient(165deg, rgba(211, 17, 69, 0.09), rgba(var(--tint-rgb), 0.04)); }
+.cs__person { display: flex; align-items: center; gap: 11px; min-height: 40px; } .cs__person > span:last-child { min-width: 0; }
+.cs__person b { display: block; font-size: 14.5px; font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .cs__person small { display: block; font-size: 12px; color: var(--tw-faint); }
+.tw__avatar.is-me { color: rgb(var(--tw-hope)); background: rgba(var(--tint-rgb), 0.08); font-size: 15px; }
+.cs__none { margin: 0; font-size: 13px; color: var(--tw-faint); } .cs__none q { quotes: '“' '”'; }
+.cs__stack { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.cs__pill { width: 100%; min-height: 46px; display: flex; align-items: center; gap: 9px; padding: 6px 12px 6px 9px; border: none; border-radius: 13px; font: inherit; text-align: left; color: var(--tw-ink); cursor: pointer; transition: background 0.15s, transform 0.15s; }
+.cs__pill:active { transform: scale(0.985); } .cs__pill:focus-visible { outline: 2px solid var(--tw-red); outline-offset: 2px; }
+.cs__pill i { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; }
+.cs__pill--hope { background: rgba(var(--tw-hope), 0.1); } .cs__pill--hope:hover, .cs__pill--hope.is-open { background: rgba(var(--tw-hope), 0.17); } .cs__pill--hope i { color: rgb(var(--tw-hope)); background: rgba(var(--tw-hope), 0.18); }
+.cs__pill--worry { background: rgba(var(--tw-worry), 0.11); } .cs__pill--worry:hover, .cs__pill--worry.is-open { background: rgba(var(--tw-worry), 0.18); } .cs__pill--worry i { color: rgb(var(--tw-worry)); background: rgba(var(--tw-worry), 0.2); }
+.cs__pill-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.cs__pill-text b { font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; }
+.cs__pill-text em { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-style: normal; font-size: 11.5px; font-weight: 600; color: var(--tw-red); }
+.cs__pill-text em svg { width: 10px; height: 11px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cs__quote { display: block; overflow: hidden; quotes: '“' '”'; margin: 0 6px; padding: 6px 0 4px; font-size: 12.5px; font-style: italic; color: var(--tw-soft); line-height: 1.4; }
+
+@media (max-width: 640px) { .cs__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cs__me { margin-bottom: 34px; } }
+@media (max-width: 420px) { .cs__grid { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .cs.is-live .cs__ring { animation: none; } }
+
+/* Five across leaves little width: give the text the room the small marker would take. */
+.cs__grid.is-tight .cs__col { padding: 12px 10px; } .cs__grid.is-tight .cs__pill { padding: 7px 10px; } .cs__grid.is-tight .cs__pill i { display: none; }

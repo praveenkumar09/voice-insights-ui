@@ -40,7 +40,7 @@ export function TheirWorld({ customerName, lifeMap, live = false, variant = 'sum
         <p className="tw__empty">{live ? 'Listening… the people, hopes and worries you describe will appear here.' : 'No people, hopes or worries were picked out of this conversation.'}</p>
       ) : (
         <LayoutGroup>
-          <div className="tw__grid">
+          <div className={`tw__grid${circles.length >= 5 ? ' is-tight' : ''}`} style={{ ['--n' as string]: Math.ceil(circles.length / Math.ceil(circles.length / 5)) }}>
             <AnimatePresence initial={!live}>
               {circles.map((c, i) => (
                 <motion.article

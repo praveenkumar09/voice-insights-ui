@@ -75,6 +75,7 @@ class PcmWorklet extends AudioWorkletProcessor {
     this.confirmed = false // the current sound has lasted CONFIRM_CHUNKS: chunks go straight on
     this.hangChunks = HANG_CHUNKS
     this.confirmChunks = CONFIRM_CHUNKS // 1 for short-answer debriefs, where a one-word answer must go straight on
+    this.noiseMult = NOISE_MULT // Juno mode lowers this: its speech model copes with speech only a few dB above the room
     this.minRun = 2 // loud chunks in a row needed to open the gate; 1 lets a one-word answer ("No.") through (set only for short-answer debriefs)
     this.port.onmessage = (e) => {
       const d = e.data || {}
@@ -84,6 +85,7 @@ class PcmWorklet extends AudioWorkletProcessor {
         this.minRun = d.minRun >= 2 ? 2 : 1
         this.confirmChunks = this.minRun >= 2 ? CONFIRM_CHUNKS : 1
       }
+      if (typeof d.noiseMult === 'number') this.noiseMult = Math.max(1.1, Math.min(NOISE_MULT, d.noiseMult))
       if (typeof d.hang === 'number') this.hangChunks = Math.max(1, Math.min(20, d.hang))
       if (typeof d.learn === 'boolean') this.noLearn = !d.learn
       if (typeof d.freeze === 'boolean' && d.freeze !== this.frozen) {
@@ -122,7 +124,7 @@ class PcmWorklet extends AudioWorkletProcessor {
     const sustained = this.minRun <= 1 ? rms : Math.min(rms, this.prevRms)
     this.prevRms = rms
     const noise = this.trackNoise(rms)
-    const floor = Math.max(ABS_MIN, NOISE_MULT * noise)
+    const floor = Math.max(ABS_MIN, this.noiseMult * noise)
     const loud = sustained >= Math.max(floor, this.gateRatio * this.ref)
     if (this.noLearn) {
       if (loud) this.hang = this.hangChunks

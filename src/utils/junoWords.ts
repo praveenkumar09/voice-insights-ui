@@ -3,8 +3,8 @@
  * ("hey", "ok", "hi") plus any of those counts, while a bare "Juno" only counts at the very start of what was said. A bare "junior" or
  * "you know" never wakes it: people say those all day.
  */
-const NAME = '(?:juno|juneau|junior|jeno|jonno|yuno|gino|geno|chuno|june o|you know|jew no)'
-const GREETED = new RegExp(`\\b(?:hey|hi|ok|okay|hello|a)\\b[\\s,.!-]*${NAME}\\b[\\s,.!?:;-]*`, 'i')
+const NAME = '(?:juno|juneau|junior|jeno|jonno|yuno|gino|geno|chuno|june o|you know|jew no|ju no|ju now|jew now|june oh|june now|jo no|joe no|you no|yo no|juneo|junno)'
+const GREETED = new RegExp(`\\b(?:hey|hi|ok|okay|hello|hay|hei|eh|ay|a)\\b[\\s,.!-]*${NAME}\\b[\\s,.!?:;-]*`, 'i')
 const BARE = /^\W*(?:juno|juneau)\b[\s,.!?:;-]*/i
 
 export interface Wake {

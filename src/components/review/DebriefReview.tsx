@@ -248,8 +248,11 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
     <section ref={rootRef} className="rv" id="debrief-signoff" aria-label="Review the debrief">
       {/* Level 1: the glance */}
       <header className="rv__glance">
+        <span className="rv__glow rv__glow--a" aria-hidden />
+        <span className="rv__glow rv__glow--b" aria-hidden />
         <span className="rv__avatar" aria-hidden>{initial}</span>
         <div className="rv__who">
+          <span className="rv__eyebrow">Debrief with Juno</span>
           <InlineEdit className="rv__name" display={profile.customerName ?? ''} value={profile.customerName ?? ''} label="Customer name" placeholder="Add a name" onSave={saveName} fly />
           <div className="rv__meta">
             <InlineEdit display={profile.age != null ? `${profile.age} years old` : ''} value={profile.age != null ? String(profile.age) : ''} label="Age" numeric placeholder="Add age" onSave={(v) => save({ age: Number(v) })} fly />
@@ -264,24 +267,40 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
             {profile.budgetNotes && (
               <span className="rv__chip rv__chip--edit">
                 <b>Budget</b>
-                <InlineEdit display={profile.budgetNotes.replace(/[.\s]+$/, '')} value={profile.budgetNotes} label="Budget" onSave={saveBudget} />
+                <InlineEdit display={profile.budgetNotes.replace(/[.\s]+$/, '').replace(/^budget( is| of| around)?\s+/i, '')} value={profile.budgetNotes} label="Budget" onSave={saveBudget} />
               </span>
             )}
           </div>
           {voice.phase === 'listening' && voice.caption && <p className="rv__caption" aria-live="polite">“{voice.caption}”</p>}
         </div>
         <div className="rv__side">
-          {elapsedMs != null && (
-            <div className="rv__time" title={`Planning assumption: a manual write-up takes about ${MANUAL_MINUTES} minutes. To be measured in the pilot.`}>
-              <b>{duration(elapsedMs)}</b>
-              <span>with Juno</span>
-            </div>
-          )}
           <button className={`rv__mic${voice.phase === 'listening' ? ' is-on' : ''}`} onClick={() => void talk(false)} disabled={micBusy}
             title="Say a correction, for example “make that a monthly budget” or “her age is 39”">
             <MicIcon />
             <span>{voice.phase === 'listening' ? 'Listening… tap to finish' : voice.phase === 'thinking' || applying ? 'Updating…' : voice.phase === 'starting' ? 'Opening the microphone…' : 'Say a correction'}</span>
           </button>
+        </div>
+        {/* The numbers that matter at a glance, before anything is opened */}
+        <div className="rv__stats">
+          {readiness && (
+            <div className="rv__stat">
+              <small>Fact-find</small>
+              <strong>{readiness.captured}<em>/{readiness.total}</em></strong>
+              <span>{readiness.total - readiness.captured > 0 ? `${readiness.total - readiness.captured} still open` : 'Complete'}</span>
+            </div>
+          )}
+          <div className={`rv__stat${queue.length > 0 ? ' is-warn' : ' is-ok'}`}>
+            <small>To check</small>
+            <strong>{queue.length > 0 ? queue.length : '✓'}</strong>
+            <span>{queue.length > 0 ? 'before you approve' : 'All clear'}</span>
+          </div>
+          {elapsedMs != null && (
+            <div className="rv__stat rv__time" title={`Planning assumption: a manual write-up takes about ${MANUAL_MINUTES} minutes. To be measured in the pilot.`}>
+              <small>Time with Juno</small>
+              <strong>{duration(elapsedMs)}</strong>
+              <span>vs about {MANUAL_MINUTES} min by hand</span>
+            </div>
+          )}
         </div>
       </header>
 

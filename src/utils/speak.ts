@@ -24,6 +24,29 @@ const voiceOn = () => {
   }
 }
 
+/** Short lines Juno says again and again ("On it.") are fetched once and kept, so they start at once instead of after a round trip. */
+const lineCache = new Map<string, Promise<Blob | null>>()
+const CACHEABLE_CHARS = 60
+const MAX_CACHED_LINES = 40
+
+function lineAudio(text: string): Promise<Blob | null> {
+  if (text.length > CACHEABLE_CHARS) return junoSpeak(text, 'female', 'warm', 'en')
+  let p = lineCache.get(text)
+  if (!p) {
+    if (lineCache.size >= MAX_CACHED_LINES) lineCache.delete(lineCache.keys().next().value as string)
+    p = junoSpeak(text, 'female', 'warm', 'en')
+    lineCache.set(text, p)
+    void p.then((b) => { if (!b && lineCache.get(text) === p) lineCache.delete(text) }, () => lineCache.delete(text))
+  }
+  return p
+}
+
+/** Fetches these lines now (when Juno mode starts), so the first reply has no wait. */
+export function prewarmSpeech(lines: string[]) {
+  if (!voiceOn()) return
+  for (const l of lines) void lineAudio(l)
+}
+
 export function speakAndWait(text: string): Promise<void> {
   const readMs = Math.max(1200, Math.min(6000, text.length * 55))
   if (!voiceOn()) return new Promise((r) => window.setTimeout(r, readMs))
@@ -38,7 +61,7 @@ export function speakAndWait(text: string): Promise<void> {
       resolve()
     }
     timer = window.setTimeout(finish, Math.max(6000, text.length * 120 + 4000)) // a stuck clip never hangs the assistant
-    void junoSpeak(text, 'female', 'warm', 'en').then((blob) => {
+    void lineAudio(text).then((blob) => {
       if (done) return
       if (!blob) return browserVoice(text, finish)
       const url = URL.createObjectURL(blob)

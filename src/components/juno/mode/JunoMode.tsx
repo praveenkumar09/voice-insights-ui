@@ -3,7 +3,9 @@ import { getReading, junoCommand, type JunoActionSpec, type ReadDoc } from '../.
 import { useVoiceCapture } from '../../../hooks/useVoiceCapture'
 import { parseReadControl, parseWake, parseYesNo, stripWake, type ReadControl } from '../../../utils/junoWords'
 import { createPlayer, headphonesConnected, splitSentences, type Player } from '../../../utils/readAloud'
-import { chime, speakAndWait, stopSpeaking } from '../../../utils/speak'
+import { chime, prewarmSpeech, speakAndWait, stopSpeaking } from '../../../utils/speak'
+import { matchLocal, vocabularyFor } from '../../../utils/junoLocal'
+import { pageButtonActions } from '../../../utils/pageButtons'
 import { voiceLock } from '../../../utils/voiceLock'
 
 /**
@@ -95,6 +97,14 @@ const RECYCLE_MS = 12 * 60 * 1000
 const AWAKE_WAIT_MS = 9000
 const CONFIRM_WAIT_MS = 10000
 const UNMUTE_DELAY_MS = 250
+/** After a bare "Hey Juno" while reading, the next line is taken as the command for this long. */
+const ARMED_MS = 6000
+/** How long the reading stays paused after the advisor starts speaking over it, before it carries on by itself. */
+const DUCK_MS = 4500
+/** Exactly these phrases stop a reading without the wake word. */
+const BARE_STOP = /^[\s,.!-]*(?:please )?(?:stop(?: (?:reading|it|that|talking))?|that'?s enough|enough|be quiet)[\s,.!?-]*$/i
+/** An action's result that only confirms what the screen already shows ("Switched to …"): shown, not spoken. */
+const CONFIRMATION = /^(switched|opened|opening|showing|showed|done|ok|okay|ready|starting|going|logging|turning)\b/i
 
 export function JunoModeProvider({ children, customerName }: { children: ReactNode; customerName?: string | null }) {
   const capture = useVoiceCapture({ assistant: true })
@@ -129,6 +139,9 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
   const readJob = useRef<{ player: Player | null; jump: number | null; stopped: boolean } | null>(null)
   const sayPromise = useRef<Promise<void> | null>(null)
   const readMicOpen = useRef(false)
+  const readCommit = useRef<number | null>(null)
+  const armedUntil = useRef(0)
+  const duckTimer = useRef<number | null>(null)
 
   const flash = useCallback((text: string) => {
     setNotice(text)
@@ -145,7 +158,8 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     screens.current.set(key, label)
     return () => { screens.current.delete(key) }
   }, [])
-  const available = (): JunoAction[] => [...registry.current.values()].map((g) => g()).filter(Boolean) as JunoAction[]
+  // What each screen registered, plus every button that is actually on it (see utils/pageButtons).
+  const available = (): JunoAction[] => [...([...registry.current.values()].map((g) => g()).filter(Boolean) as JunoAction[]), ...pageButtonActions()]
   const examples = useCallback(() => available().filter((a) => a.id !== 'turn_off_juno_mode').slice(0, 8).map((a) => a.description), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── speaking and listening, one at a time ──
@@ -192,6 +206,9 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     const job = readJob.current
     if (job) { job.stopped = true; job.player?.stop() }
     readJob.current = null
+    if (readCommit.current) { window.clearInterval(readCommit.current); readCommit.current = null }
+    if (duckTimer.current) { window.clearTimeout(duckTimer.current); duckTimer.current = null }
+    capture.setRawAmpListener(null)
     setReading(null)
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = null
@@ -252,7 +269,36 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
       if (job.stopped) return
       const phones = enabledRef.current ? await headphonesConnected() : false
       readMicOpen.current = phones
-      if (enabledRef.current) { setPhase('reading'); capture.setMicMuted(false) }
+      if (enabledRef.current) {
+        setPhase('reading')
+        capture.setMicMuted(false)
+        // Juno's voice fills the room while it reads, so the server never finds a pause to end an utterance on: cutting the audio every
+        // 1.5 s means a spoken "stop" is heard within a couple of seconds.
+        if (readCommit.current) window.clearInterval(readCommit.current)
+        readCommit.current = window.setInterval(() => capture.commitNow(), 1500)
+        // Duck on speech, as a voice assistant does: Juno's voice leaks into the mic whatever the echo cancellation, and the speech model cannot
+        // pick "Hey Juno, stop reading" out of a mix. So when the mic level rises well above Juno's own leakage for a third of a second, the
+        // reading pauses at once and the mic hears only the advisor. A control stops or moves it; anything else, it carries on after a moment.
+        let base = 0
+        let run = 0
+        let ducked = 0
+        capture.setRawAmpListener((amp) => {
+          if (job.stopped || readJob.current !== job || Date.now() < ducked) return
+          if (base === 0) base = amp
+          if (amp > Math.max(base * 1.5, base + 0.05)) run++
+          else { run = 0; base += (amp - base) * 0.1 }
+          if (run >= 3) {
+            run = 0
+            ducked = Date.now() + DUCK_MS
+            job.player?.pause()
+            if (duckTimer.current) window.clearTimeout(duckTimer.current)
+            duckTimer.current = window.setTimeout(() => {
+              base = 0
+              if (readJob.current === job && !readingRef.current?.paused) job.player?.resume()
+            }, DUCK_MS)
+          }
+        })
+      }
       let i = 0
       while (i < sections.length && !job.stopped) {
         playing(i)
@@ -286,7 +332,12 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
       }
       const all = [...actions, own]
       const screen = [...screens.current.values()].join('; ') || 'the app'
-      const r = await junoCommand(utterance, screen, customer.current, all.map(({ id, description, risk, params }) => ({ id, description, risk, params })))
+      const specs = all.map(({ id, description, risk, params }) => ({ id, description, risk, params }))
+      // A plain request that is clearly one listed action needs no language model (that round trip is most of the wait).
+      const local = matchLocal(utterance, specs)
+      const r = local
+        ? { action: local.action.id, params: local.params, say: '', ask: '' }
+        : await junoCommand(utterance, screen, customer.current, specs)
       const action = all.find((a) => a.id === r.action)
 
       // Hands-free reading is read-only: nothing that changes data happens while the advisor may be driving.
@@ -313,16 +364,19 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
         return void (await say(typeof done === 'string' && done ? done : 'Done.'))
       }
 
-      // Opening, pointing, reading: just do it, saying so as it happens.
-      const spoken = say(r.say)
+      // Opening, pointing, reading: do it at once. A chime says "heard you" with no wait for a spoken reply; Juno speaks only when
+      // there is something to hear (a reading, a problem), not to repeat what the screen now shows.
+      chime('done')
       let result: string | void
       try {
         result = await action.run(r.params)
       } catch (e) {
         result = e instanceof Error ? e.message : 'That didn’t work.'
       }
-      await spoken
-      if (typeof result === 'string' && result) await say(result)
+      if (typeof result === 'string' && result) {
+        if (action.risk !== 'info' && CONFIRMATION.test(result)) flash(result)
+        else await say(result)
+      }
     } catch (e) {
       await say(e instanceof Error && /429|many/.test(e.message) ? 'That’s a lot of requests. Give me a few minutes.' : 'Sorry, I couldn’t work that out. Try again.')
     } finally {
@@ -351,24 +405,51 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     if (finals.length < consumed.current) consumed.current = 0 // a new session started
     while (consumed.current < finals.length) {
       const text = finals[consumed.current++]
+      console.debug('[juno] heard', JSON.stringify(text), 'phase', phaseRef.current, readingRef.current ? '(reading)' : '')
       if (!enabledRef.current || phaseRef.current === 'speaking' || phaseRef.current === 'paused') continue
       if (deliver(text)) continue
       if (busy.current) continue
       if (readingRef.current) {
         // While reading, a short plain command ("pause", "next") is enough; anything else needs the name.
         const wakeR = parseWake(text)
-        const ctl = parseReadControl(wakeR ? wakeR.rest : readMicOpen.current ? text : '')
-        if (ctl) readControl(ctl)
-        else if (wakeR && wakeR.rest.replace(/[^\p{L}\p{N}]/gu, '').length >= 3) void handleCommand(wakeR.rest)
+        const restLen = wakeR ? wakeR.rest.replace(/[^\p{L}\p{N}]/gu, '').length : 0
+        // The audio is cut every 1.5 s while reading, so "Hey Juno," and "stop reading" can arrive as two lines: a bare wake word arms the next
+        // few seconds for a control. A plain "stop" needs no wake word (the mic is echo-cancelled, and only these exact phrases count).
+        if (wakeR && restLen < 3) armedUntil.current = Date.now() + ARMED_MS
+        const armed = Date.now() < armedUntil.current
+        const bareStop = BARE_STOP.test(text)
+        const ctl = parseReadControl(wakeR ? wakeR.rest : readMicOpen.current || armed || bareStop ? text : '')
+        if (ctl) { armedUntil.current = 0; readControl(ctl) }
+        else if (wakeR && restLen >= 3) void handleCommand(wakeR.rest)
         continue
       }
       const wake = parseWake(text)
       if (!wake) continue
+      // "Stop reading" with nothing being read (the tail of a stop already obeyed, or a late repeat) needs no answer.
+      if (BARE_STOP.test(wake.rest)) continue
       lastActivity.current = Date.now()
       if (wake.rest.replace(/[^\p{L}\p{N}]/gu, '').length >= 3) void handleCommand(wake.rest)
       else void awaken()
     }
   }, [capture.finalSegments, awaken, handleCommand, readControl])
+
+  // Tell the speech service what can be said on this screen (it then picks the nearest real command instead of inventing words), and
+  // have the lines Juno says most already fetched.
+  useEffect(() => {
+    if (!enabled) return
+    prewarmSpeech(['Done.'])
+    let last = ''
+    const sync = () => {
+      const phrases = vocabularyFor(available())
+      const key = phrases.join('|')
+      if (key === last) return
+      last = key
+      capture.sendCommands(phrases)
+    }
+    sync()
+    const t = window.setInterval(sync, 1500)
+    return () => window.clearInterval(t)
+  }, [enabled]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── the listening session ──
   const startListening = useCallback(() => {

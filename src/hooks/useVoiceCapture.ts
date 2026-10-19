@@ -41,6 +41,9 @@ interface VoiceMessage {
 // asked to run at that rate natively (high-quality browser resampling); the
 // worklet (public/pcm-worklet.js) resamples itself if the browser refuses.
 const TARGET_SAMPLE_RATE = 24000
+// Juno mode: speech counts once it is this far above the room's steady noise (dictation uses the worklet's 2.5). Offline, 1.3 passed all of
+// the speech down to 0 dB signal-to-noise (2.5 passed none below 3 dB) with no extra steady noise sent; the speech model reads 0 dB fine.
+const ASSISTANT_NOISE_MULT = 1.3
 
 /**
  * @param options.assistant Juno mode's own listener. Every other voice feature claims the microphone while it is active (so Juno mode
@@ -113,9 +116,16 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
       const stream = await navigator.mediaDevices.getUserMedia({
         // Browser auto-gain is off: it lifts a quiet TV exactly when nobody is speaking, which defeats the background
         // filter. The audio worklet applies its own gentle gain (after the filter has judged the raw level).
+        // Echo cancellation stays on for Juno mode too: while Juno reads aloud with the mic open, the browser subtracts Juno's own voice, which
+        // is what lets the advisor say "stop" over it. (Turning it off was tried: the setting cannot be switched back on mid-session.)
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: false, autoGainControl: false },
       })
       streamRef.current = stream
+      if (options.assistant) {
+        const t = stream.getAudioTracks()[0]
+        // Kept for support: which microphone, and whether the browser or the system is still processing it.
+        console.info('[juno-mic]', t?.label, JSON.stringify(t?.getSettings?.() ?? {}))
+      }
 
       const AudioContextCtor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       let audioContext: AudioContext
@@ -129,13 +139,13 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
       // 'suspended' — onaudioprocess then never fires and no audio is ever sent.
       if (audioContext.state === 'suspended') await audioContext.resume()
 
-      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=12')
+      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=13')
       const source = audioContext.createMediaStreamSource(stream)
       sourceRef.current = source
       const worklet = new AudioWorkletNode(audioContext, 'pcm-worklet', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 })
       processorRef.current = worklet
 
-      worklet.port.postMessage({ gate: noiseFilterRef.current !== 'off', ratio: FILTER_RATIO[noiseFilterRef.current] || 0.35, ref: storedLevel() ?? undefined })
+      worklet.port.postMessage({ gate: noiseFilterRef.current !== 'off', ratio: FILTER_RATIO[noiseFilterRef.current] || 0.35, ref: storedLevel() ?? undefined, noiseMult: options.assistant ? ASSISTANT_NOISE_MULT : undefined })
       worklet.port.onmessage = (e: MessageEvent<{ pcm?: ArrayBuffer; amp: number; gated?: boolean; ref?: number }>) => {
         setAmplitude(mutedRef.current ? 0 : e.data.amp)
         rawListener.current?.(e.data.amp)
@@ -222,6 +232,14 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
   const sendAdvisorSay = useCallback((text: string) => {
     const ws = wsRef.current
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'advisor_say', text }))
+  }, [])
+
+  /** Juno mode: the phrases that can be said on the current screen. The speech model is primed with them, so it picks the nearest real command. */
+  const commandsRef = useRef<string[]>([])
+  const sendCommands = useCallback((phrases: string[]) => {
+    commandsRef.current = phrases
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'commands', phrases }))
   }, [])
 
   /** Tells the server which language the conversation is in, so the speech model knows what to expect. */
@@ -346,6 +364,7 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
         })
 
         readyRef.current = false
+        if (options.assistant && commandsRef.current.length > 0) ws.send(JSON.stringify({ type: 'commands', phrases: commandsRef.current }))
         await attachMic(ws)
         // Stay on "Connecting" until the server says the transcription session is live; if that message never
         // comes (older server, slow network) fall back after a few seconds rather than hang.
@@ -450,6 +469,6 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
     noiseFilter, setNoiseFilter, backgroundIgnored,
-    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, setSpeechResumedListener, releaseHeld, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
+    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, setSpeechResumedListener, releaseHeld, sendCommands, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

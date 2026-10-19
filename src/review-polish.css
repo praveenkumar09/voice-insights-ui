@@ -1,0 +1,76 @@
+/* ── The debrief review, in the app's own livelier language ─────────────────────────────────────────
+   Loads after design.css. The page was correct but flat: white cards on white. It now borrows what the Admin page and the Juno home
+   already do — the crimson hero with drifting glows, tinted tiles, soft accents on cards, a staggered entrance — and keeps the calm
+   reading column, the one corner radius and "colour only where it means something" from design.css. */
+@keyframes rv-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes rv-drift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(34px, -22px, 0) scale(1.18); } }
+
+/* The glance: a crimson hero */
+.rv .rv__glance { position: relative; overflow: hidden; color: #fff; padding: 30px 32px 26px; border: none; border-radius: 26px; row-gap: 22px;
+  background: radial-gradient(900px 380px at 88% -20%, rgba(255, 130, 160, 0.5), transparent 60%), linear-gradient(135deg, #52091f 0%, #a30d36 46%, #d31145 100%);
+  box-shadow: 0 30px 64px -24px rgba(211, 17, 69, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.22); animation: rv-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rv__glow { position: absolute; border-radius: 50%; filter: blur(46px); opacity: 0.5; pointer-events: none; will-change: transform; }
+.rv__glow--a { width: 300px; height: 300px; left: -90px; bottom: -160px; background: #ff4f7b; animation: rv-drift 11s ease-in-out infinite alternate; }
+.rv__glow--b { width: 240px; height: 240px; right: 24%; top: -130px; background: #ff9fb6; animation: rv-drift 14s ease-in-out infinite alternate-reverse; }
+.rv__glance > :not(.rv__glow) { position: relative; z-index: 1; }
+.rv__avatar { background: rgba(255, 255, 255, 0.18); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55), 0 12px 28px -8px rgba(0, 0, 0, 0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.rv__eyebrow { font-size: 13.5px; font-weight: 600; color: rgba(255, 255, 255, 0.78); }
+.rv__name { color: #fff; text-shadow: 0 2px 18px rgba(82, 9, 31, 0.35); }
+.rv__meta { color: rgba(255, 255, 255, 0.86); } .rv__meta i { color: rgba(255, 255, 255, 0.5); }
+.rv__glance .ie:hover, .rv__glance .ie:focus-visible { background: rgba(255, 255, 255, 0.16); }
+.rv__glance .ie__pen, .rv__glance .ie__empty { color: rgba(255, 255, 255, 0.7); }
+.rv__glance .ie--editing input { color: #2a0a14; }
+.rv__glance :is(button, input):focus-visible { outline-color: rgba(255, 255, 255, 0.85); }
+.rv__glance .rv__chip { background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.rv__glance .rv__chip b { color: rgba(255, 255, 255, 0.72); }
+.rv__glance .rv__mic { background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.rv__glance .rv__mic:hover:not(:disabled) { background: rgba(255, 255, 255, 0.26); }
+.rv__glance .rv__mic.is-on { background: #fff; color: var(--rv-red); }
+.rv__glance .rv__caption { color: rgba(255, 255, 255, 0.9); }
+
+/* Three numbers, as tiles (the same tinted-tile idea as the suggestion workspace) */
+.rv__stats { grid-column: 1 / -1; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px; }
+.rv__stat { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px 15px; border-radius: 18px; background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-align: left; }
+.rv__stat small { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.76); }
+.rv__stat strong { font-size: 28px; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.rv__stat strong em { font-style: normal; font-size: 17px; font-weight: 600; color: rgba(255, 255, 255, 0.68); margin-left: 2px; }
+.rv__stat span { font-size: 12.5px; color: rgba(255, 255, 255, 0.72); }
+.rv__stat.is-warn strong { color: #ffe3a6; } .rv__stat.is-ok strong { color: #b6f5dc; }
+.rv .rv__time b { font-size: inherit; }
+
+/* Tabs: the chosen one lifts */
+.rv__tabs { background: rgba(var(--tint-rgb), 0.06); }
+.rv__tab-pill { box-shadow: 0 6px 16px -6px rgba(211, 17, 69, 0.35), 0 0 0 1px rgba(211, 17, 69, 0.14); }
+.rv__tabs button.is-on { color: var(--rv-red); }
+
+/* Cards: an accent on every heading, a tint on the ones that matter */
+.rv__card { box-shadow: 0 14px 34px -26px rgba(var(--shadow-rgb), 0.5); }
+.rv__card-head h3 { display: inline-flex; align-items: center; gap: 10px; }
+.rv__card-head h3::before { content: ''; width: 4px; height: 18px; border-radius: 4px; background: linear-gradient(180deg, #ff6b8a, #d31145); flex-shrink: 0; }
+.rv__open .rv__card-head h3::before { background: linear-gradient(180deg, #35d3a7, #1baf7a); }
+.rv__open { background: linear-gradient(180deg, rgba(27, 175, 122, 0.07), var(--rv-card) 55%); }
+.rv__said .rv__text { padding-left: 16px; border-left: 3px solid rgba(211, 17, 69, 0.35); border-radius: 2px; font-size: 16.5px; }
+.rv__meter { height: 12px; box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), 0.12); }
+.rv__meter i { box-shadow: 0 0 14px rgba(27, 175, 122, 0.55); }
+.rv__fraction b { font-size: 22px; letter-spacing: -0.01em; }
+
+/* The thing to check: a card with a crimson edge */
+.rv__q { overflow: hidden; background: linear-gradient(180deg, rgba(211, 17, 69, 0.06), var(--rv-card) 46%); border-color: rgba(211, 17, 69, 0.18); }
+.rv__q::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: linear-gradient(90deg, #ff6b8a, #d31145 60%, #a30d36); }
+.rv__stack-head h2 { display: inline-flex; align-items: center; gap: 10px; }
+.rv__foot .rv__link { background: var(--rv-fill); padding: 0 20px; border-radius: 999px; }
+.rv__foot .rv__link:hover { background: rgba(211, 17, 69, 0.1); }
+
+/* Entrance: each block rises in turn */
+.rv__panel > * { animation: rv-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rv__panel > *:nth-child(2) { animation-delay: 0.06s; } .rv__panel > *:nth-child(3) { animation-delay: 0.12s; }
+.rv__panel > *:nth-child(4) { animation-delay: 0.18s; } .rv__panel > *:nth-child(5) { animation-delay: 0.24s; }
+
+@media (max-width: 640px) {
+  .rv .rv__glance { padding: 22px 20px; border-radius: 22px; }
+  .rv__stats { gap: 8px; } .rv__stat { padding: 12px 12px 13px; border-radius: 14px; } .rv__stat strong { font-size: 22px; } .rv__stat span { font-size: 11.5px; }
+}
+@media (max-width: 420px) { .rv__stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { .rv__glow, .rv .rv__glance, .rv__panel > * { animation: none !important; } }
+:root[data-theme='dark'] .rv__tabs button.is-on { color: #ff7a9a; }
+:root[data-theme='dark'] .rv__tab-pill { box-shadow: 0 6px 16px -6px rgba(211, 17, 69, 0.5), 0 0 0 1px rgba(255, 122, 154, 0.25); }

@@ -1,3 +1,5 @@
+import { TheirWorld } from '../lifemap/TheirWorld'
+import { Constellation } from '../lifemap/Constellation'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { junoCorrection, saveCustomerProfile, type FactFindReadiness, type SpokenCorrection } from '../../api/client'
@@ -47,9 +49,11 @@ const TABS: { id: Tab; label: string }[] = [
  * that need a person, one card at a time. The details: every field, the Life Map and the transcript, one tap away. One button at the
  * bottom changes with where the advisor is, and only a real click by a person can approve.
  */
-export function DebriefReview({ profile, copilot, segments, turns, readiness, elapsedMs, advancing, onApprove, onBrief, onProfileSaved, onSaveLifeMap, onSaveTranscript, lifeMap }: Props) {
+export function DebriefReview({ profile, copilot, segments, turns, readiness, elapsedMs, advancing, onApprove, onBrief, onProfileSaved, onSaveLifeMap, onSaveTranscript }: Props) {
   const reduce = useReducedMotion()
   const [tab, setTab] = useState<Tab>('summary')
+  // The Life map as the advisor is editing it, shown on the map before it is saved.
+  const [draftMap, setDraftMap] = useState<LifeMapData | null>(null)
   const [resolved, setResolved] = useState<Set<string>>(new Set())
   const [skipped, setSkipped] = useState<string[]>([])
   const [focus, setFocus] = useState<string | null>(null)
@@ -197,6 +201,43 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
       return `${queue.length ? `${queue.length} thing${queue.length === 1 ? ' is' : 's are'} still to check, but you can approve anyway. ` : ''}Press Approve when you’re ready. I can’t press it for you.`
     },
   })
+  // "Hey Juno, add Ethan as his son": adds the person to the Life map and saves it (Juno asks for a yes first, as it changes the record).
+  const RELATIVES = ['wife', 'husband', 'partner', 'daughter', 'son', 'child', 'mother', 'father', 'parent', 'sibling', 'other']
+  useJunoAction({
+    id: 'add_person', description: 'Add a family member to the life map and save it, by name and relationship (wife, husband, son, daughter, mother, father, sibling…)', risk: 'change',
+    params: { name: { type: 'string' }, relationship: { type: 'enum', values: RELATIVES } },
+    run: async (p) => {
+      const name = (p.name ?? '').trim()
+      const relation = RELATIVES.includes((p.relationship ?? '').toLowerCase()) ? p.relationship.toLowerCase() : 'other'
+      const rel = relation.charAt(0).toUpperCase() + relation.slice(1)
+      if (!name) return 'I didn’t catch the name, so I haven’t added anyone.'
+      const base = draftMap ?? copilot?.lifeMap ?? { people: [], dreams: [], worries: [] }
+      if (base.people.some((x) => (x.name ?? '').toLowerCase() === name.toLowerCase() && x.relation.toLowerCase() === relation)) return `${name} is already on the map.`
+      await onSaveLifeMap({ ...base, people: [...base.people, { relation: rel, name, said: 'Added by the advisor' }] })
+      return `Added ${name} as ${relation} and saved the map.`
+    },
+  })
+  // "Hey Juno, the income is six thousand a month": fills in or changes one customer detail and saves it (after a yes).
+  useJunoAction({
+    id: 'set_detail', risk: 'change', params: { field: { type: 'enum', values: ['income', 'budget', 'existing_cover', 'age', 'occupation', 'dependants'] }, value: { type: 'string' } },
+    description: 'Fill in or change a customer detail and save it: income, budget, existing cover, age, occupation or dependants',
+    run: async (p) => {
+      const value = (p.value ?? '').trim()
+      if (!value) return 'I didn’t catch the value, so I haven’t changed anything.'
+      const num = Number(value.replace(/[^0-9.]/g, ''))
+      const patch: Partial<CustomerProfile> =
+        p.field === 'income' ? { incomeBand: value }
+        : p.field === 'budget' ? { budgetNotes: value }
+        : p.field === 'existing_cover' ? { existingPolicies: value.split(/,| and /i).map((x) => x.trim()).filter(Boolean) }
+        : p.field === 'occupation' ? { occupation: value }
+        : p.field === 'age' && num > 0 ? { age: num }
+        : p.field === 'dependants' && num >= 0 ? { dependents: num }
+        : {}
+      if (Object.keys(patch).length === 0) return 'I couldn’t use that value, so I haven’t changed anything.'
+      await save(patch)
+      return `Saved ${p.field.replace('_', ' ')}: ${value}.`
+    },
+  })
   useJunoAction({
     id: 'correct_record', description: 'Change a detail: the name, age, job, dependants or budget', risk: 'change',
     params: { instruction: { type: 'string' } },
@@ -207,8 +248,11 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
     <section ref={rootRef} className="rv" id="debrief-signoff" aria-label="Review the debrief">
       {/* Level 1: the glance */}
       <header className="rv__glance">
+        <span className="rv__glow rv__glow--a" aria-hidden />
+        <span className="rv__glow rv__glow--b" aria-hidden />
         <span className="rv__avatar" aria-hidden>{initial}</span>
         <div className="rv__who">
+          <span className="rv__eyebrow">Debrief with Juno</span>
           <InlineEdit className="rv__name" display={profile.customerName ?? ''} value={profile.customerName ?? ''} label="Customer name" placeholder="Add a name" onSave={saveName} fly />
           <div className="rv__meta">
             <InlineEdit display={profile.age != null ? `${profile.age} years old` : ''} value={profile.age != null ? String(profile.age) : ''} label="Age" numeric placeholder="Add age" onSave={(v) => save({ age: Number(v) })} fly />
@@ -223,24 +267,40 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
             {profile.budgetNotes && (
               <span className="rv__chip rv__chip--edit">
                 <b>Budget</b>
-                <InlineEdit display={profile.budgetNotes.replace(/[.\s]+$/, '')} value={profile.budgetNotes} label="Budget" onSave={saveBudget} />
+                <InlineEdit display={profile.budgetNotes.replace(/[.\s]+$/, '').replace(/^budget( is| of| around)?\s+/i, '')} value={profile.budgetNotes} label="Budget" onSave={saveBudget} />
               </span>
             )}
           </div>
           {voice.phase === 'listening' && voice.caption && <p className="rv__caption" aria-live="polite">“{voice.caption}”</p>}
         </div>
         <div className="rv__side">
-          {elapsedMs != null && (
-            <div className="rv__time" title={`Planning assumption: a manual write-up takes about ${MANUAL_MINUTES} minutes. To be measured in the pilot.`}>
-              <b>{duration(elapsedMs)}</b>
-              <span>with Juno</span>
-            </div>
-          )}
           <button className={`rv__mic${voice.phase === 'listening' ? ' is-on' : ''}`} onClick={() => void talk(false)} disabled={micBusy}
             title="Say a correction, for example “make that a monthly budget” or “her age is 39”">
             <MicIcon />
             <span>{voice.phase === 'listening' ? 'Listening… tap to finish' : voice.phase === 'thinking' || applying ? 'Updating…' : voice.phase === 'starting' ? 'Opening the microphone…' : 'Say a correction'}</span>
           </button>
+        </div>
+        {/* The numbers that matter at a glance, before anything is opened */}
+        <div className="rv__stats">
+          {readiness && (
+            <div className="rv__stat">
+              <small>Fact-find</small>
+              <strong>{readiness.captured}<em>/{readiness.total}</em></strong>
+              <span>{readiness.total - readiness.captured > 0 ? `${readiness.total - readiness.captured} still open` : 'Complete'}</span>
+            </div>
+          )}
+          <div className={`rv__stat${queue.length > 0 ? ' is-warn' : ' is-ok'}`}>
+            <small>To check</small>
+            <strong>{queue.length > 0 ? queue.length : '✓'}</strong>
+            <span>{queue.length > 0 ? 'before you approve' : 'All clear'}</span>
+          </div>
+          {elapsedMs != null && (
+            <div className="rv__stat rv__time" title={`Planning assumption: a manual write-up takes about ${MANUAL_MINUTES} minutes. To be measured in the pilot.`}>
+              <small>Time with Juno</small>
+              <strong>{duration(elapsedMs)}</strong>
+              <span>vs about {MANUAL_MINUTES} min by hand</span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -271,6 +331,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
                   onSpell={() => void talk(true)} spellPhase={applying ? 'thinking' : voice.phase}
                   onShowInText={(s) => { setShowAll(true); const i = flags.findIndex((f) => f.statement === s); setFocus(null); document.getElementById(`rv-mark-flag-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} />
               </div>
+              <TheirWorld customerName={profile.customerName} lifeMap={draftMap ?? copilot?.lifeMap} />
               <div className="rv__card rv__said">
                 <div className="rv__card-head">
                   <h3>What you said</h3>
@@ -304,8 +365,8 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
           {tab === 'rehearse' && <DressRehearsal key={profile.id} profileId={profile.id!} customerName={profile.customerName ?? ''} />}
           {tab === 'details' && (
             <div className="rv__details">
-              {lifeMap}
-              <ReviewPanel profile={profile} copilot={copilot} onProfileSaved={onProfileSaved} onSaveLifeMap={onSaveLifeMap} />
+              <Constellation customerName={profile.customerName} lifeMap={draftMap ?? copilot?.lifeMap} unsaved={!!draftMap} />
+              <ReviewPanel profile={profile} copilot={copilot} onProfileSaved={onProfileSaved} onSaveLifeMap={onSaveLifeMap} onDraft={setDraftMap} />
               <TranscriptEditor text={text} onSave={onSaveTranscript} />
               {turns.length > 0 && <JunoTranscript turns={turns} />}
             </div>

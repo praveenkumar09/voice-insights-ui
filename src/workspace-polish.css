@@ -1,0 +1,62 @@
+/* ── The suggestion workspace (after "Approve"), in the same language as the review page ───────────────
+   design.css made its hero a flat white card and switched the glows off. This restores the crimson hero (the Admin page's look, and
+   the review page's since review-polish.css) with frosted tiles, and adds the same lifted tab, card accents and staggered entrance.
+   Loads after design.css and review-polish.css. Keeps the calm reading column and "colour only where it means something". */
+
+/* Hero */
+.ws .hero { position: relative; overflow: hidden; color: #fff; padding: 30px 32px 26px; border: none; border-radius: 26px;
+  background: radial-gradient(900px 380px at 88% -20%, rgba(255, 130, 160, 0.5), transparent 60%), linear-gradient(135deg, #52091f 0%, #a30d36 46%, #d31145 100%);
+  box-shadow: 0 30px 64px -24px rgba(211, 17, 69, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.22); animation: rv-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.ws .hero__glow { display: block; position: absolute; border-radius: 50%; filter: blur(46px); opacity: 0.5; pointer-events: none; will-change: transform; }
+.ws .hero__glow--a { width: 300px; height: 300px; left: -90px; bottom: -160px; background: #ff4f7b; animation: rv-drift 11s ease-in-out infinite alternate; }
+.ws .hero__glow--b { width: 240px; height: 240px; right: 24%; top: -130px; background: #ff9fb6; animation: rv-drift 14s ease-in-out infinite alternate-reverse; }
+.ws .hero__top, .ws .hero__status, .ws .hero__kpis { position: relative; z-index: 1; }
+.ws .hero__avatar { background: rgba(255, 255, 255, 0.18); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55), 0 12px 28px -8px rgba(0, 0, 0, 0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.ws .hero__eyebrow { color: rgba(255, 255, 255, 0.78); }
+.ws .hero h2 { color: #fff; text-shadow: 0 2px 18px rgba(82, 9, 31, 0.35); }
+.ws .hero__who p { color: rgba(255, 255, 255, 0.86); }
+.ws .hero__ring-track { stroke: rgba(255, 255, 255, 0.24); }
+.ws .hero__ring-fill, .ws .hero--complete .hero__ring-fill { stroke: #fff; }
+.ws .hero--complete .hero__ring-fill { stroke: #b6f5dc; }
+.ws .hero__ring-text b { color: #fff; }
+.ws .hero__pill { background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.ws .hero__pill::before { background: rgba(255, 255, 255, 0.7); }
+.ws .hero__pill--running { background: rgba(255, 255, 255, 0.16); color: #fff; } .ws .hero__pill--running::before { background: #fff; }
+.ws .hero__pill--complete { background: rgba(255, 255, 255, 0.16); color: #fff; } .ws .hero__pill--complete::before { background: #7ff0c3; box-shadow: 0 0 10px #7ff0c3; }
+.ws .hero__pill--failed { background: #fff; color: var(--ds-red); } .ws .hero__pill--failed::before { background: var(--ds-red); }
+.ws .hero__time { color: rgba(255, 255, 255, 0.82); }
+.ws .hero__hint { color: rgba(255, 255, 255, 0.86); }
+.ws .hero__read-btn { background: rgba(255, 255, 255, 0.16); border-color: transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.ws .hero__read-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.26); }
+.ws .hero__read-btn--main, .ws .hero__read-btn--main:hover:not(:disabled) { background: #fff; color: var(--ds-red); box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.35); opacity: 1; }
+.ws .hero__read-btn:focus-visible { outline-color: rgba(255, 255, 255, 0.85); }
+.ws .hero__read-err { color: #ffd3dc; }
+.ws .hero__kpi { background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); color: #fff; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.ws .hero__kpi--wide { background: rgba(255, 255, 255, 0.2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
+.ws .hero__kpi small { color: rgba(255, 255, 255, 0.76); }
+.ws .hero__kpi span { color: rgba(255, 255, 255, 0.74); }
+.ws .hero__kpi.is-ok strong { color: #b6f5dc; } .ws .hero__kpi.is-warn strong { color: #ffe3a6; }
+
+/* Stages: the chosen one lifts */
+.journey { background: rgba(var(--tint-rgb), 0.06); }
+.journey__pill { box-shadow: 0 6px 16px -6px rgba(211, 17, 69, 0.35), 0 0 0 1px rgba(211, 17, 69, 0.14); }
+.journey__step.is-active .journey__title { color: var(--ds-red); }
+.ap-nav__btn.is-active, .ws__seg button.is-active { box-shadow: 0 6px 16px -6px rgba(211, 17, 69, 0.3), 0 0 0 1px rgba(211, 17, 69, 0.12); }
+:root[data-theme='dark'] .journey__step.is-active .journey__title { color: #ff7a9a; }
+
+/* Headings and cards */
+.stage-intro h3 { display: inline-flex; align-items: center; gap: 10px; }
+.stage-intro h3::before { content: ''; width: 4px; height: 22px; border-radius: 4px; background: linear-gradient(180deg, #ff6b8a, #d31145); flex-shrink: 0; }
+.ws .glass-card, .spotlight__card, .ap-head { box-shadow: 0 14px 34px -26px rgba(var(--shadow-rgb), 0.5); }
+.spotlight__card { position: relative; overflow: hidden; }
+.spotlight__card.is-top { border-color: rgba(211, 17, 69, 0.2); box-shadow: 0 18px 40px -26px rgba(211, 17, 69, 0.5); }
+.spotlight__card.is-top::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: linear-gradient(90deg, #ff6b8a, #d31145 60%, #a30d36); }
+.spotlight__head h3 { display: inline-flex; align-items: center; gap: 10px; }
+.spotlight__head h3::before { content: ''; width: 4px; height: 22px; border-radius: 4px; background: linear-gradient(180deg, #ff6b8a, #d31145); flex-shrink: 0; }
+
+/* Entrance */
+.ws > * { animation: rv-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.ws > *:nth-child(2) { animation-delay: 0.05s; } .ws > *:nth-child(3) { animation-delay: 0.1s; } .ws > *:nth-child(4) { animation-delay: 0.15s; }
+
+@media (max-width: 900px) { .ws .hero { padding: 22px 20px; border-radius: 22px; } }
+@media (prefers-reduced-motion: reduce) { .ws .hero, .ws .hero__glow, .ws > * { animation: none !important; } }

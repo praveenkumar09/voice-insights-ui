@@ -18,6 +18,8 @@ import './exec.css'
 import './admin.css'
 import './design.css'
 import './junomode.css'
+import './review-polish.css'
+import './workspace-polish.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

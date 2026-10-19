@@ -13,6 +13,7 @@ import { CustomerProfileCard } from '../components/CustomerProfileCard'
 import { ComplianceWatch, NeedTags, NextQuestions, ProductMatches } from '../components/copilot/CopilotPanels'
 import { SignalGauges } from '../components/copilot/SignalGauges'
 import { LifeMap } from '../components/lifemap/LifeMap'
+import { Constellation } from '../components/lifemap/Constellation'
 import { TranscriptPanel } from '../components/TranscriptPanel'
 import { VoiceOrb } from '../components/VoiceOrb'
 import { useVoiceCapture } from '../hooks/useVoiceCapture'
@@ -271,7 +272,9 @@ export function CaptureScreen({ onReady }: Props) {
 
       {mode === 'live' && !safe && <NextQuestions questions={copilot?.nextQuestions ?? []} context={copilot?.askContext} />}
 
-      {!signOff && lifeMapNode}
+      {!signOff && (debrief || withJuno
+        ? <Constellation customerName={profile?.customerName} lifeMap={copilot?.lifeMap} live={listening || (withJuno && busy)} />
+        : lifeMapNode)}
 
       {signOff && profile?.id && (
         <DebriefReview

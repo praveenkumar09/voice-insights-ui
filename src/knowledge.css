@@ -1,0 +1,52 @@
+/* Admin → Knowledge base */
+.kb { display: flex; flex-direction: column; gap: 18px; }
+.kb-drop-card { gap: 16px; }
+.kb-drop { display: flex; align-items: center; gap: 18px; padding: 22px; border-radius: 18px; border: 2px dashed var(--hairline); background: rgba(var(--shadow-rgb), 0.03); transition: border-color .2s, background .2s; }
+.kb-drop.is-over { border-color: var(--aia-red); background: rgba(216, 36, 66, 0.07); }
+.kb-drop.is-busy { opacity: .6; }
+.kb-drop__icon { width: 46px; height: 46px; flex: none; display: grid; place-items: center; border-radius: 14px; font-size: 1.3rem; color: #fff; background: linear-gradient(135deg, #e0334f, #b81235); }
+.kb-drop__text { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.kb-drop__text span { font-size: .86rem; color: var(--ink-soft); }
+.kb-btn { border: 0; border-radius: 999px; padding: 10px 20px; font-weight: 700; color: #fff; cursor: pointer; background: linear-gradient(135deg, #e0334f, #b81235); }
+.kb-btn:disabled { opacity: .5; cursor: default; }
+.kb-layout { display: flex; flex-direction: column; gap: 6px; font-size: .85rem; color: var(--ink-soft); }
+.kb-layout b { color: var(--ink); }
+.kb-layout pre { margin: 0; padding: 12px 14px; border-radius: 12px; background: rgba(var(--shadow-rgb), 0.05); font-size: .8rem; overflow-x: auto; color: var(--ink); }
+
+.kb-job__head { display: flex; flex-direction: column; gap: 8px; }
+.kb-job__head div:first-child { display: flex; flex-direction: column; gap: 2px; }
+.kb-job__head span { font-size: .88rem; color: var(--ink-soft); }
+.kb-job--failed .kb-job__head span { color: var(--aia-red); font-weight: 600; }
+.kb-job--done .kb-job__head span { color: #1d8a5b; font-weight: 600; }
+.kb-progress { height: 6px; border-radius: 99px; background: rgba(var(--shadow-rgb), 0.1); overflow: hidden; }
+.kb-progress i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #e0334f, #b81235); transition: width .5s; }
+.kb-files { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; }
+.kb-files li { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--hairline); font-size: .86rem; }
+.kb-files em { font-style: normal; color: var(--ink-soft); }
+.kb-files__state { font-weight: 700; color: var(--ink-soft); }
+.kb-files .is-done .kb-files__state { color: #1d8a5b; }
+.kb-files .is-working .kb-files__state { color: #b81235; }
+.kb-files .is-failed .kb-files__state, .kb-files .is-empty .kb-files__state { color: var(--aia-red); }
+.kb-files small { width: 100%; color: var(--aia-red); }
+.kb-warn { margin-top: 10px; font-size: .82rem; color: var(--ink-soft); }
+.kb-warn ul { margin: 6px 0 0; padding-left: 18px; }
+
+.kb-products ul { list-style: none; margin: 0; padding: 0; }
+.kb-products > ul > li { border-top: 1px solid var(--hairline); }
+.kb-products > ul > li:first-child { border-top: 0; }
+.kb-row { display: flex; align-items: center; gap: 12px; }
+.kb-row__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 14px 0; border: 0; background: none; cursor: pointer; color: inherit; font: inherit; }
+.kb-row__name { font-weight: 700; }
+.kb-row__meta { font-size: .8rem; color: var(--ink-soft); }
+.kb-link { border: 0; background: none; cursor: pointer; font: inherit; font-size: .82rem; font-weight: 600; color: var(--ink-soft); padding: 6px 8px; border-radius: 8px; }
+.kb-link:hover { color: var(--aia-red); }
+.kb-link.is-sure { color: #fff; background: var(--aia-red); }
+.kb-docs { padding: 0 0 12px 12px !important; }
+.kb-docs li { display: grid; grid-template-columns: 130px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; font-size: .84rem; }
+.kb-docs__cat { color: var(--ink-soft); }
+.kb-docs__n { color: var(--ink-soft); }
+@media (max-width: 640px) {
+  .kb-drop { flex-direction: column; align-items: flex-start; }
+  .kb-docs li { grid-template-columns: 1fr auto; }
+  .kb-docs__cat, .kb-docs__n { grid-column: 1; }
+}

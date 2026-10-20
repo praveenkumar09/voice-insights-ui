@@ -712,3 +712,37 @@ export async function getReading(runId: string, doc: ReadDoc): Promise<Reading> 
   if (!res.ok) throw new Error(await errorMessage(res, `There is nothing to read for that yet (${res.status})`))
   return res.json()
 }
+
+// ── Admin: knowledge base (policy documents → vectors) ──
+export interface KnowledgeFile { category: string; sourceFile: string; chunks: number }
+export interface KnowledgeProduct { productName: string; files: number; chunks: number; updatedAt: string | null; documents: KnowledgeFile[] }
+export interface KnowledgeJobFile { product: string; category: string; file: string; status: 'waiting' | 'working' | 'done' | 'empty' | 'failed'; message: string | null; chunks: number }
+export interface KnowledgeJob { id: string; zipName: string; state: 'running' | 'done' | 'failed'; message: string; files: KnowledgeJobFile[]; warnings: string[]; chunksStored: number }
+
+export async function listKnowledge(): Promise<KnowledgeProduct[]> {
+  const res = await fetch(`${API_BASE}/api/admin/knowledge/products`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to load the knowledge base (${res.status})`))
+  return res.json()
+}
+
+export async function uploadKnowledgeZip(file: File): Promise<KnowledgeJob> {
+  const body = new FormData()
+  body.append('file', file)
+  const res = await fetch(`${API_BASE}/api/admin/knowledge/upload`, { method: 'POST', headers: authHeaders(), body })
+  if (!res.ok) throw new Error(await errorMessage(res, `Upload failed (${res.status})`))
+  return res.json()
+}
+
+export async function getKnowledgeJob(id: string): Promise<KnowledgeJob> {
+  const res = await fetch(`${API_BASE}/api/admin/knowledge/jobs/${id}`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to read upload progress (${res.status})`))
+  return res.json()
+}
+
+export async function deleteKnowledge(product: string, doc?: KnowledgeFile): Promise<void> {
+  const q = doc
+    ? `documents?product=${encodeURIComponent(product)}&category=${encodeURIComponent(doc.category)}&file=${encodeURIComponent(doc.sourceFile)}`
+    : `products?product=${encodeURIComponent(product)}`
+  const res = await fetch(`${API_BASE}/api/admin/knowledge/${q}`, { method: 'DELETE', headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to remove (${res.status})`))
+}

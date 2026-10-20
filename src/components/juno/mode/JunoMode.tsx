@@ -166,10 +166,13 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
   /** Juno speaks; the microphone is closed meanwhile, so it never hears itself, and reopened afterwards. */
   const say = useCallback((text: string) => {
     const p = (async () => {
+      // Another voice feature took the microphone meanwhile (e.g. Juno pressed "Start debrief"): stay paused, say nothing.
+      if (phaseRef.current === 'paused' || voiceLock.busy()) return
       setMessage(text)
       setPhase('speaking')
       capture.setMicMuted(true)
       await speakAndWait(text)
+      if ((phaseRef.current as JunoPhase) === 'paused') return
       capture.turnTaken()
       await new Promise((r) => window.setTimeout(r, UNMUTE_DELAY_MS))
       consumed.current = finalsRef.current.length
@@ -198,6 +201,8 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     lastActivity.current = Date.now()
     setMessage('')
     if (readingRef.current) return // a reading is under way: it keeps the stage
+    // A command that opened a voice feature (it now holds the microphone) leaves Juno paused, not listening.
+    if (enabledRef.current && voiceLock.busy()) { setPhase('paused'); return }
     if (enabledRef.current && phaseRef.current !== 'paused') setPhase('listening')
   }, [setPhase])
 

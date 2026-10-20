@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { relevanceLabel } from '../../utils/relevance'
 import type { AgentState } from '../../hooks/useRecommendationStream'
-import type { AgentKey, ComplianceCheckResult, CustomerPersonaResult, CustomerProfile, ProductScoringResult, ProductShortlistResult } from '../../types'
+import type { AgentKey, ComplianceCheckResult, CustomerPersonaResult, CustomerProfile } from '../../types'
 import { AGENT_NAME } from '../../brand'
 import { ReadAloudButtons } from '../juno/mode/ReadAloud'
 
@@ -15,17 +14,15 @@ interface Props {
   total: number
   /** Seconds the analysis has taken — only known for a run watched live. */
   elapsed: number | null
+  /** Opens the "How Juno decided" side panel. */
+  onOpenHow?: () => void
 }
 
 /** The first thing the room sees: who this is for, how far the analysis is, and the headline results as they land. */
-export function RunHero({ reportReady, runId, steps, profile, status, doneCount, total, elapsed }: Props) {
+export function RunHero({ reportReady, runId, steps, profile, status, doneCount, total, elapsed, onOpenHow }: Props) {
   const name = profile?.customerName
-  const shortlist = steps.productShortlist.status === 'done' ? (steps.productShortlist.result as ProductShortlistResult) : null
-  const scoring = steps.productScoring.status === 'done' ? (steps.productScoring.result as ProductScoringResult) : null
   const persona = steps.persona.status === 'done' ? (steps.persona.result as CustomerPersonaResult) : null
   const compliance = steps.complianceCheck.status === 'done' ? (steps.complianceCheck.result as ComplianceCheckResult) : null
-  const top = shortlist?.shortlistedProducts?.[0]
-  const topScore = top ? scoring?.scores.find((s) => s.productName.toLowerCase() === top.toLowerCase())?.score : undefined
   // A buying signal only means something when the customer was speaking; a dictated debrief has none worth showing.
   const buying = profile?.captureMode === 'DEBRIEF' || profile?.captureMode === 'JUNO_DEBRIEF' ? undefined : profile?.liveInsights?.latest?.buyingSignal
 
@@ -75,21 +72,19 @@ export function RunHero({ reportReady, runId, steps, profile, status, doneCount,
           {status === 'complete' ? 'Analysis complete' : status === 'failed' ? 'Run failed' : status === 'running' ? `${AGENT_NAME} is analysing` : 'Starting'}
         </span>
         {reportReady && runId && <ReadAloudButtons runId={runId} name={name} />}
+        {onOpenHow && <button type="button" className="hero__how" onClick={onOpenHow}>How {AGENT_NAME} decided · {total} agents →</button>}
         {elapsed != null && elapsed > 0 && <span className="hero__time">{status === 'complete' ? `Analysed in ${elapsed}s` : `${elapsed}s elapsed`}</span>}
       </div>
 
       <div className="hero__kpis">
         <AnimatePresence>
-          {top && (
-            <Kpi key="top" label="Top suggestion" value={top} sub={topScore != null ? relevanceLabel(topScore) : 'Shortlisted'} wide />
-          )}
           {persona && <Kpi key="persona" label="Customer segment" value={persona.personaLabel} sub={persona.lifeStage} />}
           {buying && <Kpi key="buy" label="Buying signal" value={buying.level} sub={`${buying.score}/100 in the conversation`} />}
           {compliance && (
             <Kpi key="comp" label="Compliance" value={compliance.compliant ? 'Cleared' : 'Review needed'} sub={`${compliance.checks.filter((c) => c.passed).length}/${compliance.checks.length} checks passed`} tone={compliance.compliant ? 'ok' : 'warn'} />
           )}
         </AnimatePresence>
-        {!top && !persona && !compliance && (
+        {!persona && !compliance && (
           <p className="hero__hint">Headline results appear here as each agent reports back.</p>
         )}
       </div>

@@ -57,6 +57,8 @@ interface Ctx {
   answer: (yes: boolean) => void
   /** What can be said on this screen, in plain words. */
   examples: () => string[]
+  /** Juno says something unprompted (the suggestion is ready), only if it is idle and listening: never over a reading or a conversation. */
+  announce: (text: string) => void
   register: (id: string, get: () => JunoAction | null) => () => void
   registerScreen: (key: string, label: string) => () => void
 }
@@ -79,6 +81,12 @@ export function useJunoAction(action: JunoAction | null) {
     if (!ctx || !id) return
     return ctx.register(id, () => ref.current)
   }, [ctx, id])
+}
+
+/** Say something unprompted through Juno mode, if it is on and idle. A no-op otherwise (and outside the provider). */
+export function useJunoAnnounce(): (text: string) => void {
+  const ctx = useContext(JunoModeContext)
+  return ctx ? ctx.announce : () => {}
 }
 
 /** Tell Juno where the advisor is ("the debrief review, Summary tab"), so a request can be read in context. */
@@ -205,6 +213,14 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     if (enabledRef.current && voiceLock.busy()) { setPhase('paused'); return }
     if (enabledRef.current && phaseRef.current !== 'paused') setPhase('listening')
   }, [setPhase])
+
+  /** Juno speaks up on its own, but only when idle and listening, so it never talks over a reading, a command or another voice feature. */
+  const announce = useCallback((text: string) => {
+    if (!enabledRef.current || busy.current || readingRef.current || phaseRef.current !== 'listening' || voiceLock.busy()) return
+    busy.current = true
+    lastActivity.current = Date.now()
+    void say(text).finally(() => backToListening())
+  }, [say, backToListening])
 
   // ── reading aloud ──
   const endReading = useCallback(() => {
@@ -572,8 +588,8 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
 
   const value = useMemo<Ctx>(() => ({
     enabled, reading, read, readControl, phase, caption: capture.partialText, message, amplitude: capture.amplitude, notice,
-    toggle, acceptConsent, declineConsent, answer, examples, register, registerScreen,
-  }), [enabled, reading, read, readControl, phase, capture.partialText, capture.amplitude, message, notice, toggle, acceptConsent, declineConsent, answer, examples, register, registerScreen])
+    toggle, acceptConsent, declineConsent, answer, examples, announce, register, registerScreen,
+  }), [enabled, reading, read, readControl, phase, capture.partialText, capture.amplitude, message, notice, toggle, acceptConsent, declineConsent, answer, examples, announce, register, registerScreen])
 
   return <JunoModeContext.Provider value={value}>{children}</JunoModeContext.Provider>
 }

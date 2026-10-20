@@ -1,7 +1,7 @@
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useRef } from 'react'
 
-export type JourneyId = 'agents' | 'live' | 'report' | 'future' | 'advice'
+export type JourneyId = 'suggestion' | 'customer' | 'after'
 export type StepState = 'idle' | 'running' | 'done' | 'new'
 
 export interface JourneyStep {
@@ -18,7 +18,7 @@ interface Props {
   onPick: (id: JourneyId) => void
 }
 
-/** The five stages as one segmented control: the current stage is lit, finished stages carry a tick, a running one shows its progress. */
+/** The three stages as one segmented control: the current stage is lit, finished stages carry a tick, a running one shows its progress. */
 export function JourneyNav({ steps, active, onPick }: Props) {
   const reduce = useReducedMotion()
   // On a phone the control wraps; keep the current stage in view.

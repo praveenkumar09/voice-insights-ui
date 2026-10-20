@@ -42,7 +42,7 @@ export function AdminRunDetailScreen({ runId, onBack }: Props) {
 
       {run && (
         <>
-          <RunWorkspace runId={run.runId} steps={toSteps(run)} profile={profile} initialTab="report" runFailed={run.status === 'FAILED' ? run.errorMessage ?? 'Run failed' : null} />
+          <RunWorkspace runId={run.runId} steps={toSteps(run)} profile={profile} runFailed={run.status === 'FAILED' ? run.errorMessage ?? 'Run failed' : null} />
         </>
       )}
     </section>

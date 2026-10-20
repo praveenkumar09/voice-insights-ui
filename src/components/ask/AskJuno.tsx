@@ -143,7 +143,7 @@ export function AskJuno({ runId, customerName }: Props) {
   }
 
   return (
-    <section className={`jn ask${live ? ' is-live' : ''}${k.phase === 'listening' || k.phase === 'hearing' ? ' jn--listening' : k.phase === 'thinking' ? ' jn--thinking' : ''}`} aria-label="Talk it through with Juno">
+    <section className={`jn ask${live ? ' is-live' : ''}${k.phase === 'listening' || k.phase === 'hearing' ? ' jn--listening' : k.phase === 'thinking' ? ' jn--thinking' : ''}`} aria-label="Ask Juno about this suggestion">
       <div className="jn__mesh" />
       <div className="jn__grid" />
 
@@ -151,8 +151,8 @@ export function AskJuno({ runId, customerName }: Props) {
         <div className="jn__brand">
           <span className="jn__mark" aria-hidden><i /></span>
           <div>
-            <b>Talk it through with Juno</b>
-            <small>Ask why it suggested what it did — out loud</small>
+            <b>Ask Juno about this suggestion</b>
+            <small>Why was a product picked? What if something changes? Ask out loud or type.</small>
           </div>
         </div>
         <span />

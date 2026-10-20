@@ -74,3 +74,8 @@
 @media (prefers-reduced-motion: reduce) { .rv__glow, .rv .rv__glance, .rv__panel > * { animation: none !important; } }
 :root[data-theme='dark'] .rv__tabs button.is-on { color: #ff7a9a; }
 :root[data-theme='dark'] .rv__tab-pill { box-shadow: 0 6px 16px -6px rgba(211, 17, 69, 0.5), 0 0 0 1px rgba(255, 122, 154, 0.25); }
+
+/* The Fact-find tile opens Details; it is a button that looks like its sibling tiles. */
+.rv__stat--btn { font: inherit; color: inherit; text-align: left; cursor: pointer; border: 0; }
+.rv__stat--btn:hover { filter: brightness(1.05); }
+.rv__stat--btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

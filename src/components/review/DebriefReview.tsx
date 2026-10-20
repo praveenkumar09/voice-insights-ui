@@ -1,5 +1,4 @@
 import { TheirWorld } from '../lifemap/TheirWorld'
-import { Constellation } from '../lifemap/Constellation'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { junoCorrection, saveCustomerProfile, type FactFindReadiness, type SpokenCorrection } from '../../api/client'
@@ -10,7 +9,6 @@ import { duration, entitiesFor, findMarks, MANUAL_MINUTES, type Entity } from '.
 import { flyIn } from '../../utils/flyIn'
 import { MicIcon } from '../icons'
 import { useJunoAction, useJunoScreen } from '../juno/mode/JunoMode'
-import { DebriefFollowUp } from '../capture/DebriefFollowUp'
 import { ReviewPanel } from '../capture/ReviewPanel'
 import { JunoTranscript } from '../juno/JunoStage'
 import { DressRehearsal } from '../rehearsal/DressRehearsal'
@@ -35,11 +33,10 @@ interface Props {
   lifeMap: ReactNode
 }
 
-type Tab = 'summary' | 'followup' | 'rehearse' | 'details'
+type Tab = 'summary' | 'rehearse' | 'details'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'summary', label: 'Summary' },
-  { id: 'followup', label: 'Follow-up' },
   { id: 'rehearse', label: 'Rehearse' },
   { id: 'details', label: 'Details' },
 ]
@@ -58,7 +55,6 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
   const [skipped, setSkipped] = useState<string[]>([])
   const [focus, setFocus] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
-  const [showOpen, setShowOpen] = useState(false)
   const stackRef = useRef<HTMLDivElement>(null)
   const rootRef = useRef<HTMLElement>(null)
   const voice = useVoiceCommand()
@@ -75,7 +71,6 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
     setFocus(null)
     setTab('summary')
     setShowAll(false)
-    setShowOpen(false)
   }, [profile.id])
 
   // The facts the ledger showed fly into place the first time this page appears for a customer.
@@ -165,7 +160,6 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
 
   const wants = (copilot?.lifeMap?.dreams ?? []).slice(0, 2).map((d) => d.label)
   const worries = (copilot?.lifeMap?.worries ?? []).slice(0, 2).map((w) => w.label)
-  const open = readiness ? readiness.total - readiness.captured : null
   const initial = (profile.customerName?.trim()[0] ?? '?').toUpperCase()
 
   function reviewNow() {
@@ -180,9 +174,9 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
   const spring = reduce ? { duration: 0 } : { type: 'spring' as const, stiffness: 420, damping: 38 }
 
   // What Juno can do on this page.
-  const TAB_BY_NAME: Record<string, Tab> = { summary: 'summary', follow_up: 'followup', rehearse: 'rehearse', details: 'details' }
+  const TAB_BY_NAME: Record<string, Tab> = { summary: 'summary', rehearse: 'rehearse', details: 'details' }
   useJunoScreen(`The debrief review for ${profile.customerName ?? 'the customer'}, ${tab} tab${queue.length ? `, ${queue.length} thing${queue.length === 1 ? '' : 's'} to check` : ', everything checked'}`)
-  useJunoAction({ id: 'open_tab', description: 'Open a tab: Summary, Follow-up, Rehearse, or Details', risk: 'open', params: { tab: { type: 'enum', values: Object.keys(TAB_BY_NAME) } }, run: (p) => { setTab(TAB_BY_NAME[p.tab]) } })
+  useJunoAction({ id: 'open_tab', description: 'Open a tab: Summary, Rehearse, or Details', risk: 'open', params: { tab: { type: 'enum', values: Object.keys(TAB_BY_NAME) } }, run: (p) => { setTab(TAB_BY_NAME[p.tab]) } })
   useJunoAction(queue.length > 0 ? { id: 'review_items', description: 'Go through the things to check', risk: 'open', run: () => { reviewNow() } } : null)
   useJunoAction({
     id: 'read_summary', description: 'Read out the summary of this customer', risk: 'info',
@@ -283,11 +277,11 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
         {/* The numbers that matter at a glance, before anything is opened */}
         <div className="rv__stats">
           {readiness && (
-            <div className="rv__stat">
+            <button type="button" className="rv__stat rv__stat--btn" onClick={() => setTab('details')} title="See every field and what is still open">
               <small>Fact-find</small>
               <strong>{readiness.captured}<em>/{readiness.total}</em></strong>
               <span>{readiness.total - readiness.captured > 0 ? `${readiness.total - readiness.captured} still open` : 'Complete'}</span>
-            </div>
+            </button>
           )}
           <div className={`rv__stat${queue.length > 0 ? ' is-warn' : ' is-ok'}`}>
             <small>To check</small>
@@ -339,33 +333,14 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
                 </div>
                 <MarkedText text={text} entities={entities} flags={flags.map((f) => f.statement)} resolved={resolved} clamp={!showAll} />
               </div>
-              {open != null && (
-                <div className="rv__card rv__open">
-                  <div className="rv__card-head">
-                    <h3>Fact-find</h3>
-                    <span className="rv__fraction"><b>{readiness!.captured}</b> of {readiness!.total} captured</span>
-                  </div>
-                  <div className="rv__meter" role="progressbar" aria-valuemin={0} aria-valuemax={readiness!.total} aria-valuenow={readiness!.captured}>
-                    <motion.i initial={false} animate={{ width: `${(readiness!.captured / readiness!.total) * 100}%` }} transition={spring} />
-                  </div>
-                  {open > 0 && (
-                    <>
-                      <button className="rv__link" onClick={() => setShowOpen((v) => !v)} aria-expanded={showOpen}>{showOpen ? 'Hide' : `${open} still open`}</button>
-                      {showOpen && <ul className="rv__slots">{readiness!.missing.map((m) => <li key={m}>{m}</li>)}</ul>}
-                    </>
-                  )}
-                </div>
-              )}
               <div className="rv__foot">
                 <button className="rv__link" onClick={onBrief}>Download brief (PDF)</button>
               </div>
             </>
           )}
-          {tab === 'followup' && <DebriefFollowUp key={profile.id} profileId={profile.id!} customerName={profile.customerName ?? ''} />}
           {tab === 'rehearse' && <DressRehearsal key={profile.id} profileId={profile.id!} customerName={profile.customerName ?? ''} />}
           {tab === 'details' && (
             <div className="rv__details">
-              <Constellation customerName={profile.customerName} lifeMap={draftMap ?? copilot?.lifeMap} unsaved={!!draftMap} />
               <ReviewPanel profile={profile} copilot={copilot} onProfileSaved={onProfileSaved} onSaveLifeMap={onSaveLifeMap} onDraft={setDraftMap} />
               <TranscriptEditor text={text} onSave={onSaveTranscript} />
               {turns.length > 0 && <JunoTranscript turns={turns} />}

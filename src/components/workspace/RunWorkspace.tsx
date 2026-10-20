@@ -1,50 +1,52 @@
 import { useEffect, useRef, useState } from 'react'
-import { recommendationReportUrl } from '../../api/client'
 import type { AgentState } from '../../hooks/useRecommendationStream'
 import { PIPELINE_ORDER } from '../../hooks/useRecommendationStream'
-import type { AgentKey, CustomerProfile, SalesReportResult } from '../../types'
+import type { AgentKey, CustomerProfile, ProductShortlistResult, SalesReportResult } from '../../types'
 import { AdvicePackPanel } from '../advicepack/AdvicePackPanel'
 import { AskJuno } from '../ask/AskJuno'
-import { DownloadIcon } from '../icons'
 import { GoalsPlan } from '../future/GoalsPlan'
-import { LiveVsFinal } from '../orchestration/LiveVsFinal'
 import { OrchestratorCanvas } from '../orchestration/OrchestratorCanvas'
 import { ProposalPanel } from '../proposal/ProposalPanel'
-import { MarkdownLite } from '../report/MarkdownLite'
+import { HowJunoDecidedContent, HowJunoDecidedDrawer, type HowView } from './HowJunoDecided'
+import type { Part as PackPart } from '../advicepack/AdvicePackPanel'
 import { JourneyNav, type JourneyId, type JourneyStep } from './JourneyNav'
 import { ReportSpotlight } from './ReportSpotlight'
 import { RunHero } from './RunHero'
 import { StageIntro } from './StageIntro'
 import { AGENT_NAME } from '../../brand'
-import { useJunoAction, useJunoScreen } from '../juno/mode/JunoMode'
+import { useJunoAction, useJunoAnnounce, useJunoScreen } from '../juno/mode/JunoMode'
 import { rememberRun } from '../../utils/lastRun'
 
 type Tab = JourneyId
-type ReportView = 'advisory' | 'proposal'
+type CustomerView = 'goals' | 'proposal'
 
 interface Props {
   runId: string | null
   steps: Record<AgentKey, AgentState>
   profile: CustomerProfile | null
-  /** 'report' for a finished run opened from admin; 'agents' for a run the user just started and wants to watch. */
-  initialTab: Tab
+  /** A run the advisor just started and is watching (the hero shows the clock). A run opened from Admin is already finished. */
+  watch?: boolean
   runFailed?: string | null
 }
 
 /**
- * The suggestion page, as a five-stage journey: (1) Agent orchestration — the pipeline doing its work;
- * (2) Live vs final — what the copilot thought during the call set against what those agents concluded (so it
- * can only follow the pipeline); (3) Final report — the advisory report and the customer proposal;
- * (4) Goals & plan — the warm customer conversation page; (5) Advice pack — the advisor's after-meeting admin.
- * A hero up top carries the customer and the headline results as they land.
+ * The suggestion page, in four places instead of five stages and a dozen panels. Each thing lives in exactly one of them:
+ *  - Suggestion: the answer (the ranked products and why), with the agents' progress while it lands, and "ask Juno why" beneath it.
+ *  - With the customer: the customer-facing pages — Goals & plan and the take-home proposal.
+ *  - After the meeting: the advice pack (fact-find, record of advice, follow-up, CRM, next meeting).
+ *  - Behind the scenes: how the agents decided, live vs final (only when there was a live conversation) and the full advisory report.
+ * The page opens on Suggestion and stays there when the analysis finishes: it never moves the advisor on by itself.
  */
-export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: Props) {
-  const [tab, setTab] = useState<Tab>(initialTab)
-  const [reportView, setReportView] = useState<ReportView>('advisory')
-  const userPicked = useRef(false)
-  const watched = initialTab === 'agents'
+export function RunWorkspace({ runId, steps, profile, watch = false, runFailed }: Props) {
+  const [tab, setTab] = useState<Tab>('suggestion')
+  const [customerView, setCustomerView] = useState<CustomerView>('goals')
+  const [howView, setHowView] = useState<HowView>('agents')
+  const [howOpen, setHowOpen] = useState(false)
+  const [packPart, setPackPart] = useState<PackPart>('factFind')
   const startedAt = useRef(Date.now())
   const [elapsed, setElapsed] = useState(0)
+  const announce = useJunoAnnounce()
+  const announced = useRef(false)
 
   const doneCount = PIPELINE_ORDER.filter((k) => steps[k].status === 'done').length
   const total = PIPELINE_ORDER.length
@@ -53,195 +55,141 @@ export function RunWorkspace({ runId, steps, profile, initialTab, runFailed }: P
   const finalReady = steps.merge.status === 'done' || steps.productShortlist.status === 'done'
   const running = !reportReady && !runFailed && PIPELINE_ORDER.some((k) => steps[k].status === 'running')
   const failedAgent = PIPELINE_ORDER.find((k) => steps[k].status === 'failed')
+  const live = profile?.liveInsights ?? null
+  const hasLive = !!live?.latest
+  const shortlist = steps.productShortlist.status === 'done' ? (steps.productShortlist.result as ProductShortlistResult) : null
+  const name = profile?.customerName
 
   // Time to insight, for a run being watched live.
   useEffect(() => {
-    if (!watched || reportReady) return
+    if (!watch || reportReady) return
     const t = setInterval(() => setElapsed(Math.round((Date.now() - startedAt.current) / 1000)), 1000)
     return () => clearInterval(t)
-  }, [watched, reportReady])
+  }, [watch, reportReady])
   useEffect(() => {
-    if (watched && reportReady) setElapsed(Math.max(1, Math.round((Date.now() - startedAt.current) / 1000)))
-  }, [watched, reportReady])
+    if (watch && reportReady) setElapsed(Math.max(1, Math.round((Date.now() - startedAt.current) / 1000)))
+  }, [watch, reportReady])
 
-  // When a watched run finishes, move on to the next stage — unless they've already chosen where to look.
+  // Hands-free: with Juno mode on, say that the suggestion is ready (once, only for a run that was being watched).
   useEffect(() => {
-    if (!reportReady || userPicked.current || initialTab !== 'agents') return
-    const t = setTimeout(() => !userPicked.current && setTab(profile?.liveInsights?.latest ? 'live' : 'report'), 1600)
-    return () => clearTimeout(t)
-  }, [reportReady, initialTab, profile?.liveInsights?.latest])
+    if (!watch || !reportReady || announced.current) return
+    announced.current = true
+    const top = shortlist?.shortlistedProducts?.[0]
+    announce(`${name ? `The suggestion for ${name} is ready. ` : 'The suggestion is ready. '}${top ? `The top suggestion is ${top}. ` : ''}Say “open the advice pack”, “read the report” or “ask why”.`)
+  }, [watch, reportReady, shortlist, name, announce])
 
-  function pick(next: Tab) {
-    userPicked.current = true
-    setTab(next)
-  }
-
-  const status = runFailed ? 'failed' : reportReady ? 'complete' : running || doneCount > 0 ? 'running' : 'pending'
-  const name = profile?.customerName
   useEffect(() => { if (runId && reportReady) rememberRun(runId, name) }, [runId, reportReady, name])
 
-  const STAGE: Record<string, Tab> = { agents: 'agents', live_vs_final: 'live', report: 'report', goals_and_plan: 'future', advice_pack: 'advice' }
-  useJunoScreen(`The suggestion workspace${name ? ` for ${name}` : ''}, ${tab} stage`)
+  const status = runFailed ? 'failed' : reportReady ? 'complete' : running || doneCount > 0 ? 'running' : 'pending'
+
+  // What Juno can open. The names stay as plain as what the advisor would say; each lands on one tab (and one view inside it).
+  const openHow = (v: HowView = 'agents') => { setHowView(v); setHowOpen(true) }
+  const STAGES: Record<string, () => void> = {
+    suggestion: () => { setHowOpen(false); setTab('suggestion') },
+    goals_and_plan: () => { setHowOpen(false); setCustomerView('goals'); setTab('customer') },
+    customer_proposal: () => { setHowOpen(false); setCustomerView('proposal'); setTab('customer') },
+    advice_pack: () => { setHowOpen(false); setTab('after') },
+    advisory_report: () => { setHowOpen(false); setPackPart('report'); setTab('after') },
+    analysis: () => openHow('agents'),
+    agents: () => openHow('agents'),
+    ...(hasLive ? { live_vs_final: () => openHow('live') } : {}),
+  }
+  const TAB_LABEL: Record<Tab, string> = { suggestion: 'Suggestion', customer: 'Proposal', after: 'Advice Pack' }
+  useJunoScreen(`The suggestion workspace${name ? ` for ${name}` : ''}, ${howOpen ? `the How ${AGENT_NAME} decided side panel` : `${TAB_LABEL[tab]} tab`}`)
   useJunoAction({
-    id: 'open_stage', description: 'Open a stage: Agents, Live vs final, Report, Goals and plan, or Advice pack', risk: 'open',
-    params: { stage: { type: 'enum', values: Object.keys(STAGE) } },
-    run: (p) => { pick(STAGE[p.stage]) },
+    id: 'open_stage', description: 'Open Suggestion, Goals and plan, Customer proposal, Advice pack, Advisory report, or how Juno decided (Analysis, Agents' + (hasLive ? ', Live vs final' : '') + ')', risk: 'open',
+    params: { stage: { type: 'enum', values: Object.keys(STAGES) } },
+    run: (p) => { STAGES[p.stage]?.() },
   })
-  useJunoAction(tab === 'report' && report ? {
-    id: 'open_document', description: 'Show the advisory report or the customer proposal', risk: 'open',
-    params: { document: { type: 'enum', values: ['advisory_report', 'customer_proposal'] } },
-    run: (p) => { setReportView(p.document === 'customer_proposal' ? 'proposal' : 'advisory') },
-  } : null)
 
   const journey: JourneyStep[] = [
-    { id: 'agents', title: AGENT_NAME, hint: 'Agent orchestration · 11 agents', state: reportReady ? 'done' : running || doneCount > 0 ? 'running' : 'idle', chip: reportReady ? 'Complete' : `${doneCount}/${total}` },
-    { id: 'live', title: 'Live vs final', hint: 'Copilot vs the agents', state: finalReady ? 'done' : 'idle', chip: finalReady ? 'Compare' : 'Waiting' },
-    { id: 'report', title: 'Final report', hint: 'Advisory report & proposal', state: reportReady ? 'done' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
-    { id: 'future', title: 'Goals & plan', hint: 'Customer conversation page', state: reportReady ? 'new' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
-    { id: 'advice', title: 'Advice pack', hint: 'After-meeting admin, done', state: reportReady ? 'new' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
+    { id: 'suggestion', title: 'Suggestion', hint: 'The answer, and why', state: reportReady ? 'done' : running || doneCount > 0 ? 'running' : 'idle', chip: reportReady ? 'Ready' : `${doneCount}/${total}` },
+    { id: 'customer', title: 'Proposal', hint: 'Goals & plan, and the customer proposal', state: reportReady ? 'new' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
+    { id: 'after', title: 'Advice Pack', hint: 'Follow-up, CRM, fact-find, record of advice, report', state: reportReady ? 'new' : 'idle', chip: reportReady ? 'Ready' : 'Pending' },
   ]
+
+  // The full analysis can put a different product first than the live conversation did: say so, in one line.
+  const liveTop = live?.latest?.productMatches?.[0]?.productName
+  const finalTop = shortlist?.shortlistedProducts?.[0]
+  const changedSinceLive = hasLive && finalReady && !!liveTop && !!finalTop && liveTop.toLowerCase() !== finalTop.toLowerCase()
+
+  const waiting = (title: string, text: string) => (
+    <div className="glass-card ws__waiting">
+      <span className="proposal__spinner" />
+      <div><strong>{title}</strong><p>{text}</p></div>
+    </div>
+  )
 
   return (
     <div className="ws">
-      <RunHero reportReady={reportReady} runId={runId} steps={steps} profile={profile} status={status} doneCount={doneCount} total={total} elapsed={watched ? elapsed : null} />
+      <RunHero reportReady={reportReady} runId={runId} steps={steps} profile={profile} status={status} doneCount={doneCount} total={total} elapsed={watch ? elapsed : null} onOpenHow={() => openHow('agents')} />
 
       {(runFailed || failedAgent) && (
         <p className="orchestration-screen__error">
-          {runFailed ? `Run failed: ${runFailed}` : `The ${failedAgent} agent failed — see the ${AGENT_NAME} stage for details.`}
+          {runFailed ? `Run failed: ${runFailed}` : `The ${failedAgent} agent failed — see the agents’ details for more.`}
         </p>
       )}
 
-      <JourneyNav steps={journey} active={tab} onPick={pick} />
+      <JourneyNav steps={journey} active={tab} onPick={setTab} />
 
       {/* No exit animation: the next stage must never wait on the previous one finishing, or a throttled window looks frozen. */}
       <div key={tab} className="ws__stage ws__stage--in">
         <div>
-          {tab === 'agents' && (
-            <>
-              <StageIntro title={`Meet ${AGENT_NAME}`} text={`${AGENT_NAME} is the orchestration behind every suggestion: eleven specialist AI agents analyse the conversation in four phases. Every card shows its one-line conclusion — open it for the full reasoning.`} audience={[{ label: 'Behind the scenes', kind: 'internal' }]} />
-              <OrchestratorCanvas runId={runId} steps={steps} />
-            </>
-          )}
-
-          {tab === 'live' && (
-            <>
-              <StageIntro title="Live vs final analysis" text="What the copilot suggested during the conversation, set against what the full agent analysis concluded. The agents’ answer is the suggestion of record. Then talk it through with Juno: ask why it suggested what it did." audience={[{ label: 'For the advisor · internal', kind: 'internal' }]} />
-              <LiveStage profile={profile} steps={steps} finalReady={finalReady} askReady={reportReady} runId={runId} customerName={name} />
-            </>
-          )}
-
-          {tab === 'future' && (
-            <>
-              <StageIntro title="Goals & plan" text="A warm, positive page to talk through with the customer: what matters to them, in their own words, and how the suggestion helps with each goal." audience={[{ label: 'Customer-facing · for the conversation', kind: 'customer' }]} />
-              {report && runId ? (
-                <GoalsPlan runId={runId} report={report} customerName={name} />
-              ) : (
-                <div className="glass-card ws__waiting">
-                  <span className="proposal__spinner" />
-                  <div>
-                    <strong>The Goals and plan view is prepared with the report</strong>
-                    <p>It appears here as soon as the report agent finishes.</p>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {tab === 'advice' && (
-            <>
-              <StageIntro title="Advice pack" text="The paperwork an advisor normally does after a meeting — fact-find, record of advice, follow-up message, CRM note and next-meeting brief — drafted for review and sign-off." audience={[{ label: 'For the advisor · internal', kind: 'internal' }]} />
-              {runId && <AdvicePackPanel runId={runId} customerName={name} ready={reportReady} />}
-            </>
-          )}
-
-          {tab === 'report' && (
+          {tab === 'suggestion' && (
             <div className="ws__report">
-              <StageIntro title="Two documents from one analysis" text="The advisory report is the advisor’s own briefing. The customer proposal is the take-home version, in the customer’s language, with its own compliance check." audience={[{ label: 'Advisory report · internal', kind: 'internal' }, { label: 'Customer proposal · customer-facing', kind: 'customer' }]} />
-              {!report ? (
-                <div className="glass-card ws__waiting">
-                  <span className="proposal__spinner" />
-                  <div>
-                    <strong>The report agent hasn’t finished yet</strong>
-                    <p>{doneCount} of {total} agents complete. The advisory report and customer proposal appear here automatically.</p>
-                  </div>
-                </div>
-              ) : (
+              <ReportSpotlight steps={steps} onOpenHow={() => openHow('agents')} />
+              {!reportReady && (
                 <>
-                  <ReportSpotlight steps={steps} />
-                  <div className="ws__report-bar">
-                    <div className="ws__seg ws__seg--docs" role="tablist" aria-label="Report view">
-                      <button role="tab" aria-selected={reportView === 'advisory'} className={reportView === 'advisory' ? 'is-active' : ''} onClick={() => setReportView('advisory')}>
-                        Advisory report <small>Internal</small>
-                      </button>
-                      <button role="tab" aria-selected={reportView === 'proposal'} className={reportView === 'proposal' ? 'is-active' : ''} onClick={() => setReportView('proposal')}>
-                        Customer proposal <small>Customer-facing</small>
-                      </button>
-                    </div>
-                    {reportView === 'advisory' && runId && (
-                      <a className="ghost-btn ws__download" href={recommendationReportUrl(runId)} download>
-                        <DownloadIcon /> Download report
-                      </a>
-                    )}
-                  </div>
-
-                  {reportView === 'advisory' && (
-                    <div className="glass-card ws__doc">
-                      <div className="glass-card__label">
-                        Advisory sales report <span className="live-tag">For the advisor · internal</span>
-                      </div>
-                      <MarkdownLite source={report.reportMarkdown} />
+                  <StageIntro title={`${AGENT_NAME} is working it out`} text={`${doneCount} of ${total} specialist agents done. The suggestion above fills in as they report back; the rest is ready when they finish.`} audience={[]} />
+                  <OrchestratorCanvas runId={runId} steps={steps} />
+                </>
+              )}
+              {reportReady && (
+                <>
+                  {changedSinceLive && (
+                    <div className="ws__changed" role="note">
+                      <span aria-hidden>⚠</span>
+                      <div><b>One change since the live conversation.</b> Juno first leaned towards {liveTop}; after the full analysis {finalTop} came out on top. <button type="button" onClick={() => openHow('live')}>See the comparison</button></div>
                     </div>
                   )}
-                  {reportView === 'proposal' && runId && <ProposalPanel runId={runId} report={report} customerName={name} />}
+                  {runId && <AskJuno runId={runId} customerName={name} />}
                 </>
               )}
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
-function LiveStage({ profile, steps, finalReady, askReady, runId, customerName }: { profile: CustomerProfile | null; steps: Record<AgentKey, AgentState>; finalReady: boolean; askReady: boolean; runId: string | null; customerName?: string | null }) {
-  const live = profile?.liveInsights ?? null
-  let comparison
-  if (!live?.latest) {
-    comparison = (
-      <div className="glass-card ws__waiting">
-        <div>
-          <strong>No live analysis was captured for this conversation</strong>
-          <p>Live insights are recorded while the customer is speaking on the Home page.</p>
+          {tab === 'customer' && (
+            <>
+              <StageIntro title="Proposal" text="What matters to them and how the suggestion helps, then the proposal to take home." audience={[{ label: 'Customer-facing', kind: 'customer' }]} />
+              {!report || !runId ? waiting('Prepared with the report', `${doneCount} of ${total} agents complete. It appears here as soon as the report agent finishes.`) : (
+                <>
+                  <div className="ws__report-bar">
+                    <div className="ws__seg ws__seg--docs" role="tablist" aria-label="Customer pages">
+                      <button role="tab" aria-selected={customerView === 'goals'} className={customerView === 'goals' ? 'is-active' : ''} onClick={() => setCustomerView('goals')}>Goals &amp; plan</button>
+                      <button role="tab" aria-selected={customerView === 'proposal'} className={customerView === 'proposal' ? 'is-active' : ''} onClick={() => setCustomerView('proposal')}>Customer proposal</button>
+                    </div>
+                  </div>
+                  {customerView === 'goals' ? <GoalsPlan runId={runId} report={report} customerName={name} /> : <ProposalPanel runId={runId} report={report} customerName={name} />}
+                </>
+              )}
+            </>
+          )}
+
+          {tab === 'after' && (
+            <>
+              <StageIntro title="Advice Pack" text="The after-meeting paperwork, drafted. Check it, edit it, sign it off." audience={[{ label: 'For the advisor · internal', kind: 'internal' }]} />
+              {runId && <AdvicePackPanel runId={runId} customerName={name} profileId={profile?.id ?? null} reportMarkdown={report?.reportMarkdown ?? null} part={packPart} onPartChange={setPackPart} ready={reportReady} />}
+            </>
+          )}
+
         </div>
       </div>
-    )
-  } else if (!finalReady) {
-    comparison = (
-      <div className="glass-card ws__waiting">
-        <span className="proposal__spinner" />
-        <div>
-          <strong>Waiting for the agents’ final analysis</strong>
-          <p>The comparison appears as soon as the need and product agents finish — open {AGENT_NAME} to watch them work.</p>
-        </div>
-      </div>
-    )
-  } else {
-    comparison = <LiveVsFinal live={live} steps={steps} showBuying={profile?.captureMode !== 'DEBRIEF' && profile?.captureMode !== 'JUNO_DEBRIEF'} />
-  }
-  return (
-    <>
-      {comparison}
-      {askReady && runId ? (
-        <AskJuno runId={runId} customerName={customerName} />
-      ) : (
-        <div className="glass-card ws__waiting">
-          <span className="proposal__spinner" />
-          <div>
-            <strong>Juno will be ready to talk it through</strong>
-            <p>As soon as the agents finish the full analysis, you can ask Juno why it suggested what it did.</p>
-          </div>
-        </div>
+
+      {(
+        <HowJunoDecidedDrawer open={howOpen} onClose={() => setHowOpen(false)}>
+          <HowJunoDecidedContent runId={runId} steps={steps} profile={profile} hasLive={hasLive} finalReady={finalReady} view={howView} onView={setHowView} />
+        </HowJunoDecidedDrawer>
       )}
-    </>
+    </div>
   )
 }

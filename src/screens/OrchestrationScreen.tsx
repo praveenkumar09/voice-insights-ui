@@ -32,7 +32,7 @@ export function OrchestrationScreen({ customerId, onBack }: Props) {
         &larr; New conversation
       </button>
 
-      <RunWorkspace runId={runId} steps={steps} profile={profile} initialTab="agents" runFailed={runFailed} />
+      <RunWorkspace runId={runId} steps={steps} profile={profile} watch runFailed={runFailed} />
     </section>
   )
 }

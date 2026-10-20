@@ -21,6 +21,7 @@ import './design.css'
 import './junomode.css'
 import './review-polish.css'
 import './workspace-polish.css'
+import './drawer.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

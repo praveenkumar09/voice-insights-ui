@@ -60,3 +60,6 @@
 
 @media (max-width: 900px) { .ws .hero { padding: 22px 20px; border-radius: 22px; } }
 @media (prefers-reduced-motion: reduce) { .ws .hero, .ws .hero__glow, .ws > * { animation: none !important; } }
+
+.ap-lang { margin-top: 14px; }
+.ap-lang > summary { cursor: pointer; font-weight: 600; font-size: .9rem; color: var(--ink-soft); padding: 8px 2px; }

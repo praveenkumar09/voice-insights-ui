@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useJunoAction } from '../juno/mode/JunoMode'
+import { DebriefFollowUp } from '../capture/DebriefFollowUp'
+import { MarkdownLite } from '../report/MarkdownLite'
+import { recommendationReportUrl } from '../../api/client'
 import { generateAdvicePack, getAdvicePack, getAskHistory, getWhatIfs, regenerateAdviceSection, reviewAdvicePack, saveAdvicePack, type AskTurn, type WhatIfView } from '../../api/client'
 import type { AdviceTask, AdvicePack, AdvicePackSection, AdvicePackView, FactFindField, FactSource } from '../../types'
 import { printAdvicePack } from '../../utils/advicePackPdf'
@@ -9,7 +12,7 @@ import { relevanceLabel } from '../../utils/relevance'
 import { chipLabel, chipLabels } from '../../utils/askSources'
 import { changeLine } from '../../utils/whatIf'
 
-type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting' | 'discussion'
+export type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting' | 'discussion' | 'report'
 type Tone = 'warm' | 'professional' | 'brief'
 
 const SOURCE_LABEL: Record<FactSource, string> = {
@@ -27,6 +30,13 @@ const TONES: { id: Tone; label: string }[] = [
 interface Props {
   runId: string
   customerName?: string | null
+  /** The customer's profile, so the follow-up can also be written in another language. */
+  profileId?: string | null
+  /** The advisor's own briefing (markdown), shown as the pack's Advisory report section. */
+  reportMarkdown?: string | null
+  /** Which section is open, when the page above wants to choose it ("Hey Juno, open the advisory report"). */
+  part?: Part
+  onPartChange?: (p: Part) => void
   /** The run's agents have finished — until then there is nothing to build a pack from. */
   ready: boolean
 }
@@ -36,16 +46,18 @@ interface Props {
  * the record of advice, the customer follow-up, the CRM note and tasks, and a brief for the next meeting. Everything
  * is an editable draft, every fact shows where it came from, and the advisor signs it off when satisfied.
  */
-export function AdvicePackPanel({ runId, customerName, ready }: Props) {
+export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown, part: partProp, onPartChange, ready }: Props) {
   const [view, setView] = useState<AdvicePackView | null>(null)
   const [discussion, setDiscussion] = useState<AskTurn[]>([])
   const [scenarios, setScenarios] = useState<WhatIfView[]>([])
   const [pack, setPack] = useState<AdvicePack | null>(null)
   const [dirty, setDirty] = useState(false)
-  const [part, setPart] = useState<Part>('factFind')
-  const PARTS: Record<string, Part> = { fact_find: 'factFind', record_of_advice: 'record', follow_up: 'followUp', crm_note: 'crm', discussion: 'discussion', next_meeting: 'meeting' }
+  const [localPart, setLocalPart] = useState<Part>('factFind')
+  const part = partProp ?? localPart
+  const setPart = (p: Part) => { setLocalPart(p); onPartChange?.(p) }
+  const PARTS: Record<string, Part> = { fact_find: 'factFind', record_of_advice: 'record', follow_up: 'followUp', crm_note: 'crm', discussion: 'discussion', next_meeting: 'meeting', advisory_report: 'report' }
   useJunoAction({
-    id: 'open_pack_section', description: 'Open an advice pack section: Fact-find, Record of advice, Follow-up, CRM note, Discussion, or Next meeting', risk: 'open',
+    id: 'open_pack_section', description: 'Open an advice pack section: Fact-find, Record of advice, Follow-up, CRM note, Discussion, Next meeting, or Advisory report', risk: 'open',
     params: { section: { type: 'enum', values: Object.keys(PARTS) } },
     run: (p) => { setPart(PARTS[p.section]) },
   })
@@ -256,7 +268,8 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
         <NavButton active={part === 'record'} onClick={() => setPart('record')} n={2} title="Record of advice" meta={pack.recordOfAdvice ? `${pack.recordOfAdvice.items.length} product${pack.recordOfAdvice.items.length === 1 ? '' : 's'}` : 'Unavailable'} />
         <NavButton active={part === 'followUp'} onClick={() => setPart('followUp')} n={3} title="Follow-up" meta="WhatsApp · email" />
         <NavButton active={part === 'crm'} onClick={() => setPart('crm')} n={4} title="CRM note & tasks" meta={pack.crm ? `${pack.crm.tasks.length} tasks` : 'Unavailable'} />
-        <NavButton active={part === 'discussion'} onClick={() => setPart('discussion')} n={6} title="Discussion with Juno" meta={discussion.length || scenarios.length ? `${discussion.length} question${discussion.length === 1 ? '' : 's'}${scenarios.length ? ` · ${scenarios.length} what-if${scenarios.length === 1 ? '' : 's'}` : ''}` : 'None yet'} />
+        {(discussion.length > 0 || scenarios.length > 0 || part === 'discussion') && <NavButton active={part === 'discussion'} onClick={() => setPart('discussion')} n={6} title="Discussion with Juno" meta={discussion.length || scenarios.length ? `${discussion.length} question${discussion.length === 1 ? '' : 's'}${scenarios.length ? ` · ${scenarios.length} what-if${scenarios.length === 1 ? '' : 's'}` : ''}` : 'None yet'} />}
+        {reportMarkdown && <NavButton active={part === 'report'} onClick={() => setPart('report')} n={7} title="Advisory report" meta="Your internal briefing" />}
         <NavButton active={part === 'meeting'} onClick={() => setPart('meeting')} n={5} title="Next meeting" meta={pack.nextMeeting ? `${pack.nextMeeting.questionsToAsk.length} questions` : 'Unavailable'} />
       </nav>
 
@@ -378,7 +391,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
               </div>
             </div>
             {discussion.length === 0 ? (
-              <p className="panel-empty">You haven’t talked the suggestions through with Juno yet. Open <b>Live vs final</b> and ask it why it suggested what it did — the discussion is saved here.</p>
+              <p className="panel-empty">You haven’t talked the suggestions through with Juno yet. Open the <b>Suggestion</b> tab and ask it why it suggested what it did — the discussion is saved here.</p>
             ) : (
               <ol className="ap-disc">
                 {discussion.map((t) => {
@@ -427,6 +440,21 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
           </section>
         )}
 
+        {part === 'report' && reportMarkdown && (
+          <section className="ap-section">
+            <div className="ap-section__head">
+              <div>
+                <h4>Advisory report</h4>
+                <p>Your own briefing on this customer and the suggestion. Internal: not for the customer.</p>
+              </div>
+              <div className="ap-section__tools">
+                <a className="ghost-btn" href={recommendationReportUrl(runId)} download>Download report</a>
+              </div>
+            </div>
+            <div className="glass-card ws__doc"><MarkdownLite source={reportMarkdown} /></div>
+          </section>
+        )}
+
         {part === 'followUp' && (
           <Section title="Customer follow-up" hint="A draft in the customer’s own terms — nothing is sent automatically. Pick a tone to rewrite it."
             failed={failed('followUp') || !pack.followUp} busy={busy === 'followUp'} onRegenerate={() => regenerate('followUp')}
@@ -439,6 +467,7 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
               </div>
             }>
             {pack.followUp && (
+              <>
               <div className="ap-two">
                 <div className="glass-card ap-card">
                   <div className="glass-card__label">WhatsApp
@@ -460,6 +489,13 @@ export function AdvicePackPanel({ runId, customerName, ready }: Props) {
                     onChange={(e) => edit((p) => ({ ...p, followUp: { ...p.followUp!, emailBody: e.target.value } }))} />
                 </div>
               </div>
+              {profileId && (
+                <details className="ap-lang">
+                  <summary>Write it in another language (English, 中文, Bahasa Melayu, தமிழ்)</summary>
+                  <DebriefFollowUp key={profileId} profileId={profileId} customerName={customerName ?? ''} />
+                </details>
+              )}
+              </>
             )}
           </Section>
         )}

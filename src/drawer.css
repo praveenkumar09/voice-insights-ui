@@ -1,0 +1,35 @@
+/* The "How Juno decided" side panel, and the little link in the hero that opens it. */
+.hero__how { border: 0; background: none; color: #fff; font: inherit; font-size: 13px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 6px 4px; }
+.hero__how:hover { opacity: .85; }
+.hero__how:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 6px; }
+
+.hjd-scrim { position: fixed; inset: 0; background: rgba(10, 10, 16, 0.45); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 60; }
+.hjd-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100vw); display: flex; flex-direction: column; z-index: 61;
+  background: var(--app-bg); box-shadow: -24px 0 60px rgba(0, 0, 0, 0.28); transform: translateX(102%); transition: transform .26s ease; visibility: hidden; }
+.hjd-root.is-open .hjd-scrim { opacity: 1; pointer-events: auto; }
+.hjd-root.is-open .hjd-drawer { transform: none; visibility: visible; }
+.hjd-drawer__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 22px 14px; border-bottom: 1px solid var(--hairline); background: var(--surface-solid); }
+.hjd-drawer__head h3 { margin: 0; font-size: 20px; }
+.hjd-drawer__head p { margin: 2px 0 0; font-size: 13px; color: var(--ink-soft); }
+.hjd-x { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(var(--shadow-rgb), 0.1); color: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
+.hjd-x:focus-visible { outline: 2px solid var(--aia-red); outline-offset: 2px; }
+.hjd-drawer__body { flex: 1; overflow-y: auto; padding: 16px 22px 40px; }
+.hjd { display: flex; flex-direction: column; gap: 14px; }
+.hjd__hint { margin: 0; font-size: 14px; color: var(--ink-soft); }
+/* Inside the panel the agent cards go one per row so an opened card has room to show everything it went through. */
+.hjd .phase__cards { grid-template-columns: 1fr; }
+@media (prefers-reduced-motion: reduce) { .hjd-scrim, .hjd-drawer { transition: none; } }
+
+/* "Why this?" on a suggested product */
+.spotlight__why { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--hairline); }
+.spotlight__why > button { border: 0; background: none; padding: 0; font: inherit; font-weight: 650; font-size: 14px; color: var(--aia-red); cursor: pointer; }
+.spotlight__why-body { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; }
+.spotlight__why-body b { display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
+.spotlight__why-body ul { margin: 0; padding-left: 18px; }
+.spotlight__why-body blockquote { margin: 0 0 6px; padding-left: 10px; border-left: 3px solid var(--hairline); font-style: italic; }
+.spotlight__why-body blockquote small { display: block; font-style: normal; color: var(--ink-soft); }
+.spotlight__more { align-self: flex-start; border: 0; background: none; padding: 0; font: inherit; font-weight: 650; color: var(--aia-red); cursor: pointer; }
+
+/* One-line heads-up when the full analysis changed the answer from the live conversation */
+.ws__changed { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: 16px; background: rgba(255, 170, 40, 0.14); border: 1px solid rgba(179, 107, 0, 0.3); font-size: 14px; }
+.ws__changed button { border: 0; background: none; padding: 0; font: inherit; font-weight: 650; color: var(--aia-red); text-decoration: underline; cursor: pointer; }

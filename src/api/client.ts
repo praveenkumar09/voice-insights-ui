@@ -1,7 +1,9 @@
 import type { AdvicePack, AdvicePackSection, AdvicePackView, AnalyticsResult, CopilotInsights, CustomerProfile, LifeMapData, ProposalResult, ProtectionStory, CustomerSummary, PageResult, RecommendationRunView } from '../types'
 
-const API_BASE = (import.meta.env.VITE_VOICE_API_BASE_URL as string | undefined) ?? 'http://localhost:8084'
-const WS_BASE = API_BASE.replace(/^http/, 'ws')
+// Unset: the local API. Set to an empty string (the Kubernetes build): the API is on the same host as this page, behind the same ingress,
+// so requests use relative URLs and the voice WebSocket is derived from the page's own address.
+const API_BASE = ((import.meta.env.VITE_VOICE_API_BASE_URL as string | undefined) ?? 'http://localhost:8084').replace(/\/+$/, '')
+const wsBase = () => (API_BASE === '' ? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}` : API_BASE.replace(/^http/, 'ws'))
 
 const TOKEN_KEY = 'vi_session_token'
 
@@ -52,7 +54,7 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
 }
 
 export function wsVoiceUrl(mode: 'live' | 'debrief' | 'juno-debrief' | 'ask' = 'live'): string {
-  return `${WS_BASE}/ws/voice${mode === 'live' ? '' : `?mode=${mode}`}`
+  return `${wsBase()}/ws/voice${mode === 'live' ? '' : `?mode=${mode}`}`
 }
 
 export type LangId = 'en' | 'zh' | 'ms' | 'ta'

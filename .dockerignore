@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.idea
+*.iml
+.env
+.env.*
+!.env.example
+tsconfig.tsbuildinfo

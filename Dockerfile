@@ -1,4 +1,5 @@
-FROM node:22-alpine AS build
+# Build natively on the host platform (the output is static files); see the API Dockerfile.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install

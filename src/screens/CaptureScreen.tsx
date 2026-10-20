@@ -177,7 +177,7 @@ export function CaptureScreen({ onReady }: Props) {
 
   return (
     <section className="capture-screen">
-      <div className="capture-hero">
+      {!signOff && <div className="capture-hero">
         <div>
           <h2 className="capture-hero__title">{debrief ? 'Debrief the meeting' : withJuno ? 'Debrief with Juno' : 'Customer Conversation Intelligence'}</h2>
           <p className="capture-hero__sub">
@@ -202,9 +202,9 @@ export function CaptureScreen({ onReady }: Props) {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
-      {withJuno && (
+      {withJuno && !signOff && (
         <JunoStage
           k={juno}
           amplitude={amplitude}
@@ -288,6 +288,7 @@ export function CaptureScreen({ onReady }: Props) {
           advancing={advancing}
           onApprove={() => void handleGetRecommendations()}
           onBrief={() => printMeetingBrief(profile, copilot)}
+          onNewDebrief={juno.reset}
           onProfileSaved={voice.patchProfile}
           onSaveLifeMap={voice.saveLifeMapEdit}
           onSaveTranscript={voice.saveTranscriptEdit}

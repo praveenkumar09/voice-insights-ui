@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useJunoAction } from '../juno/mode/JunoMode'
 import { DebriefFollowUp } from '../capture/DebriefFollowUp'
+import { DressRehearsal } from '../rehearsal/DressRehearsal'
 import { MarkdownLite } from '../report/MarkdownLite'
 import { recommendationReportUrl } from '../../api/client'
 import { generateAdvicePack, getAdvicePack, getAskHistory, getWhatIfs, regenerateAdviceSection, reviewAdvicePack, saveAdvicePack, type AskTurn, type WhatIfView } from '../../api/client'
@@ -12,7 +13,7 @@ import { relevanceLabel } from '../../utils/relevance'
 import { chipLabel, chipLabels } from '../../utils/askSources'
 import { changeLine } from '../../utils/whatIf'
 
-export type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting' | 'discussion' | 'report'
+export type Part = 'factFind' | 'record' | 'followUp' | 'crm' | 'meeting' | 'discussion' | 'report' | 'rehearse'
 type Tone = 'warm' | 'professional' | 'brief'
 
 const SOURCE_LABEL: Record<FactSource, string> = {
@@ -55,9 +56,9 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
   const [localPart, setLocalPart] = useState<Part>('factFind')
   const part = partProp ?? localPart
   const setPart = (p: Part) => { setLocalPart(p); onPartChange?.(p) }
-  const PARTS: Record<string, Part> = { fact_find: 'factFind', record_of_advice: 'record', follow_up: 'followUp', crm_note: 'crm', discussion: 'discussion', next_meeting: 'meeting', advisory_report: 'report' }
+  const PARTS: Record<string, Part> = { fact_find: 'factFind', record_of_advice: 'record', follow_up: 'followUp', crm_note: 'crm', discussion: 'discussion', next_meeting: 'meeting', advisory_report: 'report', rehearse: 'rehearse' }
   useJunoAction({
-    id: 'open_pack_section', description: 'Open an advice pack section: Fact-find, Record of advice, Follow-up, CRM note, Discussion, Next meeting, or Advisory report', risk: 'open',
+    id: 'open_pack_section', description: 'Open an advice pack section: Fact-find, Record of advice, Follow-up, CRM note, Discussion, Next meeting, Rehearse, or Advisory report', risk: 'open',
     params: { section: { type: 'enum', values: Object.keys(PARTS) } },
     run: (p) => { setPart(PARTS[p.section]) },
   })
@@ -87,6 +88,10 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
     id: 'download_advice_pack', description: 'Download the advice pack as a PDF', risk: 'open',
     run: () => { printAdvicePack(pack, customerName, discussion, scenarios); return undefined },
   } : null)
+  // On a phone the section tabs scroll sideways: keep the open section in view (Rehearse sits towards the end).
+  useEffect(() => {
+    document.querySelector<HTMLElement>('.ap-nav__btn.is-active')?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+  }, [part])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
@@ -269,6 +274,7 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
         <NavButton active={part === 'followUp'} onClick={() => setPart('followUp')} n={3} title="Follow-up" meta="WhatsApp · email" />
         <NavButton active={part === 'crm'} onClick={() => setPart('crm')} n={4} title="CRM note & tasks" meta={pack.crm ? `${pack.crm.tasks.length} tasks` : 'Unavailable'} />
         {(discussion.length > 0 || scenarios.length > 0 || part === 'discussion') && <NavButton active={part === 'discussion'} onClick={() => setPart('discussion')} n={6} title="Discussion with Juno" meta={discussion.length || scenarios.length ? `${discussion.length} question${discussion.length === 1 ? '' : 's'}${scenarios.length ? ` · ${scenarios.length} what-if${scenarios.length === 1 ? '' : 's'}` : ''}` : 'None yet'} />}
+        {profileId && <NavButton active={part === 'rehearse'} onClick={() => setPart('rehearse')} n={8} title="Rehearse" meta="Practise the next meeting" />}
         {reportMarkdown && <NavButton active={part === 'report'} onClick={() => setPart('report')} n={7} title="Advisory report" meta="Your internal briefing" />}
         <NavButton active={part === 'meeting'} onClick={() => setPart('meeting')} n={5} title="Next meeting" meta={pack.nextMeeting ? `${pack.nextMeeting.questionsToAsk.length} questions` : 'Unavailable'} />
       </nav>
@@ -440,6 +446,12 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
           </section>
         )}
 
+        {part === 'rehearse' && profileId && (
+          <section className="ap-section">
+            <DressRehearsal key={profileId} profileId={profileId} runId={runId} customerName={customerName ?? ''} />
+          </section>
+        )}
+
         {part === 'report' && reportMarkdown && (
           <section className="ap-section">
             <div className="ap-section__head">
@@ -550,6 +562,11 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
                   <div className="glass-card__label">Objective</div>
                   <p>{pack.nextMeeting.objective}</p>
                 </div>
+                {profileId && (
+                  <button type="button" className="cta-btn ap-rehearse-cta" onClick={() => setPart('rehearse')}>
+                    Rehearse this meeting with Juno
+                  </button>
+                )}
                 <div className="ap-two">
                   <div className="glass-card ap-card">
                     <div className="glass-card__label">Questions to ask, in order</div>

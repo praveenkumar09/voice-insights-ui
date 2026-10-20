@@ -67,9 +67,9 @@ export function ExceptionStack({ items, total, onResolve, onSkip, onSaveName, on
   }
 
   return (
-    <section className="rv__stack" aria-label={`Check ${items.length} thing${items.length === 1 ? '' : 's'}`}>
+    <section className="rv__stack" aria-label="Before you approve">
       <div className="rv__stack-head">
-        <h2>Check {items.length} thing{items.length === 1 ? '' : 's'}</h2>
+        <h2>Before you approve</h2>
         <span className="rv__dots" aria-hidden>
           {Array.from({ length: total }, (_, i) => <i key={i} className={i < position - 1 ? 'is-done' : i === position - 1 ? 'is-now' : ''} />)}
         </span>

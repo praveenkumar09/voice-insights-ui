@@ -11,7 +11,6 @@ import { MicIcon } from '../icons'
 import { useJunoAction, useJunoScreen } from '../juno/mode/JunoMode'
 import { ReviewPanel } from '../capture/ReviewPanel'
 import { JunoTranscript } from '../juno/JunoStage'
-import { DressRehearsal } from '../rehearsal/DressRehearsal'
 import { ExceptionStack, type Exception } from './ExceptionStack'
 import { InlineEdit } from './InlineEdit'
 
@@ -26,6 +25,8 @@ interface Props {
   /** Called only for a real click by the advisor (see the approve buttons). */
   onApprove: () => void
   onBrief: () => void
+  /** Back to a fresh debrief. */
+  onNewDebrief?: () => void
   onProfileSaved: (p: CustomerProfile) => void
   onSaveLifeMap: (m: LifeMapData) => Promise<void>
   onSaveTranscript: (text: string) => Promise<void>
@@ -33,11 +34,10 @@ interface Props {
   lifeMap: ReactNode
 }
 
-type Tab = 'summary' | 'rehearse' | 'details'
+type Tab = 'summary' | 'details'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'summary', label: 'Summary' },
-  { id: 'rehearse', label: 'Rehearse' },
   { id: 'details', label: 'Details' },
 ]
 
@@ -46,7 +46,7 @@ const TABS: { id: Tab; label: string }[] = [
  * that need a person, one card at a time. The details: every field, the Life Map and the transcript, one tap away. One button at the
  * bottom changes with where the advisor is, and only a real click by a person can approve.
  */
-export function DebriefReview({ profile, copilot, segments, turns, readiness, elapsedMs, advancing, onApprove, onBrief, onProfileSaved, onSaveLifeMap, onSaveTranscript }: Props) {
+export function DebriefReview({ profile, copilot, segments, turns, readiness, elapsedMs, advancing, onApprove, onBrief, onNewDebrief, onProfileSaved, onSaveLifeMap, onSaveTranscript }: Props) {
   const reduce = useReducedMotion()
   const [tab, setTab] = useState<Tab>('summary')
   // The Life map as the advisor is editing it, shown on the map before it is saved.
@@ -85,13 +85,12 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
   }, [toast])
 
   const save = async (patch: Partial<CustomerProfile>) => onProfileSaved(await saveCustomerProfile({ ...profile, ...patch }))
-  const saveName = (v: string) => save({ customerName: v })
+  const saveName = async (v: string) => { await save({ customerName: v }); resolve('name') }
   const saveBudget = (v: string) => save({ budgetNotes: v })
 
-  // What needs a person: a name to spell-check, an amount without a unit, a risky promise, the most valuable missing fact.
+  // What needs a person: an amount without a unit, a risky promise, the most valuable missing fact.
   const exceptions = useMemo<Exception[]>(() => {
     const out: Exception[] = []
-    if (profile.customerName) out.push({ id: 'name', kind: 'name', value: profile.customerName })
     const budget = entities.find((e) => e.key === 'budgetNotes')
     if (budget?.check) out.push({ id: 'budget', kind: 'budget', value: budget.value })
     flags.forEach((f, i) => out.push({ id: `flag:${i}`, kind: 'flag', statement: f.statement, advice: f.advice, severity: f.severity === 'high' ? 'high' : 'caution' }))
@@ -158,6 +157,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
   }
   const micBusy = voice.phase === 'starting' || voice.phase === 'thinking' || applying
 
+  // Spoken in the summary Juno reads aloud (no longer repeated as chips in the header: Their world shows them).
   const wants = (copilot?.lifeMap?.dreams ?? []).slice(0, 2).map((d) => d.label)
   const worries = (copilot?.lifeMap?.worries ?? []).slice(0, 2).map((w) => w.label)
   const initial = (profile.customerName?.trim()[0] ?? '?').toUpperCase()
@@ -174,9 +174,9 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
   const spring = reduce ? { duration: 0 } : { type: 'spring' as const, stiffness: 420, damping: 38 }
 
   // What Juno can do on this page.
-  const TAB_BY_NAME: Record<string, Tab> = { summary: 'summary', rehearse: 'rehearse', details: 'details' }
+  const TAB_BY_NAME: Record<string, Tab> = { summary: 'summary', details: 'details' }
   useJunoScreen(`The debrief review for ${profile.customerName ?? 'the customer'}, ${tab} tab${queue.length ? `, ${queue.length} thing${queue.length === 1 ? '' : 's'} to check` : ', everything checked'}`)
-  useJunoAction({ id: 'open_tab', description: 'Open a tab: Summary, Rehearse, or Details', risk: 'open', params: { tab: { type: 'enum', values: Object.keys(TAB_BY_NAME) } }, run: (p) => { setTab(TAB_BY_NAME[p.tab]) } })
+  useJunoAction({ id: 'open_tab', description: 'Open a tab: Summary or Details', risk: 'open', params: { tab: { type: 'enum', values: Object.keys(TAB_BY_NAME) } }, run: (p) => { setTab(TAB_BY_NAME[p.tab]) } })
   useJunoAction(queue.length > 0 ? { id: 'review_items', description: 'Go through the things to check', risk: 'open', run: () => { reviewNow() } } : null)
   useJunoAction({
     id: 'read_summary', description: 'Read out the summary of this customer', risk: 'info',
@@ -255,47 +255,48 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
             <i aria-hidden>·</i>
             <InlineEdit display={profile.dependents != null ? `${profile.dependents} dependant${profile.dependents === 1 ? '' : 's'}` : ''} value={profile.dependents != null ? String(profile.dependents) : ''} label="Dependants" numeric placeholder="Add dependants" onSave={(v) => save({ dependents: Number(v) })} />
           </div>
-          <div className="rv__chips">
-            {wants.length > 0 && <span className="rv__chip"><b>Wants</b>{wants.flatMap((w, i) => [i ? ', ' : '', <span key={w} data-fly="">{w}</span>])}</span>}
-            {worries.length > 0 && <span className="rv__chip"><b>Worried about</b>{worries.flatMap((w, i) => [i ? ', ' : '', <span key={w} data-fly="">{w}</span>])}</span>}
-            {profile.budgetNotes && (
-              <span className="rv__chip rv__chip--edit">
-                <b>Budget</b>
-                <InlineEdit display={profile.budgetNotes.replace(/[.\s]+$/, '').replace(/^budget( is| of| around)?\s+/i, '')} value={profile.budgetNotes} label="Budget" onSave={saveBudget} />
-              </span>
-            )}
-          </div>
+          {profile.customerName && !resolved.has('name') && (
+            <div className="rv__namecheck" role="group" aria-label="Check the name">
+              <span>Is the name spelled right?</span>
+              <button type="button" onClick={() => resolve('name')}>Looks right</button>
+              <button type="button" onClick={() => void talk(true)} disabled={micBusy}><MicIcon /> {voice.phase === 'listening' ? 'Listening… tap to finish' : 'Say the spelling'}</button>
+            </div>
+          )}
           {voice.phase === 'listening' && voice.caption && <p className="rv__caption" aria-live="polite">“{voice.caption}”</p>}
         </div>
         <div className="rv__side">
+          {onNewDebrief && <button type="button" className="rv__new" onClick={onNewDebrief}>New debrief</button>}
           <button className={`rv__mic${voice.phase === 'listening' ? ' is-on' : ''}`} onClick={() => void talk(false)} disabled={micBusy}
             title="Say a correction, for example “make that a monthly budget” or “her age is 39”">
             <MicIcon />
             <span>{voice.phase === 'listening' ? 'Listening… tap to finish' : voice.phase === 'thinking' || applying ? 'Updating…' : voice.phase === 'starting' ? 'Opening the microphone…' : 'Say a correction'}</span>
           </button>
         </div>
-        {/* The numbers that matter at a glance, before anything is opened */}
-        <div className="rv__stats">
+        {/* What matters at a glance, in one row: the budget, what they already have, how complete the notes are, and the time saved */}
+        <dl className="rv__facts">
+          <div className="rv__fact">
+            <dt>Budget</dt>
+            <dd>
+              <InlineEdit display={profile.budgetNotes ? profile.budgetNotes.replace(/[.\s]+$/, '').replace(/^budget( is| of| around)?\s+/i, '') : ''} value={profile.budgetNotes ?? ''} label="Budget" placeholder="Not mentioned" onSave={saveBudget} />
+            </dd>
+          </div>
+          <div className="rv__fact">
+            <dt>Existing cover</dt>
+            <dd title={profile.existingPolicies?.join(', ')}>{profile.existingPolicies && profile.existingPolicies.length > 0 ? profile.existingPolicies.join(', ') : <span className="rv__fact-none">None mentioned</span>}</dd>
+          </div>
           {readiness && (
-            <button type="button" className="rv__stat rv__stat--btn" onClick={() => setTab('details')} title="See every field and what is still open">
-              <small>Fact-find</small>
-              <strong>{readiness.captured}<em>/{readiness.total}</em></strong>
-              <span>{readiness.total - readiness.captured > 0 ? `${readiness.total - readiness.captured} still open` : 'Complete'}</span>
+            <button type="button" className="rv__fact rv__fact--btn" onClick={() => setTab('details')} title="See every field and what is still open">
+              <dt>Fact-find</dt>
+              <dd>{readiness.captured} of {readiness.total} captured{readiness.total - readiness.captured > 0 ? <small> · {readiness.total - readiness.captured} open</small> : <small> · complete</small>}</dd>
             </button>
           )}
-          <div className={`rv__stat${queue.length > 0 ? ' is-warn' : ' is-ok'}`}>
-            <small>To check</small>
-            <strong>{queue.length > 0 ? queue.length : '✓'}</strong>
-            <span>{queue.length > 0 ? 'before you approve' : 'All clear'}</span>
-          </div>
           {elapsedMs != null && (
-            <div className="rv__stat rv__time" title={`Planning assumption: a manual write-up takes about ${MANUAL_MINUTES} minutes. To be measured in the pilot.`}>
-              <small>Time with Juno</small>
-              <strong>{duration(elapsedMs)}</strong>
-              <span>vs about {MANUAL_MINUTES} min by hand</span>
+            <div className="rv__fact" title={`Planning assumption: a manual write-up takes about ${MANUAL_MINUTES} minutes. To be measured in the pilot.`}>
+              <dt>Time with Juno</dt>
+              <dd>{duration(elapsedMs)}<small> · about {MANUAL_MINUTES} min by hand</small></dd>
             </div>
           )}
-        </div>
+        </dl>
       </header>
 
       {/* Level 2 and 3: a segmented control, not a long scroll */}
@@ -309,7 +310,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
           {TABS.map((t) => (
             <button key={t.id} role="tab" id={`rv-tab-${t.id}`} aria-selected={tab === t.id} aria-controls={`rv-panel-${t.id}`} tabIndex={tab === t.id ? 0 : -1} className={tab === t.id ? 'is-on' : ''} onClick={() => setTab(t.id)}>
               {tab === t.id && <motion.span layoutId="rv-tab-pill" className="rv__tab-pill" transition={spring} />}
-              <span className="rv__tab-label">{t.label}{t.id === 'summary' && queue.length > 0 && <em aria-label={`${queue.length} to check`}>{queue.length}</em>}</span>
+              <span className="rv__tab-label">{t.label}</span>
             </button>
           ))}
         </div>
@@ -338,7 +339,6 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
               </div>
             </>
           )}
-          {tab === 'rehearse' && <DressRehearsal key={profile.id} profileId={profile.id!} customerName={profile.customerName ?? ''} />}
           {tab === 'details' && (
             <div className="rv__details">
               <ReviewPanel profile={profile} copilot={copilot} onProfileSaved={onProfileSaved} onSaveLifeMap={onSaveLifeMap} onDraft={setDraftMap} />
@@ -370,7 +370,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
               {queue.length > 0 ? (
                 <motion.div key="review" className="rv__bar-set" initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduce ? 0 : 0.18 }}>
                   <button className="rv__link" disabled={advancing} onClick={approve}>{advancing ? 'Preparing…' : 'Approve anyway'}</button>
-                  <button className="cta-btn" onClick={reviewNow}>Review {queue.length}</button>
+                  <button className="cta-btn" onClick={reviewNow}>Check now</button>
                 </motion.div>
               ) : (
                 <motion.div key="approve" className="rv__bar-set" initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduce ? 0 : 0.18 }}>

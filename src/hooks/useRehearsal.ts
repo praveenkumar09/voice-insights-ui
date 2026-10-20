@@ -42,7 +42,7 @@ function dbg(event: string, detail?: unknown) {
   ;(w.__rehearsalDbg ??= []).push({ t: Math.round(performance.now()), event, detail })
 }
 
-export function useRehearsal(profileId: string) {
+export function useRehearsal(profileId: string, runId?: string | null) {
   const capture = useVoiceCapture()
   const [stage, setStage] = useState<RehearsalStage>('idle')
   const [beat, setBeat] = useState<Beat>('starting')
@@ -166,7 +166,7 @@ export function useRehearsal(profileId: string) {
     setError(null)
     setStageBoth('briefing')
     try {
-      const b = await rehearsalBrief(profileId)
+      const b = await rehearsalBrief(profileId, runId)
       if (g !== gen.current) return
       briefRef.current = b
       setBrief(b)
@@ -180,7 +180,7 @@ export function useRehearsal(profileId: string) {
       setStageBoth('idle')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId])
+  }, [profileId, runId])
 
   // ── the rehearsal ──
   /** The customer's next line: asked for, shown as it starts to be spoken, then the advisor's turn again. */
@@ -188,7 +188,7 @@ export function useRehearsal(profileId: string) {
     setBeatBoth('thinking')
     try {
       const lines = messagesRef.current.map((m) => ({ role: m.role, text: m.text }))
-      const t = await rehearsalTurn(profileId, lines)
+      const t = await rehearsalTurn(profileId, lines, 'en', runId)
       if (g !== gen.current) return
       // The advisor carried on speaking while this was being written: it is withdrawn and a fuller answer will be sent.
       if (turnId && turnRef.current?.id !== turnId) return
@@ -253,7 +253,7 @@ export function useRehearsal(profileId: string) {
     dbg('submit', { turnId, text: t.slice(0, 60) })
     void customerTurn(g, turnId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId])
+  }, [profileId, runId])
 
   /** They were only pausing: take the answer back and wait for the rest of what they say. */
   const withdrawTurn = () => {
@@ -285,7 +285,7 @@ export function useRehearsal(profileId: string) {
     void capture.start('ask') // the microphone opens a moment later; the customer opens the meeting meanwhile
     await customerTurn(g, 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId])
+  }, [profileId, runId])
 
   // The microphone opened (or could not): without it the advisor types.
   useEffect(() => {
@@ -446,7 +446,7 @@ export function useRehearsal(profileId: string) {
     const lines = messagesRef.current.map((m) => ({ role: m.role, text: m.text }))
     setStageBoth('scoring')
     try {
-      const s = await rehearsalScore(profileId, lines)
+      const s = await rehearsalScore(profileId, lines, runId)
       if (g !== gen.current) return
       setScorecard(s)
       setStageBoth('done')
@@ -457,7 +457,7 @@ export function useRehearsal(profileId: string) {
       setBeatBoth('typing')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId])
+  }, [profileId, runId])
 
   const reset = useCallback(() => {
     gen.current++

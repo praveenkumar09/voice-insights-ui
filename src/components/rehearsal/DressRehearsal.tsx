@@ -6,6 +6,8 @@ import { useJunoAction } from '../juno/mode/JunoMode'
 interface Props {
   profileId: string
   customerName: string
+  /** The run this rehearsal belongs to: lets the simulated customer raise the likely objections from the next-meeting plan. */
+  runId?: string | null
 }
 
 const BEAT_LABEL: Record<Beat, string> = {
@@ -21,8 +23,8 @@ const BEAT_LABEL: Record<Beat, string> = {
  * Dress Rehearsal: Juno briefs the advisor on the next meeting (Brief), plays the customer so they can practise it (Rehearse), then
  * coaches (Coach's notes). Training only: the simulated customer is built from the debrief, and nothing here is saved or sent.
  */
-export function DressRehearsal({ profileId, customerName }: Props) {
-  const r = useRehearsal(profileId)
+export function DressRehearsal({ profileId, customerName, runId }: Props) {
+  const r = useRehearsal(profileId, runId)
   const first = customerName.trim().split(/\s+/)[0] || 'the customer'
   const steps = ['Brief', 'Rehearse', 'Coach’s notes'] as const
   useJunoAction(r.stage === 'idle' ? { id: 'brief_me', description: 'Brief me on the next meeting', risk: 'open', run: () => { void r.startBrief() } } : null)

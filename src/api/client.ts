@@ -637,11 +637,11 @@ async function rehearsalPost<T>(path: string, body: unknown, fallback: string): 
   return res.json()
 }
 
-export const rehearsalBrief = (profileId: string) => rehearsalPost<RehearsalBrief>('brief', { profileId }, 'Could not prepare the briefing')
-export const rehearsalTurn = (profileId: string, lines: RehearsalLine[], lang: LangId = 'en') =>
-  rehearsalPost<RehearsalTurn>('turn', { profileId, lines, lang }, 'The customer did not answer')
-export const rehearsalScore = (profileId: string, lines: RehearsalLine[]) =>
-  rehearsalPost<RehearsalScorecard>('score', { profileId, lines }, "Could not write the coach's notes")
+export const rehearsalBrief = (profileId: string, runId?: string | null) => rehearsalPost<RehearsalBrief>('brief', { profileId, runId: runId ?? undefined }, 'Could not prepare the briefing')
+export const rehearsalTurn = (profileId: string, lines: RehearsalLine[], lang: LangId = 'en', runId?: string | null) =>
+  rehearsalPost<RehearsalTurn>('turn', { profileId, runId: runId ?? undefined, lines, lang }, 'The customer did not answer')
+export const rehearsalScore = (profileId: string, lines: RehearsalLine[], runId?: string | null) =>
+  rehearsalPost<RehearsalScorecard>('score', { profileId, runId: runId ?? undefined, lines }, "Could not write the coach's notes")
 
 // ── Spoken corrections on the debrief review page ──
 

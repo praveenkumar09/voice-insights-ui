@@ -727,10 +727,11 @@ export async function listKnowledge(): Promise<KnowledgeProduct[]> {
   return res.json()
 }
 
-export async function uploadKnowledgeZip(file: File): Promise<KnowledgeJob> {
+/** replaceAll: delete every stored passage once the zip has been read, then embed the zip from scratch. */
+export async function uploadKnowledgeZip(file: File, replaceAll = false): Promise<KnowledgeJob> {
   const body = new FormData()
   body.append('file', file)
-  const res = await fetch(`${API_BASE}/api/admin/knowledge/upload`, { method: 'POST', headers: authHeaders(), body })
+  const res = await fetch(`${API_BASE}/api/admin/knowledge/upload${replaceAll ? '?replaceAll=true' : ''}`, { method: 'POST', headers: authHeaders(), body })
   if (!res.ok) throw new Error(await errorMessage(res, `Upload failed (${res.status})`))
   return res.json()
 }

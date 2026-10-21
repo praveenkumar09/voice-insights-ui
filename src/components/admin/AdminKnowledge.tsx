@@ -17,6 +17,8 @@ export function AdminKnowledge() {
   const [over, setOver] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const replaceNext = useRef(false)
   const input = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(() => listKnowledge().then(setProducts).catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load')).finally(() => setLoading(false)), [])
@@ -34,8 +36,18 @@ export function AdminKnowledge() {
   const send = (file: File | undefined) => {
     if (!file) return
     setError(null)
-    uploadKnowledgeZip(file).then(setJob).catch((e: unknown) => setError(e instanceof Error ? e.message : 'Upload failed'))
+    const replaceAll = replaceNext.current
+    replaceNext.current = false
+    uploadKnowledgeZip(file, replaceAll).then(setJob).catch((e: unknown) => setError(e instanceof Error ? e.message : 'Upload failed'))
     if (input.current) input.current.value = ''
+  }
+
+  // Start from scratch: pick the zip first, then the server deletes everything and re-embeds the zip (and only if the zip is readable).
+  const startOver = () => {
+    if (!confirmReset) { setConfirmReset(true); return }
+    setConfirmReset(false)
+    replaceNext.current = true
+    input.current?.click()
   }
 
   const remove = (product: string, doc?: KnowledgeFile) => {
@@ -77,7 +89,13 @@ export function AdminKnowledge() {
             <b>{running ? 'Working on your upload…' : 'Add a policy or product'}</b>
             <span>Drop a .zip here, or choose one. New products are added; a product that already exists is topped up, and a file with the same name is replaced.</span>
           </div>
-          <button className="kb-btn" disabled={running} onClick={() => input.current?.click()}>Choose zip</button>
+          <button className="kb-btn" disabled={running} onClick={() => { replaceNext.current = false; input.current?.click() }}>Choose zip</button>
+        </div>
+        <div className="kb-reset">
+          <span>Embeddings look wrong or out of date? Delete every stored passage and rebuild from a zip of all your documents.</span>
+          <button className={`kb-link${confirmReset ? ' is-sure' : ''}`} disabled={running} onClick={startOver} onBlur={() => setConfirmReset(false)}>
+            {confirmReset ? `Delete all ${total.toLocaleString()} passages, then choose the zip` : 'Delete all & re-embed from a zip'}
+          </button>
         </div>
         <div className="kb-layout">
           <b>How to arrange the zip</b>

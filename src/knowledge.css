@@ -50,3 +50,8 @@
   .kb-docs li { grid-template-columns: 1fr auto; }
   .kb-docs__cat, .kb-docs__n { grid-column: 1; }
 }
+
+.kb-reset { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 0; margin-top: 4px; border-top: 1px solid rgba(var(--shadow-rgb), 0.1); font-size: .85rem; color: var(--ink-soft); }
+.kb-reset .kb-link { padding: 8px 14px; border-radius: 999px; border: 1.5px solid #c8102e; color: #c8102e; background: transparent; font-weight: 600; font-size: .85rem; cursor: pointer; white-space: nowrap; }
+.kb-reset .kb-link:hover:not(:disabled), .kb-reset .kb-link.is-sure { background: #c8102e; color: #fff; }
+.kb-reset .kb-link:disabled { opacity: .5; cursor: not-allowed; }

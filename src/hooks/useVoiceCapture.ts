@@ -242,6 +242,12 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'commands', phrases }))
   }, [])
 
+  /** Juno mode is waiting for a yes or no: the server then only accepts a short answer it heard clearly. */
+  const sendConfirming = useCallback((on: boolean) => {
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'confirming', on }))
+  }, [])
+
   /** Tells the server which language the conversation is in, so the speech model knows what to expect. */
   const sendLanguage = useCallback((lang: string) => {
     const ws = wsRef.current
@@ -469,6 +475,6 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
     noiseFilter, setNoiseFilter, backgroundIgnored,
-    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, setSpeechResumedListener, releaseHeld, sendCommands, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
+    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, setSpeechResumedListener, releaseHeld, sendCommands, sendConfirming, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

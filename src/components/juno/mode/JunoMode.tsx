@@ -384,7 +384,8 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
         // Changes data: ask first, and only a clear yes goes ahead.
         await say(r.ask || `${r.say.replace(/[.!]+$/, '')}?`)
         setPhase('confirming')
-        const heard = await nextUtterance(CONFIRM_WAIT_MS)
+        capture.sendConfirming(true)
+        const heard = await nextUtterance(CONFIRM_WAIT_MS).finally(() => capture.sendConfirming(false))
         const verdict = heard ? parseYesNo(heard) : null
         if (verdict !== 'yes') return void (await say(verdict === 'no' ? 'Okay, I won’t.' : 'I didn’t hear a yes, so I haven’t done anything.'))
         const done = await action.run(r.params)

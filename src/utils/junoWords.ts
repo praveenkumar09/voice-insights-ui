@@ -31,7 +31,8 @@ const YES = /\b(yes|yeah|yep|yup|sure|ok|okay|go ahead|do it|please do|confirm|c
 /** A spoken answer to "Shall I?": yes, no, or null when it was neither. "No" wins over "yes" ("no, don't"). */
 export function parseYesNo(text: string): 'yes' | 'no' | null {
   if (NO.test(text)) return 'no'
-  if (YES.test(text)) return 'yes'
+  // A yes is a short answer: a long line that happens to contain "ok" or "sure" is not one.
+  if (YES.test(text) && text.trim().split(/\s+/).length <= 5) return 'yes'
   return null
 }
 

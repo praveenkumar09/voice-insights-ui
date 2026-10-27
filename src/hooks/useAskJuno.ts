@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { isEcho } from '../utils/echo'
 import { askJuno, cancelWhatIf, clearAskHistory, getAskHistory, getAskStarters, getWhatIf, junoSpeak, junoVoiceStatus, runWhatIf, type AskEvent, type AskSource, type AskStarter, type LangId, type WhatIfChange, type WhatIfView } from '../api/client'
 import { useVoiceCapture } from './useVoiceCapture'
 
@@ -96,6 +97,8 @@ export function useAskJuno(runId: string) {
   }, [])
 
   const [messages, setMessages] = useState<AskMessage[]>([])
+  const messagesRef = useRef<AskMessage[]>([])
+  messagesRef.current = messages
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [earlier, setEarlier] = useState<AskMessage[]>([])
   const [starters, setStarters] = useState<AskStarter[]>([])
@@ -457,6 +460,13 @@ export function useAskJuno(runId: string) {
     const text = finalsRef.current.slice(consumedRef.current).join(' ').trim()
     const prevConsumed = consumedRef.current
     consumedRef.current = finalsRef.current.length
+    // Juno's own words, heard again through the microphone after it stopped speaking: not a question.
+    const junoSaid = messagesRef.current.filter((m) => m.role === 'juno').slice(-2).flatMap((m) => m.sentences.map((x) => x.text))
+    if (isEcho(text, junoSaid)) {
+      console.debug('[ask] ignored Juno\u2019s own voice', JSON.stringify(text))
+      setPhase(handsFreeRef.current ? 'listening' : 'ready')
+      return
+    }
     if (text.replace(/[^\p{L}\p{N}]/gu, '').length < 3) {
       setHint("I didn't quite catch that — say it again?")
       setPhase(handsFreeRef.current ? 'listening' : 'ready')

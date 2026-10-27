@@ -59,7 +59,8 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
   const PARTS: Record<string, Part> = { fact_find: 'factFind', record_of_advice: 'record', follow_up: 'followUp', crm_note: 'crm', discussion: 'discussion', next_meeting: 'meeting', advisory_report: 'report', rehearse: 'rehearse' }
   useJunoAction({
     id: 'open_pack_section', description: 'Open an advice pack section: Fact-find, Record of advice, Follow-up, CRM note, Discussion, Next meeting, Rehearse, or Advisory report', risk: 'open',
-    params: { section: { type: 'enum', values: Object.keys(PARTS) } },
+    // the section that is already open is not offered, so its name reaches that section's own action ("Rehearse" on the Rehearse tab starts the rehearsal)
+    params: { section: { type: 'enum', values: Object.keys(PARTS).filter((k) => PARTS[k] !== part) } },
     run: (p) => { setPart(PARTS[p.section]) },
   })
   // "Hey Juno, the customer's retirement age is 55": fills one fact-find field and saves the pack (Juno asks for a yes first).

@@ -5,6 +5,7 @@ import { parseReadControl, parseWake, parseYesNo, stripWake, type ReadControl } 
 import { createPlayer, headphonesConnected, splitSentences, type Player } from '../../../utils/readAloud'
 import { chime, prewarmSpeech, speakAndWait, stopSpeaking } from '../../../utils/speak'
 import { matchLocal, vocabularyFor } from '../../../utils/junoLocal'
+import { isEcho } from '../../../utils/echo'
 import { pageButtonActions } from '../../../utils/pageButtons'
 import { voiceLock } from '../../../utils/voiceLock'
 
@@ -150,6 +151,9 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
   const readCommit = useRef<number | null>(null)
   const armedUntil = useRef(0)
   const duckTimer = useRef<number | null>(null)
+  /** What Juno itself said or is reading lately: a line that merely repeats it is the speaker leaking into the microphone, not the advisor. */
+  const spokenRecently = useRef<string[]>([])
+  const readingText = useRef<string[]>([])
 
   const flash = useCallback((text: string) => {
     setNotice(text)
@@ -177,6 +181,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
       // Another voice feature took the microphone meanwhile (e.g. Juno pressed "Start debrief"): stay paused, say nothing.
       if (phaseRef.current === 'paused' || voiceLock.busy()) return
       setMessage(text)
+      spokenRecently.current = [text, ...spokenRecently.current].slice(0, 3)
       setPhase('speaking')
       capture.setMicMuted(true)
       await speakAndWait(text)
@@ -227,6 +232,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     const job = readJob.current
     if (job) { job.stopped = true; job.player?.stop() }
     readJob.current = null
+    readingText.current = []
     if (readCommit.current) { window.clearInterval(readCommit.current); readCommit.current = null }
     if (duckTimer.current) { window.clearTimeout(duckTimer.current); duckTimer.current = null }
     capture.setRawAmpListener(null)
@@ -268,6 +274,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     if (sections.length === 0) throw new Error('There is nothing to read for that yet.')
     const job = { player: null as Player | null, jump: null as number | null, stopped: false }
     readJob.current = job
+    readingText.current = sections.map((x) => x.text)
     busy.current = false
     lastActivity.current = Date.now()
     const title = name && !data.title.includes(name) ? `${data.title}, ${name}` : data.title
@@ -428,6 +435,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
       const text = finals[consumed.current++]
       console.debug('[juno] heard', JSON.stringify(text), 'phase', phaseRef.current, readingRef.current ? '(reading)' : '')
       if (!enabledRef.current || phaseRef.current === 'speaking' || phaseRef.current === 'paused') continue
+      if (isEcho(text, [...spokenRecently.current, ...readingText.current])) { console.debug('[juno] ignored its own voice', JSON.stringify(text)); continue }
       if (deliver(text)) continue
       if (busy.current) continue
       if (readingRef.current) {
@@ -436,7 +444,19 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
         const restLen = wakeR ? wakeR.rest.replace(/[^\p{L}\p{N}]/gu, '').length : 0
         // The audio is cut every 1.5 s while reading, so "Hey Juno," and "stop reading" can arrive as two lines: a bare wake word arms the next
         // few seconds for a control. A plain "stop" needs no wake word (the mic is echo-cancelled, and only these exact phrases count).
-        if (wakeR && restLen < 3) armedUntil.current = Date.now() + ARMED_MS
+        if (wakeR && restLen < 3) {
+          armedUntil.current = Date.now() + ARMED_MS
+          // Its name is the signal that a command follows: hold the reading at once so the command ("stop", "next") is heard in a quiet
+          // room, not over Juno's own voice. If nothing follows, the reading carries on by itself.
+          const job = readJob.current
+          if (job && !readingRef.current?.paused) {
+            job.player?.pause()
+            if (duckTimer.current) window.clearTimeout(duckTimer.current)
+            duckTimer.current = window.setTimeout(() => {
+              if (readJob.current === job && !readingRef.current?.paused) job.player?.resume()
+            }, ARMED_MS)
+          }
+        }
         const armed = Date.now() < armedUntil.current
         const bareStop = BARE_STOP.test(text)
         const ctl = parseReadControl(wakeR ? wakeR.rest : readMicOpen.current || armed || bareStop ? text : '')

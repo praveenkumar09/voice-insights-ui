@@ -27,8 +27,8 @@ export function DressRehearsal({ profileId, customerName, runId }: Props) {
   const r = useRehearsal(profileId, runId)
   const first = customerName.trim().split(/\s+/)[0] || 'the customer'
   const steps = ['Brief', 'Rehearse', 'Coach’s notes'] as const
-  useJunoAction(r.stage === 'idle' ? { id: 'brief_me', description: 'Brief me on the next meeting', risk: 'open', run: () => { void r.startBrief() } } : null)
-  useJunoAction(r.stage === 'brief' ? { id: 'start_rehearsal', description: 'Start the rehearsal', risk: 'open', run: () => { void r.startRehearsal(); return `Starting the rehearsal. I’ll step aside while you talk to ${first}.` } } : null)
+  useJunoAction(r.stage === 'idle' ? { id: 'rehearsal_brief', description: 'Rehearse the next meeting: Juno briefs me first, then plays the customer', risk: 'open', run: () => { void r.startBrief() } } : null)
+  useJunoAction(r.stage === 'brief' ? { id: 'start_rehearsal', description: 'Start the rehearsal with the customer', risk: 'open', run: () => { void r.startRehearsal(); return `Starting the rehearsal. I’ll step aside while you talk to ${first}.` } } : null)
   const stepNow = r.stage === 'idle' ? -1 : r.stage === 'briefing' || r.stage === 'brief' ? 0 : r.stage === 'rehearsing' ? 1 : 2
 
   return (

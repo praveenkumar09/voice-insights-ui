@@ -15,6 +15,9 @@ const FILLER = new Set(('please can could you would will i want like need to go 
 
 const NEGATIVE = /\b(no|not|dont|do not|never|cancel|stop|undo|without|instead)\b/
 
+/** One-word choices that speech noise produces from other words, so they only count when the request also says what they are for. */
+const AMBIGUOUS_ALONE = new Set(['dark', 'light'])
+
 const display = (v: string) => norm(v.replace(/_/g, ' '))
 
 /** Short phrases for the speech model's prompt: the screen's actions (short ones as written) and every value of their choices. */
@@ -50,6 +53,8 @@ export function matchLocal(utterance: string, actions: JunoActionSpec[]): LocalM
       const [name, spec] = params[0]
       const hits = (spec.values ?? []).filter((v) => new RegExp(`(^| )${display(v)}( |$)`).test(u))
       if (hits.length === 0) continue
+      // "dark" or "light" on their own are what faint or noisy speech turns "stop" and "right" into: the theme changes only when it is asked for as a mode.
+      if (hits.every((v) => AMBIGUOUS_ALONE.has(display(v))) && !/(^| )(mode|theme|switch|change|turn)( |$)/.test(u)) continue
       const best = hits.sort((x, y) => display(y).length - display(x).length)[0] // "after the meeting" beats a shorter value inside it
       const rest = u.replace(display(best), ' ').split(' ').filter((w) => w && !FILLER.has(w))
       if (rest.length === 0) exact.push({ action: a, params: { [name]: best } })

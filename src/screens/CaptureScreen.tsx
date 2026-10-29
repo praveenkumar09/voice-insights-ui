@@ -247,6 +247,17 @@ export function CaptureScreen({ onReady }: Props) {
               ))}
             </div>
             {voice.backgroundIgnored && listening && <span className="noise-filter__live">Ignoring background audio</span>}
+            <button
+              className={`noise-filter__far${voice.farMic ? ' is-active' : ''}`}
+              aria-pressed={voice.farMic}
+              title="Turn on when you speak from a distance, for example presenting from across a room: quiet speech is kept and lifted instead of being treated as background."
+              onClick={() => voice.setFarMic(!voice.farMic)}
+            >
+              Far mic
+            </button>
+            {voice.faintVoice && !voice.farMic && listening && (
+              <button className="noise-filter__tip" onClick={() => voice.setFarMic(true)}>Voice sounds faint. Turn on Far mic</button>
+            )}
           </div>
         </div>
         <LiveWaveform amplitude={amplitude} active={status === 'listening'} />

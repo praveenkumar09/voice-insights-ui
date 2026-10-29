@@ -19,6 +19,13 @@ const CHUNK_SAMPLES = 2400 // 100ms at 24kHz
 const TARGET_LEVEL = 0.12
 const MAX_GAIN = 5
 const GATE = 0.004 // below this the signal is background noise — don't amplify it
+// FAR MIC (a presenter two metres from the laptop). Speech from that far arrives at about -50 dBFS, which the thresholds above treat as room noise
+// (measured offline: at 2 m only a third of a talk got through, further away nothing). Far mode: lower floors, a gain of up to 40x (32 dB, it only
+// follows speech, never silence), and no remembered close-mic level. The cost is that a quiet TV is no longer told apart from a distant speaker, so it
+// is a choice on the screen rather than the default.
+// Measured on a MacBook in an ordinary room (mic hiss about 0.003, a presenter's voice 0.004-0.01 from a metre or two): the normal 2.5x over the room's
+// noise rejected most of the talk, 1.5x kept it all and still left the room alone.
+const FAR = { NOISE_MULT: 1.5, MAX_GAIN: 40, GATE: 0.0012, ABS_MIN: 0.0016, REF_START: 0.006, REF_MIN: 0.003, REF_DECAY: 0.995 }
 // The click of pressing the record button lands in the first moments of the stream, and the speech model can
 // mishear it as a stray word or phrase. Silence the first 400ms (still sent, as zeros, to keep timing).
 const WARMUP_SAMPLES = TARGET_RATE * 0.4
@@ -57,6 +64,12 @@ class PcmWorklet extends AudioWorkletProcessor {
     this.carry = 0 // last sample of the previous block, for interpolation across blocks
     this.warmup = WARMUP_SAMPLES
     this.gateOn = true
+    this.far = false // far mic mode: see FAR above
+    this.maxGain = MAX_GAIN
+    this.gateGain = GATE
+    this.absMin = ABS_MIN
+    this.refMin = REF_MIN
+    this.refDecay = REF_DECAY
     this.gateRatio = 0.28
     this.ref = REF_START
     this.hang = 0
@@ -75,17 +88,28 @@ class PcmWorklet extends AudioWorkletProcessor {
     this.confirmed = false // the current sound has lasted CONFIRM_CHUNKS: chunks go straight on
     this.hangChunks = HANG_CHUNKS
     this.confirmChunks = CONFIRM_CHUNKS // 1 for short-answer debriefs, where a one-word answer must go straight on
+    this.baseNoiseMult = NOISE_MULT // what was asked for (Juno mode lowers it); far mic uses its own, which is a little stricter than Juno mode's, so room hiss cannot open the gate and be heard as a command
     this.noiseMult = NOISE_MULT // Juno mode lowers this: its speech model copes with speech only a few dB above the room
     this.minRun = 2 // loud chunks in a row needed to open the gate; 1 lets a one-word answer ("No.") through (set only for short-answer debriefs)
     this.port.onmessage = (e) => {
       const d = e.data || {}
       if (typeof d.gate === 'boolean') this.gateOn = d.gate
+      if (typeof d.far === 'boolean' && d.far !== this.far) {
+        this.far = d.far
+        const c = d.far ? FAR : { MAX_GAIN, GATE, ABS_MIN, REF_START, REF_MIN, REF_DECAY }
+        this.maxGain = c.MAX_GAIN; this.gateGain = c.GATE; this.absMin = c.ABS_MIN; this.refMin = c.REF_MIN; this.refDecay = c.REF_DECAY
+        this.ref = c.REF_START; this.savedRef = c.REF_START
+        this.noiseMult = d.far ? FAR.NOISE_MULT : this.baseNoiseMult
+      }
       if (typeof d.ratio === 'number') this.gateRatio = d.ratio
       if (typeof d.minRun === 'number') {
         this.minRun = d.minRun >= 2 ? 2 : 1
         this.confirmChunks = this.minRun >= 2 ? CONFIRM_CHUNKS : 1
       }
-      if (typeof d.noiseMult === 'number') this.noiseMult = Math.max(1.1, Math.min(NOISE_MULT, d.noiseMult))
+      if (typeof d.noiseMult === 'number') {
+        this.baseNoiseMult = Math.max(1.1, Math.min(NOISE_MULT, d.noiseMult))
+        this.noiseMult = this.far ? FAR.NOISE_MULT : this.baseNoiseMult
+      }
       if (typeof d.hang === 'number') this.hangChunks = Math.max(1, Math.min(20, d.hang))
       if (typeof d.learn === 'boolean') this.noLearn = !d.learn
       if (typeof d.freeze === 'boolean' && d.freeze !== this.frozen) {
@@ -98,7 +122,7 @@ class PcmWorklet extends AudioWorkletProcessor {
         }
         this.frozen = d.freeze
       }
-      if (typeof d.ref === 'number') this.ref = Math.max(REF_MIN, Math.min(0.3, d.ref * REMEMBERED_REF_SHARE)) // a remembered voice level from earlier sessions
+      if (typeof d.ref === 'number' && !this.far) this.ref = Math.max(REF_MIN, Math.min(0.3, d.ref * REMEMBERED_REF_SHARE)) // a remembered voice level from earlier sessions
     }
   }
 
@@ -124,7 +148,7 @@ class PcmWorklet extends AudioWorkletProcessor {
     const sustained = this.minRun <= 1 ? rms : Math.min(rms, this.prevRms)
     this.prevRms = rms
     const noise = this.trackNoise(rms)
-    const floor = Math.max(ABS_MIN, this.noiseMult * noise)
+    const floor = Math.max(this.absMin, this.noiseMult * noise)
     const loud = sustained >= Math.max(floor, this.gateRatio * this.ref)
     if (this.noLearn) {
       if (loud) this.hang = this.hangChunks
@@ -139,7 +163,7 @@ class PcmWorklet extends AudioWorkletProcessor {
     } else if (this.hang > 0) {
       this.hang--
     }
-    this.ref = Math.max(REF_MIN, this.ref * REF_DECAY)
+    this.ref = Math.max(this.refMin, this.ref * this.refDecay)
     const open = loud || this.hang > 0
     if (!open) this.episode = 0
     return open
@@ -224,7 +248,7 @@ class PcmWorklet extends AudioWorkletProcessor {
     for (let i = 0; i < input.length; i++) sq += input[i] * input[i]
     const rms = Math.sqrt(sq / input.length)
     this.env += (rms - this.env) * (rms > this.env ? 0.3 : 0.02)
-    const desired = this.env > GATE ? Math.min(MAX_GAIN, Math.max(1, TARGET_LEVEL / this.env)) : 1
+    const desired = this.env > this.gateGain ? Math.min(this.maxGain, Math.max(1, TARGET_LEVEL / this.env)) : 1
     // Rise slowly (no pumping on breaths), fall fast (no clipping on loud words).
     this.gain += (desired - this.gain) * (desired > this.gain ? 0.02 : 0.25)
 

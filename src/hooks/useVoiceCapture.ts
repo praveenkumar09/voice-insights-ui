@@ -12,6 +12,20 @@ export type CaptureMode = 'live' | 'debrief' | 'juno-debrief' | 'ask'
 export type NoiseFilter = 'off' | 'normal' | 'strong'
 const FILTER_KEY = 'vi_noise_filter'
 const REF_KEY = 'vi_voice_level'
+/** Far mic: the advisor speaks from a distance (presenting from across a room), so quiet speech is kept and lifted (see FAR in public/pcm-worklet.js). */
+const FAR_KEY = 'vi_far_mic'
+function storedFar(): boolean {
+  try {
+    return localStorage.getItem(FAR_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+// What a voice two metres away looks like to the filter: bursts clearly above the room's steady level that are still quieter than a close-by voice.
+const FAINT_BURST = 1.8 // times the room's level
+const FAINT_MAX_AMP = 0.04
+const FAINT_MIN_BURSTS = 6 // of the last 30 chunks (3 s)
+const FAINT_WINDOW = 30 // 100 ms chunks
 
 function storedLevel(): number | null {
   try {
@@ -61,6 +75,11 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [noiseFilter, setNoiseFilterState] = useState<NoiseFilter>(storedFilter)
   const [backgroundIgnored, setBackgroundIgnored] = useState(false)
+  const [farMic, setFarMicState] = useState<boolean>(storedFar)
+  // The filter is dropping sound that varies like speech but is quieter than a close-by voice: the speaker is probably far from the microphone.
+  const [faintVoice, setFaintVoice] = useState(false)
+  const faintAmps = useRef<number[]>([])
+  const faintTimer = useRef<number | undefined>(undefined)
   const noiseFilterRef = useRef<NoiseFilter>(noiseFilter)
   noiseFilterRef.current = noiseFilter
   useEffect(() => {
@@ -97,6 +116,8 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
     sinkRef.current?.disconnect()
     sinkRef.current = null
     gatedRun.current = 0
+    faintAmps.current = []
+    setFaintVoice(false)
     setBackgroundIgnored(false)
     streamRef.current?.getTracks().forEach((t) => t.stop())
     audioContextRef.current?.close().catch(() => {})
@@ -139,13 +160,13 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
       // 'suspended' — onaudioprocess then never fires and no audio is ever sent.
       if (audioContext.state === 'suspended') await audioContext.resume()
 
-      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=13')
+      await audioContext.audioWorklet.addModule('/pcm-worklet.js?v=14')
       const source = audioContext.createMediaStreamSource(stream)
       sourceRef.current = source
       const worklet = new AudioWorkletNode(audioContext, 'pcm-worklet', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 })
       processorRef.current = worklet
 
-      worklet.port.postMessage({ gate: noiseFilterRef.current !== 'off', ratio: FILTER_RATIO[noiseFilterRef.current] || 0.35, ref: storedLevel() ?? undefined, noiseMult: options.assistant ? ASSISTANT_NOISE_MULT : undefined })
+      worklet.port.postMessage({ far: storedFar(), gate: noiseFilterRef.current !== 'off', ratio: FILTER_RATIO[noiseFilterRef.current] || 0.35, ref: storedLevel() ?? undefined, noiseMult: options.assistant ? ASSISTANT_NOISE_MULT : undefined })
       worklet.port.onmessage = (e: MessageEvent<{ pcm?: ArrayBuffer; amp: number; gated?: boolean; ref?: number }>) => {
         setAmplitude(mutedRef.current ? 0 : e.data.amp)
         rawListener.current?.(e.data.amp)
@@ -161,6 +182,27 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
         // Say so when background is being ignored for a while, so a quiet speaker can tell the filter is acting.
         gatedRun.current = e.data.gated ? gatedRun.current + 1 : 0
         setBackgroundIgnored((was) => (gatedRun.current >= 12 ? true : gatedRun.current === 0 ? false : was))
+        // Is what is being ignored faint speech rather than room noise? Faint but varying, for 3 seconds, while the far mic is off.
+        if (e.data.gated && !storedFar()) {
+          const fa = faintAmps.current
+          fa.push(e.data.amp)
+          if (fa.length > FAINT_WINDOW) fa.shift()
+          if (fa.length === FAINT_WINDOW) {
+            const floor = [...fa].sort((x, y) => x - y)[Math.floor(FAINT_WINDOW * 0.2)]
+            const bursts = fa.filter((a) => a > FAINT_BURST * floor && a < FAINT_MAX_AMP).length
+            if (bursts >= FAINT_MIN_BURSTS && floor < 0.02) {
+              // Keep the suggestion up for a while: faint speech comes in bursts, and a tip that blinks cannot be clicked.
+              setFaintVoice(true)
+              window.clearTimeout(faintTimer.current)
+              faintTimer.current = window.setTimeout(() => setFaintVoice(false), 25000)
+            }
+          }
+        } else if (!e.data.gated && e.data.amp >= FAINT_MAX_AMP) {
+          // A close-by voice is getting through normally: nothing to suggest.
+          faintAmps.current = []
+          window.clearTimeout(faintTimer.current)
+          setFaintVoice(false)
+        }
         if (e.data.pcm) {
           if (mutedRef.current) {
             heldRef.current.push(e.data.pcm)
@@ -284,6 +326,21 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'commit' }))
   }, [])
 
+  const setFarMic = useCallback((on: boolean) => {
+    setFarMicState(on)
+    window.clearTimeout(faintTimer.current)
+    setFaintVoice(false)
+    faintAmps.current = []
+    try {
+      localStorage.setItem(FAR_KEY, on ? '1' : '0')
+    } catch {
+      // Not remembering the choice is fine.
+    }
+    processorRef.current?.port.postMessage({ far: on })
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'far', on }))
+  }, [])
+
   const setNoiseFilter = useCallback((next: NoiseFilter) => {
     setNoiseFilterState(next)
     try {
@@ -315,6 +372,7 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
             case 'ready':
               // The transcription service has confirmed the session — only now is it safe to start talking.
               readyRef.current = true
+              if (storedFar()) ws.send(JSON.stringify({ type: 'far', on: true })) // stricter command confidence while speaking from a distance
               if (statusRef.current === 'connecting') setStatus('listening')
               break
             case 'utterance_end':
@@ -474,7 +532,7 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
 
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
-    noiseFilter, setNoiseFilter, backgroundIgnored,
+    noiseFilter, setNoiseFilter, backgroundIgnored, farMic, setFarMic, faintVoice,
     start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, setSpeechResumedListener, releaseHeld, sendCommands, sendConfirming, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

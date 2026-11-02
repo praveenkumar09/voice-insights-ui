@@ -1,0 +1,36 @@
+/* ── Home: Debrief with Spark ─────────────────────────────────────────────────────────────────────────
+   One mode now, so the page is Spark and a short guide. The guide is a real sequence, hence the numbers. */
+
+.capture-hero { align-items: flex-end; }
+.capture-hero__title { font-size: clamp(1.9rem, 3.4vw, 2.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.capture-hero__sub { max-width: 640px; font-size: 1.02rem; line-height: 1.55; }
+
+.home-steps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; counter-reset: step; }
+.home-steps__item {
+  position: relative; display: flex; gap: 16px; align-items: flex-start; padding: 20px 22px;
+  border-radius: 20px; background: rgba(var(--glass-rgb), 0.7); border: 1px solid rgba(var(--tint-rgb), 0.08);
+  box-shadow: 0 16px 36px -22px rgba(var(--shadow-rgb), 0.22), inset 0 1px 0 var(--glass-sheen);
+}
+/* a thin thread joining the steps, so they read as one path */
+.home-steps__item:not(:last-child)::after {
+  content: ''; position: absolute; top: 40px; right: -17px; width: 18px; height: 2px;
+  background: linear-gradient(90deg, rgba(211, 17, 69, 0.5), rgba(211, 17, 69, 0.1));
+}
+.home-steps__n {
+  flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 1rem; color: #fff;
+  background: linear-gradient(145deg, #ff4d78, #d31145 60%, #a30d36); box-shadow: 0 10px 20px -8px rgba(211, 17, 69, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.home-steps__item h3 { margin: 2px 0 6px; font-size: 1.02rem; font-weight: 700; letter-spacing: -0.015em; }
+.home-steps__item p { margin: 0; font-size: 0.92rem; line-height: 1.5; color: var(--ink-soft); }
+
+@media (max-width: 900px) {
+  .home-steps { grid-template-columns: 1fr; }
+  .home-steps__item:not(:last-child)::after { display: none; }
+}
+
+/* the stage: Spark a little smaller so "Start the debrief" is in view on a laptop without scrolling */
+.jn__orb-zone { min-height: 0 !important; padding-top: 0 !important; }
+.jn__orb-zone .sb-stage { width: min(224px, 56vw); }
+.capture-screen { gap: 18px; }
+.capture-hero { margin-bottom: 0; }
+@media (min-width: 901px) { .capture-hero__sub { font-size: 0.98rem; } }

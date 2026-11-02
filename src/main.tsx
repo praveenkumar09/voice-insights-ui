@@ -24,6 +24,7 @@ import './workspace-polish.css'
 import './drawer.css'
 import './spark-login.css'
 import './spark-bot.css'
+import './home.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -92,7 +92,7 @@ export function useVoiceCommand() {
   return { phase, listen, stop, cancel, caption: capture.partialText, amplitude: capture.amplitude }
 }
 
-/** Juno says one short line aloud (unless the advisor has switched Juno's voice off). Best effort: a failure is silent. */
+/** Spark says one short line aloud (unless the advisor has switched Spark's voice off). Best effort: a failure is silent. */
 export async function speakShort(text: string): Promise<void> {
   try {
     if (localStorage.getItem('vi_ask_voice_on') === '0') return

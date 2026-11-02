@@ -4,13 +4,13 @@ import { useJunoMode, type JunoPhase, type ReadingState } from './JunoMode'
 
 const LABEL: Partial<Record<JunoPhase, string>> = {
   starting: 'Getting ready…',
-  listening: 'Say “Hey Juno”',
+  listening: 'Say “Hey Spark”',
   awake: 'Listening…',
   thinking: 'One moment…',
   paused: 'Paused while the microphone is in use',
 }
 
-/** The living orb: a few soft colour fields that swirl, swell with the voice (the advisor's while listening) and change colour with what Juno is doing. */
+/** The living orb: a few soft colour fields that swirl, swell with the voice (the advisor's while listening) and change colour with what Spark is doing. */
 function Orb({ phase, level, size = 'md' }: { phase: string; level: number; size?: 'md' | 'lg' }) {
   return (
     <span className={`jm-orb jm-orb--${phase} jm-orb--${size}`} style={{ ['--lvl' as string]: Math.min(1, level * 3.2).toFixed(3) }} aria-hidden>
@@ -27,7 +27,7 @@ const Icon = {
   stop: <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden><rect x="6" y="6" width="12" height="12" rx="3" fill="currentColor" /></svg>,
 }
 
-/** The reading card: what Juno is reading, where it is, and Back, Pause, Next and Stop. */
+/** The reading card: what Spark is reading, where it is, and Back, Pause, Next and Stop. */
 function ReadingCard({ r, reduce, spring }: { r: ReadingState; reduce: boolean | null; spring: object }) {
   const j = useJunoMode()
   const pct = r.total <= 1 ? 0 : (r.index / r.total) * 100
@@ -50,7 +50,7 @@ function ReadingCard({ r, reduce, spring }: { r: ReadingState; reduce: boolean |
 }
 
 /**
- * Juno mode's presence on screen: a small dark capsule at the top, like a Dynamic Island. It stays quiet while it waits for its name,
+ * Spark mode's presence on screen: a small dark capsule at the top, like a Dynamic Island. It stays quiet while it waits for its name,
  * grows when it is listening or speaking, and shows Yes and No when it needs a decision. It never covers the page's own controls.
  */
 export function JunoCapsule() {
@@ -64,13 +64,13 @@ export function JunoCapsule() {
   const live = j.phase !== 'off' && j.phase !== 'consent' && !j.reading
 
   return (
-    <div className="jm" role="region" aria-label="Juno mode">
+    <div className="jm" role="region" aria-label="Spark mode">
       <AnimatePresence mode="popLayout">
         {j.phase === 'consent' && (
-          <motion.div key="consent" className="jm__consent" layout initial={reduce ? false : { opacity: 0, y: -12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={spring} role="dialog" aria-label="Turn on Juno mode">
+          <motion.div key="consent" className="jm__consent" layout initial={reduce ? false : { opacity: 0, y: -12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={spring} role="dialog" aria-label="Turn on Spark mode">
             <Orb phase="awake" level={0.1} size="lg" />
-            <h2>Turn on Juno mode?</h2>
-            <p>Juno will keep your microphone open and send what it hears to Azure speech to listen for “Hey Juno”. Nothing is saved.</p>
+            <h2>Turn on Spark mode?</h2>
+            <p>Spark will keep your microphone open and send what it hears to Azure speech to listen for “Hey Spark”. Nothing is saved.</p>
             <p>It turns itself off after 15 quiet minutes, and steps aside while you debrief or rehearse.</p>
             <div className="jm__consent-actions">
               <button className="jm__btn jm__btn--primary" onClick={j.acceptConsent} autoFocus>Turn on</button>
@@ -110,10 +110,10 @@ export function JunoCapsule() {
           <motion.div className="jm__sheet" initial={reduce ? false : { opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4 }} transition={spring}>
             <p className="jm__sheet-title">Try saying</p>
             <ul>
-              {j.examples().length === 0 && <li>“Hey Juno, what can you do?”</li>}
+              {j.examples().length === 0 && <li>“Hey Spark, what can you do?”</li>}
               {j.examples().map((e) => <li key={e}>“{e}”</li>)}
             </ul>
-            <button className="jm__btn jm__btn--quiet" onClick={() => { setOpen(false); j.toggle() }}>Turn Juno mode off</button>
+            <button className="jm__btn jm__btn--quiet" onClick={() => { setOpen(false); j.toggle() }}>Turn Spark mode off</button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -121,14 +121,14 @@ export function JunoCapsule() {
   )
 }
 
-/** The switch in the header: a pearl and the name. Lit while Juno mode is on. */
+/** The switch in the header: a pearl and the name. Lit while Spark mode is on. */
 export function JunoModeButton() {
   const j = useJunoMode()
   const on = j.enabled || j.phase === 'consent'
   return (
-    <button className={`jm-btn${on ? ' is-on' : ''}`} onClick={j.toggle} aria-pressed={on} title={on ? 'Turn Juno mode off' : 'Turn Juno mode on: say “Hey Juno”'}>
+    <button className={`jm-btn${on ? ' is-on' : ''}`} onClick={j.toggle} aria-pressed={on} title={on ? 'Turn Spark mode off' : 'Turn Spark mode on: say “Hey Spark”'}>
       <span className={`jm-btn__pearl${on ? ' is-on' : ''}`} aria-hidden />
-      Juno
+      Spark
     </button>
   )
 }

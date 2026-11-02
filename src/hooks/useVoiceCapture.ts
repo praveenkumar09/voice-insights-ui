@@ -5,7 +5,7 @@ import { voiceLock } from '../utils/voiceLock'
 
 export type VoiceCaptureStatus = 'idle' | 'connecting' | 'listening' | 'paused' | 'stopping' | 'stopped' | 'error'
 
-/** live: the customer is speaking. debrief: the advisor dictates a summary after the meeting. juno-debrief: the same, then Juno asks the advisor about the gaps. ask: the advisor puts questions to Juno about a finished suggestion (listening only, nothing is kept). */
+/** live: the customer is speaking. debrief: the advisor dictates a summary after the meeting. juno-debrief: the same, then Spark asks the advisor about the gaps. ask: the advisor puts questions to Spark about a finished suggestion (listening only, nothing is kept). */
 export type CaptureMode = 'live' | 'debrief' | 'juno-debrief' | 'ask'
 
 /** How firmly background sound (a TV, other conversations) is kept out: off, normal, or strong. */
@@ -55,12 +55,12 @@ interface VoiceMessage {
 // asked to run at that rate natively (high-quality browser resampling); the
 // worklet (public/pcm-worklet.js) resamples itself if the browser refuses.
 const TARGET_SAMPLE_RATE = 24000
-// Juno mode: speech counts once it is this far above the room's steady noise (dictation uses the worklet's 2.5). Offline, 1.3 passed all of
+// Spark mode: speech counts once it is this far above the room's steady noise (dictation uses the worklet's 2.5). Offline, 1.3 passed all of
 // the speech down to 0 dB signal-to-noise (2.5 passed none below 3 dB) with no extra steady noise sent; the speech model reads 0 dB fine.
 const ASSISTANT_NOISE_MULT = 1.3
 
 /**
- * @param options.assistant Juno mode's own listener. Every other voice feature claims the microphone while it is active (so Juno mode
+ * @param options.assistant Spark mode's own listener. Every other voice feature claims the microphone while it is active (so Spark mode
  * steps aside); the assistant does not claim it, or it would wait for itself.
  */
 export function useVoiceCapture(options: { assistant?: boolean } = {}) {
@@ -90,9 +90,9 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
   }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => voiceLock.release(lockId.current), [])
   const gatedRun = useRef(0)
-  // While Juno is speaking aloud the microphone must not feed its own voice back into the transcript.
+  // While Spark is speaking aloud the microphone must not feed its own voice back into the transcript.
   const mutedRef = useRef(false)
-  // While muted (Juno speaking) the microphone is still measured, and the last fraction of a second of audio is held, so a
+  // While muted (Spark speaking) the microphone is still measured, and the last fraction of a second of audio is held, so a
   // customer who interrupts is heard from their first word. Nothing held is sent unless an interruption is confirmed.
   const heldRef = useRef<ArrayBuffer[]>([])
   const rawListener = useRef<((amp: number) => void) | null>(null)
@@ -137,7 +137,7 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
       const stream = await navigator.mediaDevices.getUserMedia({
         // Browser auto-gain is off: it lifts a quiet TV exactly when nobody is speaking, which defeats the background
         // filter. The audio worklet applies its own gentle gain (after the filter has judged the raw level).
-        // Echo cancellation stays on for Juno mode too: while Juno reads aloud with the mic open, the browser subtracts Juno's own voice, which
+        // Echo cancellation stays on for Spark mode too: while Spark reads aloud with the mic open, the browser subtracts Spark's own voice, which
         // is what lets the advisor say "stop" over it. (Turning it off was tried: the setting cannot be switched back on mid-session.)
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: false, autoGainControl: false },
       })
@@ -225,12 +225,12 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
     [],
   )
 
-  /** Stops (or resumes) sending the microphone to the server — used so Juno never transcribes its own voice. */
+  /** Stops (or resumes) sending the microphone to the server — used so Spark never transcribes its own voice. */
   const setMicMuted = useCallback((muted: boolean) => {
     mutedRef.current = muted
     if (muted) setAmplitude(0)
     else heldRef.current = []
-    // The background filter stops learning the speaker's level while Juno speaks (its voice reaches the mic through the speakers).
+    // The background filter stops learning the speaker's level while Spark speaks (its voice reaches the mic through the speakers).
     processorRef.current?.port.postMessage({ learn: !muted })
   }, [])
 
@@ -260,11 +260,11 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
 
   /** Stops the background filter learning the speaker's level (while something other than the customer is playing). */
   const setLearning = useCallback((on: boolean) => {
-    if (on && mutedRef.current) return // never start learning again while Juno is the one speaking
+    if (on && mutedRef.current) return // never start learning again while Spark is the one speaking
     processorRef.current?.port.postMessage({ learn: on })
   }, [])
 
-  /** Tells the server what Juno just said, so it sits in the transcript beside the customer's answer. */
+  /** Tells the server what Spark just said, so it sits in the transcript beside the customer's answer. */
   const sendAgentSay = useCallback((text: string) => {
     const ws = wsRef.current
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'agent_say', text }))
@@ -276,7 +276,7 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'advisor_say', text }))
   }, [])
 
-  /** Juno mode: the phrases that can be said on the current screen. The speech model is primed with them, so it picks the nearest real command. */
+  /** Spark mode: the phrases that can be said on the current screen. The speech model is primed with them, so it picks the nearest real command. */
   const commandsRef = useRef<string[]>([])
   const sendCommands = useCallback((phrases: string[]) => {
     commandsRef.current = phrases
@@ -284,7 +284,7 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'commands', phrases }))
   }, [])
 
-  /** Juno mode is waiting for a yes or no: the server then only accepts a short answer it heard clearly. */
+  /** Spark mode is waiting for a yes or no: the server then only accepts a short answer it heard clearly. */
   const sendConfirming = useCallback((on: boolean) => {
     const ws = wsRef.current
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'confirming', on }))
@@ -298,7 +298,7 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
 
   /**
    * Switches the server to conversational timing (short answers are kept, each answer ends on the browser's commit).
-   * Used after the advisor hands over to Juno: dictation keeps the stricter settings of the normal debrief, so a
+   * Used after the advisor hands over to Spark: dictation keeps the stricter settings of the normal debrief, so a
    * silence or a breath is never turned into words.
    */
   const sendConversational = useCallback((on: boolean) => {
@@ -307,7 +307,7 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
   }, [])
 
   /**
-   * After the hand-over to Juno the advisor often answers in a single word ("No."), which is shorter than the two loud 100 ms chunks
+   * After the hand-over to Spark the advisor often answers in a single word ("No."), which is shorter than the two loud 100 ms chunks
    * the background filter needs before it lets speech through. This lets a single chunk open it. Dictation keeps the default.
    */
   const setShortAnswers = useCallback((on: boolean) => {
@@ -376,7 +376,7 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
               if (statusRef.current === 'connecting') setStatus('listening')
               break
             case 'utterance_end':
-              // The server heard the speaker finish what they were saying (a question for Juno): its words are on the way.
+              // The server heard the speaker finish what they were saying (a question for Spark): its words are on the way.
               utteranceEndListener.current?.()
               break
             case 'speech_resumed':

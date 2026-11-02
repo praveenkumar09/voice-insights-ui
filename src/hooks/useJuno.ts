@@ -5,7 +5,7 @@ import { countWords } from '../utils/wordCount'
 
 type Voice = ReturnType<typeof useVoiceCapture>
 
-/** dictate: the advisor briefs Juno freely. discovery: Juno asks about the gaps. wrapup: Juno reads back and the session is saved. */
+/** dictate: the advisor briefs Spark freely. discovery: Spark asks about the gaps. wrapup: Spark reads back and the session is saved. */
 export type JunoStage = 'idle' | 'connecting' | 'dictate' | 'discovery' | 'wrapup' | 'finished' | 'error'
 
 export interface JunoTurn {
@@ -14,7 +14,7 @@ export interface JunoTurn {
   text: string
 }
 
-/** The six things a complete record holds, in the order Juno naturally raises them. */
+/** The six things a complete record holds, in the order Spark naturally raises them. */
 export const JUNO_TOPICS = [
   { key: 'about', label: 'About you' },
   { key: 'family', label: 'Family' },
@@ -26,7 +26,7 @@ export const JUNO_TOPICS = [
 
 export type { LangId }
 
-/** The languages Juno speaks. English is the default; the others are chosen on the stage (before or during the conversation). */
+/** The languages Spark speaks. English is the default; the others are chosen on the stage (before or during the conversation). */
 export const LANGUAGES: { id: LangId; label: string; name: string }[] = [
   { id: 'en', label: 'EN', name: 'English' },
   { id: 'zh', label: '中文', name: 'Chinese' },
@@ -37,7 +37,7 @@ export const LANGUAGES: { id: LangId; label: string; name: string }[] = [
 /** Used only if the server can't be reached for the fixed lines; the real ones (all four languages) come from the server. */
 const EN_PHRASES: JunoPhrases = {
   language: 'English',
-  greeting: "Hello, I'm Juno, your AIA Singapore digital suggestion assistant. Before we begin, with your permission I'd like to record and analyse our conversation, so your advisor can help you better. Is that all right?",
+  greeting: "Hello, I'm Spark, your AIA Singapore digital suggestion assistant. Before we begin, with your permission I'd like to record and analyse our conversation, so your advisor can help you better. Is that all right?",
   declined: "Of course, that's completely fine. I won't keep anything from this chat. Your advisor will be happy to take it from here.",
   unclear: "Sorry, I didn't quite catch that. Is it all right if I record and analyse our chat, so your advisor can help you better? A simple yes or no is fine.",
   firstQuestion: 'Thank you. To start, could I have your name?',
@@ -57,16 +57,16 @@ const EN_PHRASES: JunoPhrases = {
 }
 
 // ── Turn-taking ─
-// Tuned for pace: an advisor's answers to Juno are short and factual, and a reply that arrives while they carry on is simply
-// dropped (they are heard out first), so Juno can afford to answer quickly.────────────────────────────────────────────────────────────────────────────────────────────
-// Juno decides an answer is over from the advisor's VOICE (not from the transcript, which lags the speech by a
+// Tuned for pace: an advisor's answers to Spark are short and factual, and a reply that arrives while they carry on is simply
+// dropped (they are heard out first), so Spark can afford to answer quickly.────────────────────────────────────────────────────────────────────────────────────────────
+// Spark decides an answer is over from the advisor's VOICE (not from the transcript, which lags the speech by a
 // second or two), commits it for transcription at once, and replies as soon as the text lands.
 /** Quiet this long after speech → the answer is committed for transcription. */
 const COMMIT_QUIET_MS = 600
 /**
- * How long Juno waits after the advisor goes quiet before it takes over, by how finished the answer sounds:
+ * How long Spark waits after the advisor goes quiet before it takes over, by how finished the answer sounds:
  * a short answer ("Yes.") is quick; a full sentence waits a natural breath; a sentence that trails off
- * ("…and we also have a") waits longest. If the advisor carries on after Juno has started thinking, its reply
+ * ("…and we also have a") waits longest. If the advisor carries on after Spark has started thinking, its reply
  * is thrown away and it keeps listening, so being a little eager costs nothing.
  */
 const END_SHORT_MS = 650
@@ -78,7 +78,7 @@ const END_SHORT_OPEN_MS = 1000
 const END_SENTENCE_OPEN_MS = 1700
 /**
  * A reply that is ready is still held until the advisor has been quiet this long, so a pause in the middle of an
- * answer is never talked over — Juno checks, right up to the moment it speaks, that the advisor has not carried on.
+ * answer is never talked over — Spark checks, right up to the moment it speaks, that the advisor has not carried on.
  */
 const HOLD_QUIET_MS = 1100
 const HOLD_QUIET_OPEN_MS = 1700
@@ -99,10 +99,10 @@ const SETTLE_MS = 250
 const NO_TEXT_MS = 4000
 /** How long we expect a committed answer to take to come back as text. */
 const IN_FLIGHT_MS = 2500
-/** "Juno, over to you" (or "your turn", "go ahead"): hands the debrief to Juno without touching the screen. */
+/** "Spark, over to you" (or "your turn", "go ahead"): hands the debrief to Spark without touching the screen. */
 const HANDOVER = /\b(?:juno|juneau|junior|jeno|jonno)\b[\s,.!:-]*(?:over to you|your turn|go ahead|please go ahead|you can (?:start|go|begin)|over to you now)|(?:over to you|your turn)[\s,.!-]*\b(?:juno|juneau|junior|jeno|jonno)\b/i
 /**
- * The speech model often hears "Juno" as something else ("you know"), so a line that is only "Over to you." / "Your turn." is
+ * The speech model often hears "Spark" as something else ("you know"), so a line that is only "Over to you." / "Your turn." is
  * accepted as the hand-over too. It has to be the whole line, so "…then I handed it over to you" never triggers it.
  */
 const HANDOVER_ALONE = /^\W*(?:(?:ok|okay|right|so|alright)\W+)?(?:over to you|your turn|go ahead|you can (?:start|go|begin)(?: now)?|over to you now)\W*$/i
@@ -130,11 +130,11 @@ const NOISE_FLOOR_MAX = 0.05
 const HEARD_MS = 350
 const NUDGE_AFTER_MS = 25000
 // Acknowledgements are always a short phrase, never a single word: the voice model renders a lone "Okay." unpredictably.
-/** A segment that is only one of Juno's own acknowledgements (heard back through the speakers) is not the advisor. */
+/** A segment that is only one of Spark's own acknowledgements (heard back through the speakers) is not the advisor. */
 const ACK_ECHO = /^(mm+[\s,-]*(h?m+)?[\s,]*(i see)?|okay,?\s*(got it)?|ok|right,?\s*(thank you|thanks)?|i see,?\s*(okay|thanks)?|alright,?\s*(got it)?|got it|uh[\s-]*huh|mhm)[.!,\s]*$/i
 /** Rough speaking speed (characters per second), used for caption timing when the audio's own timing isn't available. */
 const CPS: Record<LangId, number> = { en: 13.5, zh: 4.5, ms: 13, ta: 11 }
-/** Output devices that are headphones/earpieces: Juno's voice can't leak back into the microphone, so interruption is safe. */
+/** Output devices that are headphones/earpieces: Spark's voice can't leak back into the microphone, so interruption is safe. */
 const HEADSET = /head(set|phone)|airpods|earbuds?|earphones?|buds|bluetooth|beats|jabra|bose|wh-1000|wf-1000/i
 const BARGE_KEY = 'vi_juno_barge'
 type BargeMode = 'auto' | 'on' | 'off'
@@ -158,8 +158,8 @@ function firstMatch(voices: SpeechSynthesisVoice[], list: RegExp[]): SpeechSynth
 export type VoiceId = 'female' | 'male'
 
 /**
- * Directs a debrief in which Juno works with the advisor after a meeting: the advisor dictates freely, taps
- * "Done, over to Juno", and Juno says what it understood and asks a few short questions about what is missing,
+ * Directs a debrief in which Spark works with the advisor after a meeting: the advisor dictates freely, taps
+ * "Done, over to Spark", and Spark says what it understood and asks a few short questions about what is missing,
  * then reads back. It can only speak and listen — whatever happens next (starting the analysis) is a button only
  * the advisor can press.
  */
@@ -172,7 +172,7 @@ export function useJuno(voice: Voice) {
   const [line, setLine] = useState('')
   /** How long the debrief took, from the first word of dictation to the read-back (null until it is over). */
   const [elapsedMs, setElapsedMs] = useState<number | null>(null)
-  /** Fact-find readiness (estimate), updated with every reply from Juno. */
+  /** Fact-find readiness (estimate), updated with every reply from Spark. */
   const [readiness, setReadiness] = useState<FactFindReadiness | null>(null)
   const startedAt = useRef(0)
   const [revealed, setRevealed] = useState(0)
@@ -180,7 +180,7 @@ export function useJuno(voice: Voice) {
     try { return localStorage.getItem(MUTE_KEY) === '1' } catch { return false }
   })
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
-  /** Juno's neural voice (Azure OpenAI): null while we find out, then true/false. */
+  /** Spark's neural voice (Azure OpenAI): null while we find out, then true/false. */
   const [neural, setNeural] = useState<{ female: string; male: string } | null | false>(null)
   const neuralRef = useRef<{ female: string; male: string } | null | false>(null)
   neuralRef.current = neural
@@ -198,10 +198,10 @@ export function useJuno(voice: Voice) {
   const phrasesRef = useRef<JunoPhrases>(EN_PHRASES)
   phrasesRef.current = phrases
   const phrasesCache = useRef(new Map<LangId, JunoPhrases>())
-  /** What the advisor dictated before handing over; sent with every turn so Juno never asks about what was already said. */
+  /** What the advisor dictated before handing over; sent with every turn so Spark never asks about what was already said. */
   const dictationRef = useRef('')
 
-  // Interruption: the advisor can cut in while Juno is speaking. Automatic with headphones; the advisor can force it on or off.
+  // Interruption: the advisor can cut in while Spark is speaking. Automatic with headphones; the advisor can force it on or off.
   const [bargeMode, setBargeModeState] = useState<BargeMode>(() => {
     try { const v = localStorage.getItem(BARGE_KEY); return v === 'on' || v === 'off' ? v : 'auto' } catch { return 'auto' }
   })
@@ -222,11 +222,11 @@ export function useJuno(voice: Voice) {
   const idRef = useRef(0)
   /** Bumped whenever the conversation is reset or ended, so anything still in flight from before knows to stand down. */
   const gen = useRef(0)
-  const awaiting = useRef(false) // true while Juno is waiting for the advisor to answer
+  const awaiting = useRef(false) // true while Spark is waiting for the advisor to answer
   const pending = useRef('')
   const nudgeTimer = useRef<number | null>(null)
   const busy = useRef(false)
-  /** True while a full line from Juno is being spoken. */
+  /** True while a full line from Spark is being spoken. */
   const busyTalking = useRef(false)
   const seenSegments = useRef(0)
   const speakTimers = useRef<number[]>([])
@@ -240,11 +240,11 @@ export function useJuno(voice: Voice) {
   const inFlight = useRef(false)
   const acked = useRef(false)
   const ackIdx = useRef(0)
-  // The advisor carrying on while Juno is still working out its reply
+  // The advisor carrying on while Spark is still working out its reply
   const resumedMs = useRef(0)
   /** While the "Mm-hm" is playing its echo can reach the mic: it must not be mistaken for the advisor carrying on. */
   const ackUntil = useRef(0)
-  /** The question Juno just asked invites a long answer (so pauses are allowed to be longer). */
+  /** The question Spark just asked invites a long answer (so pauses are allowed to be longer). */
   const openQuestion = useRef(false)
   const late = useRef('')
 
@@ -266,7 +266,7 @@ export function useJuno(voice: Voice) {
     void junoVoiceStatus().then((st) => setNeural(st.enabled ? st.voices : false))
   }, [])
 
-  /** Juno's fixed lines in a language, from the server (cached). */
+  /** Spark's fixed lines in a language, from the server (cached). */
   const loadPhrases = useCallback(async (l: LangId): Promise<JunoPhrases> => {
     const hit = phrasesCache.current.get(l)
     if (hit) return hit
@@ -280,7 +280,7 @@ export function useJuno(voice: Voice) {
     return () => { alive = false }
   }, [lang, loadPhrases])
 
-  /** Choose the language (before or during the conversation): Juno's next lines are in it. */
+  /** Choose the language (before or during the conversation): Spark's next lines are in it. */
   const setLanguage = useCallback((l: LangId) => {
     langRef.current = l
     setLangState(l)
@@ -393,7 +393,7 @@ export function useJuno(voice: Voice) {
     if (neural) prewarm()
   }, [neural, voiceId, phrases, prewarm])
 
-  /** A very short spoken "Mm-hm" while Juno works out its reply — it is not part of the conversation record. */
+  /** A very short spoken "Mm-hm" while Spark works out its reply — it is not part of the conversation record. */
   const acknowledge = useCallback(() => {
     if (silentRef.current) return
     const g = gen.current
@@ -435,7 +435,7 @@ export function useJuno(voice: Voice) {
     speechSynthesis.speak(u)
   }, [])
 
-  /** Juno says something aloud (mic muted meanwhile), with captions paced to the speech. Resolves when finished. */
+  /** Spark says something aloud (mic muted meanwhile), with captions paced to the speech. Resolves when finished. */
   const speak = useCallback(
     (text: string, tone = 'warm', open?: boolean | null, canBarge = false) =>
       new Promise<void>((resolve) => {
@@ -529,7 +529,7 @@ export function useJuno(voice: Voice) {
         }
 
         if (neuralRef.current) {
-          // Juno's neural voice. Every sentence is requested at once, and played in order as each is ready.
+          // Spark's neural voice. Every sentence is requested at once, and played in order as each is ready.
           const clips = parts.map((p) => audioFor(p.text, tone))
           const playPart = async (i: number): Promise<void> => {
             if (finished || g !== gen.current) return finish()
@@ -578,7 +578,7 @@ export function useJuno(voice: Voice) {
     [addTurn, audioFor, sentences, stopAudio],
   )
 
-  /** After Juno finishes speaking: listen for the advisor's answer, nudging once if it stays quiet. */
+  /** After Spark finishes speaking: listen for the advisor's answer, nudging once if it stays quiet. */
   const listen = useCallback(
     (canNudge = true) => {
       const g = gen.current
@@ -613,11 +613,11 @@ export function useJuno(voice: Voice) {
     setStageBoth('wrapup')
     awaiting.current = false
     voiceApi.current.setMicMuted(true)
-    // Juno has read back and the advisor's last answer was committed long ago: nothing real is left in the buffer.
+    // Spark has read back and the advisor's last answer was committed long ago: nothing real is left in the buffer.
     voiceApi.current.stop(false) // the server finalises the profile and the last analysis; 'stopped' follows
   }, [setStageBoth])
 
-  /** Says Juno's line and carries on: listens for the advisor's answer, or finishes after the read-back. */
+  /** Says Spark's line and carries on: listens for the advisor's answer, or finishes after the read-back. */
   const deliver = useCallback(
     async (res: JunoTurnResponse, g: number, canBarge = !res.done) => {
       if (res.covered?.length) setCovered((c) => [...new Set([...c, ...res.covered])])
@@ -634,7 +634,7 @@ export function useJuno(voice: Voice) {
     [finishSession, listen, speak],
   )
 
-  /** The advisor has finished answering: ask the brain what Juno says next, then say it. */
+  /** The advisor has finished answering: ask the brain what Spark says next, then say it. */
   const respond = useCallback(
     async (answer: string) => {
       if (busy.current) return
@@ -647,7 +647,7 @@ export function useJuno(voice: Voice) {
       resumedMs.current = 0
       late.current = ''
       const t0 = performance.now()
-      // A short "Mm-hm" covers the moment Juno is working out its reply (only for a real answer).
+      // A short "Mm-hm" covers the moment Spark is working out its reply (only for a real answer).
       if (countWords(answer) >= 4) acknowledge()
       try {
         const res = await junoDebriefTurn({
@@ -658,14 +658,14 @@ export function useJuno(voice: Voice) {
         })
         if (g !== gen.current) return
         // Hold a ready reply until the advisor has been quiet long enough: a pause mid-answer is not an ending.
-        // With interruption on, a reply that comes a little early can simply be cut in on, so Juno responds sooner.
+        // With interruption on, a reply that comes a little early can simply be cut in on, so Spark responds sooner.
         const holdMs = (openQuestion.current ? HOLD_QUIET_OPEN_MS : HOLD_QUIET_MS) * (bargeRef.current ? 0.65 : 1)
         while (performance.now() - lastLoud.current < holdMs && performance.now() - t0 < HOLD_MAX_MS) {
           await new Promise((r) => window.setTimeout(r, 100))
           if (g !== gen.current) return
         }
         if (g !== gen.current) return
-        // The advisor carried on speaking while Juno was working out its reply: that reply answers half an
+        // The advisor carried on speaking while Spark was working out its reply: that reply answers half an
         // answer, so drop it, keep what they said, and keep listening for the rest.
         if (resumedMs.current >= 500 || late.current.trim()) {
           const merged = `${answer} ${late.current}`.trim()
@@ -698,7 +698,7 @@ export function useJuno(voice: Voice) {
   )
 
   /**
-   * The advisor has finished dictating and taps "Done, over to Juno": what was said is committed, Juno reads it,
+   * The advisor has finished dictating and taps "Done, over to Spark": what was said is committed, Spark reads it,
    * says what it understood, and asks its first question about what is missing.
    */
   const handOver = useCallback(async () => {
@@ -708,15 +708,15 @@ export function useJuno(voice: Voice) {
     awaiting.current = false
     setThinking(true)
     setStageBoth('discovery')
-    // Something to read while Juno thinks, so the first seconds never look idle.
+    // Something to read while Spark thinks, so the first seconds never look idle.
     setLine('Reading your notes…')
     setRevealed(0)
     const v0 = voiceApi.current
-    // The server gets ready for Juno's first line while the last words are still being transcribed.
+    // The server gets ready for Spark's first line while the last words are still being transcribed.
     if (v0.profile?.id) junoDebriefPrepare(v0.profile.id, [...v0.finalSegments, v0.partialText].join(' ').replace(/\s+/g, ' ').trim())
     v0.commitNow()
     v0.setShortAnswers(true) // and a one-word "No." must not be mistaken for background noise
-    v0.sendConversational(true) // from here on the advisor gives short answers to Juno's questions
+    v0.sendConversational(true) // from here on the advisor gives short answers to Spark's questions
     // The last words are still on their way back as text: wait for them, but only as long as they take
     // (at least half a second, then until nothing new has arrived for a moment; never more than 1.8 s).
     const t0 = performance.now()
@@ -733,14 +733,14 @@ export function useJuno(voice: Voice) {
       if (performance.now() - t0 >= 500 && performance.now() - changedAt >= 450 && !cur.partialText) break
     }
     const v = voiceApi.current
-    // The spoken hand-over phrase ("Juno, over to you") is not part of the notes.
+    // The spoken hand-over phrase ("Spark, over to you") is not part of the notes.
     dictationRef.current = [...v.finalSegments.filter((seg) => !HANDOVER_ALONE.test(seg)), v.partialText]
       .join(' ').replace(new RegExp(HANDOVER.source, 'gi'), ' ').replace(/\s+/g, ' ').trim()
     try {
       const res = await junoDebriefTurn({ profileId: v.profile?.id, dictation: dictationRef.current, turns: [], lang: langRef.current })
       if (g !== gen.current) return
       setThinking(false)
-      // Juno's first line (what it understood) is the one the advisor most needs to hear whole: it is not interruptible.
+      // Spark's first line (what it understood) is the one the advisor most needs to hear whole: it is not interruptible.
       await deliver(res, g, false)
     } catch {
       if (g !== gen.current) return
@@ -752,11 +752,11 @@ export function useJuno(voice: Voice) {
     }
   }, [deliver, listen, setStageBoth, speak])
 
-  // Hands-free: saying "Juno, over to you" in the dictation does the same as the button.
+  // Hands-free: saying "Spark, over to you" in the dictation does the same as the button.
   const { finalSegments: dictated } = voice
   useEffect(() => {
     if (stageRef.current !== 'dictate' || dictated.length === 0) return
-    // The speech model often splits "Juno, over to you" into two lines ("Juno." / "Over to you."), so the last two are read together.
+    // The speech model often splits "Spark, over to you" into two lines ("Spark." / "Over to you."), so the last two are read together.
     if (HANDOVER.test(dictated.slice(-2).join(' ')) || dictated.slice(-3).some((seg) => HANDOVER_ALONE.test(seg))) void handOver()
   }, [dictated, handOver])
 
@@ -777,7 +777,7 @@ export function useJuno(voice: Voice) {
     return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]
   }
 
-  /** The advisor has started talking over Juno: stop mid-sentence and listen. */
+  /** The advisor has started talking over Spark: stop mid-sentence and listen. */
   const barge = useCallback(() => {
     if (!busyTalking.current || !bargeable.current) return
     bargeable.current = false
@@ -803,7 +803,7 @@ export function useJuno(voice: Voice) {
     acked.current = false
   }, [])
 
-  // While Juno speaks the microphone is still measured: a voice clearly above Juno's own echo, for about 0.3 s, is an interruption.
+  // While Spark speaks the microphone is still measured: a voice clearly above Spark's own echo, for about 0.3 s, is an interruption.
   useEffect(() => {
     voiceApi.current.setRawAmpListener((amp) => {
       if (!busyTalking.current || !bargeable.current || !bargeRef.current) {
@@ -812,7 +812,7 @@ export function useJuno(voice: Voice) {
         return
       }
       if (performance.now() - lineStartedAt.current < 900) {
-        echoSamples.current.push(amp) // the first moments of the line show how loud Juno itself sounds in this room
+        echoSamples.current.push(amp) // the first moments of the line show how loud Spark itself sounds in this room
         return
       }
       const base = percentile(echoSamples.current, 0.7)
@@ -852,7 +852,7 @@ export function useJuno(voice: Voice) {
     if (finalSegments.length < seenSegments.current) seenSegments.current = 0
     const fresh = finalSegments.slice(seenSegments.current)
     seenSegments.current = finalSegments.length
-    // Only in the moments right after Juno's own "Mm-hm": otherwise a real "Okay." from the advisor is an answer.
+    // Only in the moments right after Spark's own "Mm-hm": otherwise a real "Okay." from the advisor is an answer.
     const echoWindow = performance.now() < ackUntil.current + 2500
     const isAck = (t: string) => ACK_ECHO.test(t.trim()) || phrasesRef.current.acks.some((a) => a.replace(/[\s.,!，。！]/g, '') === t.replace(/[\s.,!，。！]/g, ''))
     const realText = fresh.filter((t) => !(echoWindow && isAck(t)))
@@ -866,7 +866,7 @@ export function useJuno(voice: Voice) {
   // Microphone level: is the advisor speaking right now?
   useEffect(() => {
     if (busy.current && !busyTalking.current) {
-      // Juno is thinking and the advisor is talking again.
+      // Spark is thinking and the advisor is talking again.
       if (performance.now() > ackUntil.current && amplitude > Math.max(MIN_VOICE, noiseFloor.current * 2.4)) {
         resumedMs.current += 100
         lastLoud.current = performance.now()
@@ -936,9 +936,9 @@ export function useJuno(voice: Voice) {
     return () => window.clearInterval(id)
   }, [respond])
 
-  // Juno opens the conversation as soon as the microphone is live.
+  // Spark opens the conversation as soon as the microphone is live.
   useEffect(() => {
-    // Juno opens by listening: the advisor dictates freely, and Juno only speaks once they hand over.
+    // Spark opens by listening: the advisor dictates freely, and Spark only speaks once they hand over.
     if (stageRef.current === 'connecting' && status === 'listening') {
       setStageBoth('dictate')
       startedAt.current = Date.now()
@@ -997,7 +997,7 @@ export function useJuno(voice: Voice) {
     await voiceApi.current.start('juno-debrief')
   }, [resetState, loadPhrases, prewarm, setStageBoth])
 
-  /** End now: Juno stops talking and listening immediately; what was said so far is kept for the advisor to review. */
+  /** End now: Spark stops talking and listening immediately; what was said so far is kept for the advisor to review. */
   const end = useCallback(() => {
     gen.current++ // everything still in flight (a nudge, a reply, a pending answer) stands down
     clearTimers()

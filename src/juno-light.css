@@ -1,6 +1,6 @@
-/* ── Juno stage, light theme ───────────────────────────────────────────────────────────────────────
+/* ── Spark stage, light theme ───────────────────────────────────────────────────────────────────────
    Daylight rather than a dimmed dark mode: a white ground, a slow rose / lilac / peach aurora, frosted white panels with a faint rose
-   shadow, and a glass-pearl orb that floats over its own reflection. Colour keeps its meaning: teal = heard, rose = Juno, violet = thinking.
+   shadow, and a glass-pearl orb that floats over its own reflection. Colour keeps its meaning: teal = heard, rose = Spark, violet = thinking.
    Dark mode is untouched (it keeps the rules in juno.css). */
 :root[data-theme='light'] .jn { --you: #0b6b50; --ground: #fffafb; --mesh: 0.34; --ink: #1b1220; --dim: rgba(27, 18, 32, 0.64); --faint: rgba(27, 18, 32, 0.46);
   --glass: rgba(255, 255, 255, 0.78); --edge: rgba(27, 18, 32, 0.1);

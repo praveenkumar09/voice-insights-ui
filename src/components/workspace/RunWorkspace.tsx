@@ -31,7 +31,7 @@ interface Props {
 
 /**
  * The suggestion page, in four places instead of five stages and a dozen panels. Each thing lives in exactly one of them:
- *  - Suggestion: the answer (the ranked products and why), with the agents' progress while it lands, and "ask Juno why" beneath it.
+ *  - Suggestion: the answer (the ranked products and why), with the agents' progress while it lands, and "ask Spark why" beneath it.
  *  - With the customer: the customer-facing pages — Goals & plan and the take-home proposal.
  *  - After the meeting: the advice pack (fact-find, record of advice, follow-up, CRM, next meeting).
  *  - Behind the scenes: how the agents decided, live vs final (only when there was a live conversation) and the full advisory report.
@@ -70,7 +70,7 @@ export function RunWorkspace({ runId, steps, profile, watch = false, runFailed }
     if (watch && reportReady) setElapsed(Math.max(1, Math.round((Date.now() - startedAt.current) / 1000)))
   }, [watch, reportReady])
 
-  // Hands-free: with Juno mode on, say that the suggestion is ready (once, only for a run that was being watched).
+  // Hands-free: with Spark mode on, say that the suggestion is ready (once, only for a run that was being watched).
   useEffect(() => {
     if (!watch || !reportReady || announced.current) return
     announced.current = true
@@ -82,7 +82,7 @@ export function RunWorkspace({ runId, steps, profile, watch = false, runFailed }
 
   const status = runFailed ? 'failed' : reportReady ? 'complete' : running || doneCount > 0 ? 'running' : 'pending'
 
-  // What Juno can open. The names stay as plain as what the advisor would say; each lands on one tab (and one view inside it).
+  // What Spark can open. The names stay as plain as what the advisor would say; each lands on one tab (and one view inside it).
   const openHow = (v: HowView = 'agents') => { setHowView(v); setHowOpen(true) }
   const STAGES: Record<string, () => void> = {
     suggestion: () => { setHowOpen(false); setTab('suggestion') },
@@ -97,7 +97,7 @@ export function RunWorkspace({ runId, steps, profile, watch = false, runFailed }
   const TAB_LABEL: Record<Tab, string> = { suggestion: 'Suggestion', customer: 'Proposal', after: 'Advice Pack' }
   useJunoScreen(`The suggestion workspace${name ? ` for ${name}` : ''}, ${howOpen ? `the How ${AGENT_NAME} decided side panel` : `${TAB_LABEL[tab]} tab`}`)
   useJunoAction({
-    id: 'open_stage', description: 'Open Suggestion, Goals and plan, Customer proposal, Advice pack, Advisory report, or how Juno decided (Analysis, Agents' + (hasLive ? ', Live vs final' : '') + ')', risk: 'open',
+    id: 'open_stage', description: 'Open Suggestion, Goals and plan, Customer proposal, Advice pack, Advisory report, or how Spark decided (Analysis, Agents' + (hasLive ? ', Live vs final' : '') + ')', risk: 'open',
     params: { stage: { type: 'enum', values: Object.keys(STAGES) } },
     run: (p) => { STAGES[p.stage]?.() },
   })
@@ -149,7 +149,7 @@ export function RunWorkspace({ runId, steps, profile, watch = false, runFailed }
                   {changedSinceLive && (
                     <div className="ws__changed" role="note">
                       <span aria-hidden>⚠</span>
-                      <div><b>One change since the live conversation.</b> Juno first leaned towards {liveTop}; after the full analysis {finalTop} came out on top. <button type="button" onClick={() => openHow('live')}>See the comparison</button></div>
+                      <div><b>One change since the live conversation.</b> Spark first leaned towards {liveTop}; after the full analysis {finalTop} came out on top. <button type="button" onClick={() => openHow('live')}>See the comparison</button></div>
                     </div>
                   )}
                   {runId && <AskJuno runId={runId} customerName={name} />}

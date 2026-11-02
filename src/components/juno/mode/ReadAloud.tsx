@@ -8,7 +8,7 @@ const PACK_DOCS: Record<string, ReadDoc> = {
 }
 
 /**
- * What Juno can read aloud, from anywhere in the app, for the suggestion the advisor last looked at: "Hey Juno, brief me" (a 90-second
+ * What Spark can read aloud, from anywhere in the app, for the suggestion the advisor last looked at: "Hey Spark, brief me" (a 90-second
  * summary, the default), "read the full report", or a part of the advice pack. Reading only reads; it changes nothing.
  */
 export function ReadAloudActions({ enabled }: { enabled: boolean }) {

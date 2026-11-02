@@ -10,22 +10,22 @@ import { pageButtonActions } from '../../../utils/pageButtons'
 import { voiceLock } from '../../../utils/voiceLock'
 
 /**
- * Juno mode: say "Hey Juno" and Juno handles what you ask on the current screen, like Siri. It keeps one listen-only speech session
+ * Spark mode: say "Hey Spark" and Spark handles what you ask on the current screen, like Siri. It keeps one listen-only speech session
  * open (the same Azure speech service as everywhere else; nothing is saved), looks for the wake words in what is heard, works out which
- * action on screen was asked for, and does it. Opening or reading something just happens, with Juno saying so. Anything that changes
- * data is asked about first ("Copy the message?") and waits for a yes. Juno never presses Approve or sends anything: it points at the
+ * action on screen was asked for, and does it. Opening or reading something just happens, with Spark saying so. Anything that changes
+ * data is asked about first ("Copy the message?") and waits for a yes. Spark never presses Approve or sends anything: it points at the
  * button and says so. The mode steps aside whenever a debrief, rehearsal or Ask conversation needs the microphone, and switches itself
  * off after a quiet quarter of an hour.
  */
 export type JunoPhase = 'off' | 'consent' | 'starting' | 'listening' | 'awake' | 'thinking' | 'speaking' | 'confirming' | 'paused' | 'reading'
 
-/** One thing Juno can do on a screen. Screens register theirs while they are showing, so the list is always what is possible right now. */
+/** One thing Spark can do on a screen. Screens register theirs while they are showing, so the list is always what is possible right now. */
 export interface JunoAction extends JunoActionSpec {
-  /** Does it. May return a sentence for Juno to say afterwards (a result, or why it could not). */
+  /** Does it. May return a sentence for Spark to say afterwards (a result, or why it could not). */
   run: (params: Record<string, string>) => Promise<string | void> | string | void
 }
 
-/** What Juno is reading aloud right now. */
+/** What Spark is reading aloud right now. */
 export interface ReadingState {
   title: string
   heading: string
@@ -38,7 +38,7 @@ export interface ReadingState {
 
 interface Ctx {
   enabled: boolean
-  /** Set while Juno reads a briefing, the report or part of the advice pack aloud (works with Juno mode off too). */
+  /** Set while Spark reads a briefing, the report or part of the advice pack aloud (works with Spark mode off too). */
   reading: ReadingState | null
   /** Starts reading. Rejects with a plain message if there is nothing to read. */
   read: (runId: string, doc: ReadDoc, name?: string) => Promise<void>
@@ -46,7 +46,7 @@ interface Ctx {
   phase: JunoPhase
   /** What the advisor is saying right now (before it is final). */
   caption: string
-  /** The line Juno is saying or showing. */
+  /** The line Spark is saying or showing. */
   message: string
   amplitude: number
   /** Why the mode switched itself off, or a one-line state worth showing. */
@@ -58,7 +58,7 @@ interface Ctx {
   answer: (yes: boolean) => void
   /** What can be said on this screen, in plain words. */
   examples: () => string[]
-  /** Juno says something unprompted (the suggestion is ready), only if it is idle and listening: never over a reading or a conversation. */
+  /** Spark says something unprompted (the suggestion is ready), only if it is idle and listening: never over a reading or a conversation. */
   announce: (text: string) => void
   register: (id: string, get: () => JunoAction | null) => () => void
   registerScreen: (key: string, label: string) => () => void
@@ -72,7 +72,7 @@ export function useJunoMode(): Ctx {
   return c
 }
 
-/** Offer one action to Juno while the calling component is mounted. Pass null while it is not possible. */
+/** Offer one action to Spark while the calling component is mounted. Pass null while it is not possible. */
 export function useJunoAction(action: JunoAction | null) {
   const ctx = useContext(JunoModeContext)
   const ref = useRef(action)
@@ -84,13 +84,13 @@ export function useJunoAction(action: JunoAction | null) {
   }, [ctx, id])
 }
 
-/** Say something unprompted through Juno mode, if it is on and idle. A no-op otherwise (and outside the provider). */
+/** Say something unprompted through Spark mode, if it is on and idle. A no-op otherwise (and outside the provider). */
 export function useJunoAnnounce(): (text: string) => void {
   const ctx = useContext(JunoModeContext)
   return ctx ? ctx.announce : () => {}
 }
 
-/** Tell Juno where the advisor is ("the debrief review, Summary tab"), so a request can be read in context. */
+/** Tell Spark where the advisor is ("the debrief review, Summary tab"), so a request can be read in context. */
 export function useJunoScreen(label: string | null) {
   const ctx = useContext(JunoModeContext)
   const key = useId()
@@ -106,7 +106,7 @@ const RECYCLE_MS = 12 * 60 * 1000
 const AWAKE_WAIT_MS = 9000
 const CONFIRM_WAIT_MS = 10000
 const UNMUTE_DELAY_MS = 250
-/** After a bare "Hey Juno" while reading, the next line is taken as the command for this long. */
+/** After a bare "Hey Spark" while reading, the next line is taken as the command for this long. */
 const ARMED_MS = 6000
 /** How long the reading stays paused after the advisor starts speaking over it, before it carries on by itself. */
 const DUCK_MS = 4500
@@ -151,7 +151,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
   const readCommit = useRef<number | null>(null)
   const armedUntil = useRef(0)
   const duckTimer = useRef<number | null>(null)
-  /** What Juno itself said or is reading lately: a line that merely repeats it is the speaker leaking into the microphone, not the advisor. */
+  /** What Spark itself said or is reading lately: a line that merely repeats it is the speaker leaking into the microphone, not the advisor. */
   const spokenRecently = useRef<string[]>([])
   const readingText = useRef<string[]>([])
 
@@ -175,10 +175,10 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
   const examples = useCallback(() => available().filter((a) => a.id !== 'turn_off_juno_mode').slice(0, 8).map((a) => a.description), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── speaking and listening, one at a time ──
-  /** Juno speaks; the microphone is closed meanwhile, so it never hears itself, and reopened afterwards. */
+  /** Spark speaks; the microphone is closed meanwhile, so it never hears itself, and reopened afterwards. */
   const say = useCallback((text: string) => {
     const p = (async () => {
-      // Another voice feature took the microphone meanwhile (e.g. Juno pressed "Start debrief"): stay paused, say nothing.
+      // Another voice feature took the microphone meanwhile (e.g. Spark pressed "Start debrief"): stay paused, say nothing.
       if (phaseRef.current === 'paused' || voiceLock.busy()) return
       setMessage(text)
       spokenRecently.current = [text, ...spokenRecently.current].slice(0, 3)
@@ -214,12 +214,12 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     lastActivity.current = Date.now()
     setMessage('')
     if (readingRef.current) return // a reading is under way: it keeps the stage
-    // A command that opened a voice feature (it now holds the microphone) leaves Juno paused, not listening.
+    // A command that opened a voice feature (it now holds the microphone) leaves Spark paused, not listening.
     if (enabledRef.current && voiceLock.busy()) { setPhase('paused'); return }
     if (enabledRef.current && phaseRef.current !== 'paused') setPhase('listening')
   }, [setPhase])
 
-  /** Juno speaks up on its own, but only when idle and listening, so it never talks over a reading, a command or another voice feature. */
+  /** Spark speaks up on its own, but only when idle and listening, so it never talks over a reading, a command or another voice feature. */
   const announce = useCallback((text: string) => {
     if (!enabledRef.current || busy.current || readingRef.current || phaseRef.current !== 'listening' || voiceLock.busy()) return
     busy.current = true
@@ -282,7 +282,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
 
     const playing = (idx: number, paused = false) => setReading({ title, heading: sections[idx].heading, index: idx, total: sections.length, paused, doc })
     if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: data.title, artist: 'Juno', album: name ?? 'AIA Voice Insights' })
+      navigator.mediaSession.metadata = new MediaMetadata({ title: data.title, artist: 'Spark', album: name ?? 'AIA Spark' })
       const set = (a: MediaSessionAction, h: () => void) => { try { navigator.mediaSession.setActionHandler(a, h) } catch { /* not supported */ } }
       set('play', () => readControl('resume'))
       set('pause', () => readControl('pause'))
@@ -300,12 +300,12 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
       if (enabledRef.current) {
         setPhase('reading')
         capture.setMicMuted(false)
-        // Juno's voice fills the room while it reads, so the server never finds a pause to end an utterance on: cutting the audio every
+        // Spark's voice fills the room while it reads, so the server never finds a pause to end an utterance on: cutting the audio every
         // 1.5 s means a spoken "stop" is heard within a couple of seconds.
         if (readCommit.current) window.clearInterval(readCommit.current)
         readCommit.current = window.setInterval(() => capture.commitNow(), 1500)
-        // Duck on speech, as a voice assistant does: Juno's voice leaks into the mic whatever the echo cancellation, and the speech model cannot
-        // pick "Hey Juno, stop reading" out of a mix. So when the mic level rises well above Juno's own leakage for a third of a second, the
+        // Duck on speech, as a voice assistant does: Spark's voice leaks into the mic whatever the echo cancellation, and the speech model cannot
+        // pick "Hey Spark, stop reading" out of a mix. So when the mic level rises well above Spark's own leakage for a third of a second, the
         // reading pauses at once and the mic hears only the advisor. A control stops or moves it; anything else, it carries on after a moment.
         let base = 0
         let run = 0
@@ -355,7 +355,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     try {
       const actions = available()
       const own: JunoAction = {
-        id: 'turn_off_juno_mode', description: 'Turn Juno mode off', risk: 'open',
+        id: 'turn_off_juno_mode', description: 'Turn Spark mode off', risk: 'open',
         run: () => { window.setTimeout(() => turnOff(), 900); return 'Okay, I’ll stop listening.' },
       }
       const all = [...actions, own]
@@ -393,7 +393,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
         return void (await say(typeof done === 'string' && done ? done : 'Done.'))
       }
 
-      // Opening, pointing, reading: do it at once. A chime says "heard you" with no wait for a spoken reply; Juno speaks only when
+      // Opening, pointing, reading: do it at once. A chime says "heard you" with no wait for a spoken reply; Spark speaks only when
       // there is something to hear (a reading, a problem), not to repeat what the screen now shows.
       chime('done')
       let result: string | void
@@ -443,12 +443,12 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
         // While reading, a short plain command ("pause", "next") is enough; anything else needs the name.
         const wakeR = parseWake(text)
         const restLen = wakeR ? wakeR.rest.replace(/[^\p{L}\p{N}]/gu, '').length : 0
-        // The audio is cut every 1.5 s while reading, so "Hey Juno," and "stop reading" can arrive as two lines: a bare wake word arms the next
+        // The audio is cut every 1.5 s while reading, so "Hey Spark," and "stop reading" can arrive as two lines: a bare wake word arms the next
         // few seconds for a control. A plain "stop" needs no wake word (the mic is echo-cancelled, and only these exact phrases count).
         if (wakeR && restLen < 3) {
           armedUntil.current = Date.now() + ARMED_MS
           // Its name is the signal that a command follows: hold the reading at once so the command ("stop", "next") is heard in a quiet
-          // room, not over Juno's own voice. If nothing follows, the reading carries on by itself.
+          // room, not over Spark's own voice. If nothing follows, the reading carries on by itself.
           const job = readJob.current
           if (job && !readingRef.current?.paused) {
             job.player?.pause()
@@ -476,7 +476,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
   }, [capture.finalSegments, awaken, handleCommand, readControl])
 
   // Tell the speech service what can be said on this screen (it then picks the nearest real command instead of inventing words), and
-  // have the lines Juno says most already fetched.
+  // have the lines Spark says most already fetched.
   useEffect(() => {
     if (!enabled) return
     prewarmSpeech(['Done.'])
@@ -557,7 +557,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
       // The connection dropped: try again, but not in a loop.
       const now = Date.now()
       restarts.current = [...restarts.current.filter((t) => now - t < 60000), now]
-      if (restarts.current.length > 4) return turnOff('Juno mode turned off: the microphone connection keeps dropping.')
+      if (restarts.current.length > 4) return turnOff('Spark mode turned off: the microphone connection keeps dropping.')
       window.setTimeout(() => { if (enabledRef.current && !busy.current && phaseRef.current !== 'paused') { capture.reset(); startListening() } }, 1500)
     }
   }, [capture.status]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -583,7 +583,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
   useEffect(() => {
     if (!enabled) return
     const t = window.setInterval(() => {
-      if (Date.now() - lastActivity.current > IDLE_OFF_MS) turnOff('Juno mode turned itself off after 15 quiet minutes.')
+      if (Date.now() - lastActivity.current > IDLE_OFF_MS) turnOff('Spark mode turned itself off after 15 quiet minutes.')
     }, 30000)
     const r = window.setInterval(() => {
       if (enabledRef.current && phaseRef.current === 'listening' && !busy.current) { capture.reset(); startListening() }
@@ -591,7 +591,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     return () => { window.clearInterval(t); window.clearInterval(r) }
   }, [enabled, capture, startListening, turnOff])
 
-  // Escape stops whatever Juno is doing.
+  // Escape stops whatever Spark is doing.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || !enabledRef.current) return

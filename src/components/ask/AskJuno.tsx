@@ -1,3 +1,4 @@
+import { SparkBot, type SparkMode } from '../brand/SparkBot'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AskSource } from '../../api/client'
 import { useAskJuno, type AskMessage, type AskPhase } from '../../hooks/useAskJuno'
@@ -11,23 +12,23 @@ interface Props {
 }
 
 const STATUS: Record<AskPhase, string> = {
-  off: 'Tap to talk to Juno',
+  off: 'Tap to talk to Spark',
   starting: 'Getting ready…',
   ready: 'Tap to ask something',
   listening: 'Listening — ask away',
   hearing: 'Listening…',
   thinking: 'Thinking…',
-  speaking: 'Juno is speaking',
+  speaking: 'Spark is speaking',
 }
 
-const ORB: Record<AskPhase, string> = {
-  off: '',
-  starting: ' jn__orb--thinking',
-  ready: '',
-  listening: ' jn__orb--listening',
-  hearing: ' jn__orb--listening',
-  thinking: ' jn__orb--thinking',
-  speaking: ' jn__orb--speaking',
+const BOT_MODE: Record<AskPhase, SparkMode> = {
+  off: 'idle',
+  starting: 'thinking',
+  ready: 'idle',
+  listening: 'listening',
+  hearing: 'listening',
+  thinking: 'thinking',
+  speaking: 'speaking',
 }
 
 /** A factual-sounding sentence with no source behind it: marked, so it is never mistaken for something the file says. */
@@ -46,7 +47,7 @@ function Icon({ kind }: { kind: AskSource['kind'] }) {
 }
 
 /**
- * "Talk it through with Juno": the advisor questions the suggestions out loud and Juno answers like a colleague who was in the
+ * "Talk it through with Spark": the advisor questions the suggestions out loud and Spark answers like a colleague who was in the
  * room, from this customer's file and the product documents, with the source of each statement one tap away.
  */
 export function AskJuno({ runId, customerName }: Props) {
@@ -57,7 +58,7 @@ export function AskJuno({ runId, customerName }: Props) {
   const [allChips, setAllChips] = useState<Set<string>>(new Set())
   const threadRef = useRef<HTMLDivElement>(null)
 
-  // Keep the newest words in view as Juno speaks.
+  // Keep the newest words in view as Spark speaks.
   useEffect(() => {
     const el = threadRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
@@ -107,12 +108,12 @@ export function AskJuno({ runId, customerName }: Props) {
     const labels = chipLabels(sources)
     return (
       <div key={m.id} className={`ask__msg ask__msg--juno${m.error ? ' is-error' : ''}`}>
-        <span className="ask__who"><i aria-hidden /> Juno</span>
-        {shown.length === 0 && !m.error && !m.done && <span className="ask__typing" aria-label="Juno is thinking"><i /><i /><i /></span>}
+        <span className="ask__who"><i aria-hidden /> Spark</span>
+        {shown.length === 0 && !m.error && !m.done && <span className="ask__typing" aria-label="Spark is thinking"><i /><i /><i /></span>}
         {shown.length > 0 && (
           <p aria-live="polite">
             {shown.map((s) => (
-              <span key={s.key} className={`ask__sentence${open && s.sources.some((x) => x.id === open.id) ? ' is-cited' : ''}${isUnsourced(s.text, s.sources) || s.figures === false ? ' is-unsourced' : ''}`} title={s.figures === false ? 'This includes a figure that is not in the file or the documents — please check it' : isUnsourced(s.text, s.sources) ? 'Juno could not point to a source in the file for this' : undefined}>{s.text} </span>
+              <span key={s.key} className={`ask__sentence${open && s.sources.some((x) => x.id === open.id) ? ' is-cited' : ''}${isUnsourced(s.text, s.sources) || s.figures === false ? ' is-unsourced' : ''}`} title={s.figures === false ? 'This includes a figure that is not in the file or the documents — please check it' : isUnsourced(s.text, s.sources) ? 'Spark could not point to a source in the file for this' : undefined}>{s.text} </span>
             ))}
             {m.interrupted && <em className="ask__cut"> — you cut in</em>}
           </p>
@@ -143,28 +144,28 @@ export function AskJuno({ runId, customerName }: Props) {
   }
 
   return (
-    <section className={`jn ask${live ? ' is-live' : ''}${k.phase === 'listening' || k.phase === 'hearing' ? ' jn--listening' : k.phase === 'thinking' ? ' jn--thinking' : ''}`} aria-label="Ask Juno about this suggestion">
+    <section className={`jn ask${live ? ' is-live' : ''}${k.phase === 'listening' || k.phase === 'hearing' ? ' jn--listening' : k.phase === 'thinking' ? ' jn--thinking' : ''}`} aria-label="Ask Spark about this suggestion">
       <div className="jn__mesh" />
       <div className="jn__grid" />
 
       <header className="jn__bar ask__bar">
         <div className="jn__brand">
-          <span className="jn__mark" aria-hidden><i /></span>
+          <span className="jn__mark" aria-hidden><SparkBot variant="mark" /></span>
           <div>
-            <b>Ask Juno about this suggestion</b>
+            <b>Ask Spark about this suggestion</b>
             <small>Why was a product picked? What if something changes? Ask out loud or type.</small>
           </div>
         </div>
         <span />
         <div className="ask__tools">
-          <button className={`jn__pill${k.handsFree ? ' is-on' : ''}`} aria-pressed={k.handsFree} onClick={() => k.setHandsFree(!k.handsFree)} title="Juno starts listening again by itself after each answer">
+          <button className={`jn__pill${k.handsFree ? ' is-on' : ''}`} aria-pressed={k.handsFree} onClick={() => k.setHandsFree(!k.handsFree)} title="Spark starts listening again by itself after each answer">
             Hands-free
           </button>
-          <button className={`jn__pill${k.voiceOn ? ' is-on' : ''}`} aria-pressed={k.voiceOn} onClick={() => k.setVoiceOn(!k.voiceOn)} title="Hear Juno's answers">
+          <button className={`jn__pill${k.voiceOn ? ' is-on' : ''}`} aria-pressed={k.voiceOn} onClick={() => k.setVoiceOn(!k.voiceOn)} title="Hear Spark's answers">
             {k.voiceOn ? 'Voice on' : 'Voice off'}
           </button>
           {k.voiceOn && (
-            <span className="jn__seg" role="group" aria-label="Juno's voice">
+            <span className="jn__seg" role="group" aria-label="Spark's voice">
               <button className={k.voiceKind === 'female' ? 'is-on' : ''} onClick={() => k.setVoiceKind('female')}>Coral</button>
               <button className={k.voiceKind === 'male' ? 'is-on' : ''} onClick={() => k.setVoiceKind('male')}>Ash</button>
             </span>
@@ -173,15 +174,11 @@ export function AskJuno({ runId, customerName }: Props) {
       </header>
 
       <div className="ask__body">
-        {/* Presence: the orb, what Juno is doing, what the advisor is saying */}
+        {/* Presence: the orb, what Spark is doing, what the advisor is saying */}
         <div className="ask__presence">
           <button className="ask__orb-btn" onClick={k.tapOrb} aria-label={`${STATUS[k.phase]}. ${primary}`}>
-            <span className={`jn__orb${ORB[k.phase]}`} style={{ ['--lvl' as string]: k.phase === 'listening' || k.phase === 'hearing' ? level : k.phase === 'speaking' ? 0.5 : 0 }}>
-              <span className="jn__orb-halo" />
-              <span className="jn__orb-ring jn__orb-ring--1" />
-              <span className="jn__orb-ring jn__orb-ring--2" />
-              <span className="jn__orb-ring jn__orb-ring--3" />
-              <span className="jn__orb-core"><span className="jn__orb-swirl" /><span className="jn__orb-gloss" /></span>
+            <span className="sb-stage">
+              <SparkBot mode={BOT_MODE[k.phase]} level={k.phase === 'listening' || k.phase === 'hearing' ? Math.min(1, level * 3) : 0} />
             </span>
           </button>
           <div className="ask__status" aria-live="polite">{STATUS[k.phase]}</div>
@@ -197,12 +194,12 @@ export function AskJuno({ runId, customerName }: Props) {
             <button className="ask__primary" onClick={k.tapOrb} disabled={k.phase === 'starting'}>{primary}</button>
             {live && <button className="jn__ghost ask__end" onClick={k.end}>End conversation</button>}
           </div>
-          {!k.neuralVoice && k.voiceOn && <p className="ask__note">Juno’s natural voice isn’t available right now; the browser’s voice is used instead.</p>}
+          {!k.neuralVoice && k.voiceOn && <p className="ask__note">Spark’s natural voice isn’t available right now; the browser’s voice is used instead.</p>}
         </div>
 
         {/* The conversation */}
         <div className="ask__side">
-          <div className="ask__thread" ref={threadRef} role="log" aria-label="Conversation with Juno">
+          <div className="ask__thread" ref={threadRef} role="log" aria-label="Conversation with Spark">
             {k.earlier.length > 0 && (
               <button className="ask__earlier" onClick={() => setShowEarlier((v) => !v)} aria-expanded={showEarlier}>
                 {showEarlier ? 'Hide' : 'Show'} earlier in this discussion ({k.earlier.filter((m) => m.role === 'advisor').length})
@@ -211,7 +208,7 @@ export function AskJuno({ runId, customerName }: Props) {
             {showEarlier && k.earlier.map(renderMessage)}
             {!hasThread && (
               <div className="ask__msg ask__msg--juno ask__msg--intro">
-                <span className="ask__who"><i aria-hidden /> Juno</span>
+                <span className="ask__who"><i aria-hidden /> Spark</span>
                 <p>I was in the room when the agents worked this out. Ask me why I suggested what I did, or “what if…” something about {name} were different — I’ll answer from {name}’s file and the product documents, and I’ll tell you plainly when something isn’t there.</p>
               </div>
             )}
@@ -228,11 +225,11 @@ export function AskJuno({ runId, customerName }: Props) {
           )}
 
           <form className="ask__type" onSubmit={submitTyped}>
-            <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Or type a question…" aria-label="Type a question for Juno" maxLength={500} />
+            <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Or type a question…" aria-label="Type a question for Spark" maxLength={500} />
             <button type="submit" disabled={!typed.trim() || busy}>Ask</button>
             {hasThread && <button type="button" className="ask__new" onClick={k.newDiscussion} title="Clear this discussion and start again">New discussion</button>}
           </form>
-          <p className="ask__foot">Juno suggests; you decide. Answers come from this customer’s file and the product documents, and this discussion is saved with the suggestion.</p>
+          <p className="ask__foot">Spark suggests; you decide. Answers come from this customer’s file and the product documents, and this discussion is saved with the suggestion.</p>
         </div>
       </div>
     </section>

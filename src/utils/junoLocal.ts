@@ -3,7 +3,7 @@ import type { JunoActionSpec } from '../api/client'
 /**
  * What can be said right now, and recognising the plain ones without asking the model.
  *
- * Most spoken requests are plain ("open follow-up", "switch to debrief with Juno", "go home"). Sending those to the language model costs
+ * Most spoken requests are plain ("open follow-up", "switch to debrief with Spark", "go home"). Sending those to the language model costs
  * two to four seconds for nothing, so a request that is clearly one listed action, with nothing left over, is matched here. Anything
  * odd (a question, a negative, two possible actions, words we do not know) goes to the model as before.
  */
@@ -11,7 +11,7 @@ import type { JunoActionSpec } from '../api/client'
 const norm = (s: string) => s.toLowerCase().replace(/[’']/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
 
 const FILLER = new Set(('please can could you would will i want like need to go open show me switch change take bring the a an tab screen mode page now ' +
-  'just view on in into set it lets let see hey ok okay thanks thank juno for of and then up back there that this my click press tap hit push select choose button').split(' '))
+  'just view on in into set it lets let see hey ok okay thanks thank juno spark for of and then up back there that this my click press tap hit push select choose button').split(' '))
 
 const NEGATIVE = /\b(no|not|dont|do not|never|cancel|stop|undo|without|instead)\b/
 
@@ -39,7 +39,7 @@ export interface LocalMatch { action: JunoActionSpec; params: Record<string, str
 export function matchLocal(utterance: string, actions: JunoActionSpec[]): LocalMatch | null {
   const u = norm(utterance)
   if (!u || u.split(' ').length > 8 || NEGATIVE.test(u)) return null
-  const exact: LocalMatch[] = [] // a listed choice was named in full ("follow-up", "debrief with Juno")
+  const exact: LocalMatch[] = [] // a listed choice was named in full ("follow-up", "debrief with Spark")
   const loose: LocalMatch[] = [] // every word of the request appears in an action's description
 
   for (const a of actions) {

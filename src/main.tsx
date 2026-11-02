@@ -22,6 +22,8 @@ import './junomode.css'
 import './review-polish.css'
 import './workspace-polish.css'
 import './drawer.css'
+import './spark-login.css'
+import './spark-bot.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

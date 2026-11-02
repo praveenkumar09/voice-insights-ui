@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * The suggestion run the advisor last looked at, remembered so Juno can brief them on it from anywhere in the app ("Hey Juno, brief me")
+ * The suggestion run the advisor last looked at, remembered so Spark can brief them on it from anywhere in the app ("Hey Spark, brief me")
  * without having to be on that page.
  */
 export interface LastRun {

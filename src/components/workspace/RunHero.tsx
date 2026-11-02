@@ -14,7 +14,7 @@ interface Props {
   total: number
   /** Seconds the analysis has taken — only known for a run watched live. */
   elapsed: number | null
-  /** Opens the "How Juno decided" side panel. */
+  /** Opens the "How Spark decided" side panel. */
   onOpenHow?: () => void
 }
 

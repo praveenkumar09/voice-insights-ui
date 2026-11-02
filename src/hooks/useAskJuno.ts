@@ -4,12 +4,12 @@ import { askJuno, cancelWhatIf, clearAskHistory, getAskHistory, getAskStarters, 
 import { useVoiceCapture } from './useVoiceCapture'
 
 /**
- * Talking a suggestion through with Juno, out loud.
+ * Talking a suggestion through with Spark, out loud.
  *
- * The conversation is a loop: Juno listens, notices when the advisor has finished their question (the voice goes quiet),
+ * The conversation is a loop: Spark listens, notices when the advisor has finished their question (the voice goes quiet),
  * sends it, and speaks the answer one sentence at a time as it is being written, so the first words come back while the rest
- * is still being thought. Pressing the orb while Juno talks interrupts it at once. A short "Mm, let me think" covers the pause
- * when the answer is slow to start. While Juno speaks the microphone is muted so it never hears itself.
+ * is still being thought. Pressing the orb while Spark talks interrupts it at once. A short "Mm, let me think" covers the pause
+ * when the answer is slow to start. While Spark speaks the microphone is muted so it never hears itself.
  */
 export type AskPhase = 'off' | 'starting' | 'ready' | 'listening' | 'hearing' | 'thinking' | 'speaking'
 
@@ -17,7 +17,7 @@ export interface AskSentence {
   key: string
   text: string
   sources: AskSource[]
-  /** False when the sentence states a figure that is nowhere in the file (the server checks every number Juno says). */
+  /** False when the sentence states a figure that is nowhere in the file (the server checks every number Spark says). */
   figures?: boolean
   /** A spoken sentence appears on screen when its audio starts, so the words and the voice stay together. */
   shown: boolean
@@ -51,7 +51,7 @@ const FALLBACK_SILENCE_MS = 4500
 const MIN_SPEECH_MS = 450          // a shorter sound is a cough or a click, not a question
 const FINAL_WAIT_MS = 4500         // how long to wait for the words of a question to come back from the speech model
 const FINAL_SETTLE_MS = 900        // ...and for a further part of it, if the advisor paused mid-question
-const UNMUTE_DELAY_MS = 200        // after Juno's last word, so its own echo is not heard as a question
+const UNMUTE_DELAY_MS = 200        // after Spark's last word, so its own echo is not heard as a question
 const FILLER_AFTER_VOICE_MS = 1400  // a spoken question is held open this long: if the advisor was only pausing they carry on, and the answer is withdrawn
 const FILLER_AFTER_MS = 300        // an answer slower to start than this gets a spoken "Mm, let me think" (the model alone takes ~2 s to begin)
 const FILLERS = ['Mm, let me think.', 'Good one, give me a second.', 'Right, let me check that.']
@@ -139,7 +139,7 @@ export function useAskJuno(runId: string) {
   const fillerClips2 = useRef<(Promise<Blob | null>)[]>([])
   const fillerStage = useRef(0)
   const msgSeq = useRef(0)
-  // Where the time goes between a question and Juno's first words (read from the console: window.__askTiming).
+  // Where the time goes between a question and Spark's first words (read from the console: window.__askTiming).
   const timing = useRef<Record<string, number>>({})
   const stamp = (k: string) => {
     const w = window as unknown as { __askStamps?: Record<string, number> }
@@ -333,7 +333,7 @@ export function useAskJuno(runId: string) {
   // ── asking ──
   const sessionOpen = useRef(false)
 
-  /** Juno says something on her own (a what-if finished): shown in the thread and, when she can speak without cutting the advisor off, spoken. */
+  /** Spark says something on her own (a what-if finished): shown in the thread and, when she can speak without cutting the advisor off, spoken. */
   const sayAsJuno = (text: string) => {
     const g = gen.current
     const id = `j${++msgSeq.current}`
@@ -460,10 +460,10 @@ export function useAskJuno(runId: string) {
     const text = finalsRef.current.slice(consumedRef.current).join(' ').trim()
     const prevConsumed = consumedRef.current
     consumedRef.current = finalsRef.current.length
-    // Juno's own words, heard again through the microphone after it stopped speaking: not a question.
+    // Spark's own words, heard again through the microphone after it stopped speaking: not a question.
     const junoSaid = messagesRef.current.filter((m) => m.role === 'juno').slice(-2).flatMap((m) => m.sentences.map((x) => x.text))
     if (isEcho(text, junoSaid)) {
-      console.debug('[ask] ignored Juno\u2019s own voice', JSON.stringify(text))
+      console.debug('[ask] ignored Spark\u2019s own voice', JSON.stringify(text))
       setPhase(handsFreeRef.current ? 'listening' : 'ready')
       return
     }
@@ -593,7 +593,7 @@ export function useAskJuno(runId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /** The orb: start, stop talking, or interrupt — whatever makes sense for what Juno is doing now. */
+  /** The orb: start, stop talking, or interrupt — whatever makes sense for what Spark is doing now. */
   const tapOrb = useCallback(() => {
     const p = phaseRef.current
     if (p === 'off') void begin()
@@ -619,7 +619,7 @@ export function useAskJuno(runId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // While a what-if is running, watch it; when it lands Juno tells the advisor what changed.
+  // While a what-if is running, watch it; when it lands Spark tells the advisor what changed.
   const scenarioId = scenario?.stage === 'running' ? scenario.id : null
   useEffect(() => {
     if (!scenarioId) return

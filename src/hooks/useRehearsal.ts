@@ -3,7 +3,7 @@ import { junoSpeak, rehearsalBrief, rehearsalScore, rehearsalTurn, type Rehearsa
 import { useVoiceCapture } from './useVoiceCapture'
 
 /**
- * Dress Rehearsal: Juno briefs the advisor on the next meeting, then plays the customer so the advisor can practise, then coaches.
+ * Dress Rehearsal: Spark briefs the advisor on the next meeting, then plays the customer so the advisor can practise, then coaches.
  * The conversation is a loop like the Ask screen's: the advisor speaks (or types), the customer answers aloud, the microphone is
  * muted while anyone but the advisor speaks. Nothing is stored and nothing is sent to a customer.
  */

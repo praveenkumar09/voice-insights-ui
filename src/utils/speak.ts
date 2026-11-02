@@ -1,8 +1,8 @@
 import { junoSpeak } from '../api/client'
 
 /**
- * Juno speaks one line and the promise resolves when it has finished, so the caller can keep the microphone muted while it talks and
- * listen only afterwards. If Juno's voice is switched off (the Ask screen's setting), or speech is unavailable, the line is simply left
+ * Spark speaks one line and the promise resolves when it has finished, so the caller can keep the microphone muted while it talks and
+ * listen only afterwards. If Spark's voice is switched off (the Ask screen's setting), or speech is unavailable, the line is simply left
  * on screen for a moment and the promise resolves after a pause proportional to its length.
  */
 let current: { audio: HTMLAudioElement; finish: () => void } | null = null
@@ -24,7 +24,7 @@ const voiceOn = () => {
   }
 }
 
-/** Short lines Juno says again and again ("On it.") are fetched once and kept, so they start at once instead of after a round trip. */
+/** Short lines Spark says again and again ("On it.") are fetched once and kept, so they start at once instead of after a round trip. */
 const lineCache = new Map<string, Promise<Blob | null>>()
 const CACHEABLE_CHARS = 60
 const MAX_CACHED_LINES = 40
@@ -41,7 +41,7 @@ function lineAudio(text: string): Promise<Blob | null> {
   return p
 }
 
-/** Fetches these lines now (when Juno mode starts), so the first reply has no wait. */
+/** Fetches these lines now (when Spark mode starts), so the first reply has no wait. */
 export function prewarmSpeech(lines: string[]) {
   if (!voiceOn()) return
   for (const l of lines) void lineAudio(l)
@@ -84,7 +84,7 @@ function browserVoice(text: string, finish: () => void) {
   window.speechSynthesis.speak(u)
 }
 
-/** A short, soft two-note cue: Juno heard its name and is listening. No speech, so there is no delay. */
+/** A short, soft two-note cue: Spark heard its name and is listening. No speech, so there is no delay. */
 export function chime(kind: 'wake' | 'done' = 'wake') {
   try {
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext

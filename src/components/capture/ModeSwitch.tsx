@@ -6,7 +6,7 @@ interface Props {
   disabled?: boolean
 }
 
-/** How this conversation is being captured: dictated after the meeting, live with the customer, or dictated and then checked with Juno. */
+/** How this conversation is being captured: dictated after the meeting, live with the customer, or dictated and then checked with Spark. */
 export function ModeSwitch({ mode, onChange, disabled }: Props) {
   return (
     <div className="mode-switch" role="tablist" aria-label="Capture mode">
@@ -19,8 +19,8 @@ export function ModeSwitch({ mode, onChange, disabled }: Props) {
         <small>Live conversation</small>
       </button>
       <button role="tab" aria-selected={mode === 'juno'} className={`mode-switch__juno${mode === 'juno' ? ' is-active' : ''}`} onClick={() => onChange('juno')} disabled={disabled}>
-        <strong>Debrief with Juno <i>AI</i></strong>
-        <small>Dictate, then Juno checks the gaps</small>
+        <strong>Debrief with Spark <i>AI</i></strong>
+        <small>Dictate, then Spark checks the gaps</small>
       </button>
     </div>
   )

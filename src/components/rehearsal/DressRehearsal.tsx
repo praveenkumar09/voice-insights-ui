@@ -20,14 +20,14 @@ const BEAT_LABEL: Record<Beat, string> = {
 }
 
 /**
- * Dress Rehearsal: Juno briefs the advisor on the next meeting (Brief), plays the customer so they can practise it (Rehearse), then
+ * Dress Rehearsal: Spark briefs the advisor on the next meeting (Brief), plays the customer so they can practise it (Rehearse), then
  * coaches (Coach's notes). Training only: the simulated customer is built from the debrief, and nothing here is saved or sent.
  */
 export function DressRehearsal({ profileId, customerName, runId }: Props) {
   const r = useRehearsal(profileId, runId)
   const first = customerName.trim().split(/\s+/)[0] || 'the customer'
   const steps = ['Brief', 'Rehearse', 'Coach’s notes'] as const
-  useJunoAction(r.stage === 'idle' ? { id: 'rehearsal_brief', description: 'Rehearse the next meeting: Juno briefs me first, then plays the customer', risk: 'open', run: () => { void r.startBrief() } } : null)
+  useJunoAction(r.stage === 'idle' ? { id: 'rehearsal_brief', description: 'Rehearse the next meeting: Spark briefs me first, then plays the customer', risk: 'open', run: () => { void r.startBrief() } } : null)
   useJunoAction(r.stage === 'brief' ? { id: 'start_rehearsal', description: 'Start the rehearsal with the customer', risk: 'open', run: () => { void r.startRehearsal(); return `Starting the rehearsal. I’ll step aside while you talk to ${first}.` } } : null)
   const stepNow = r.stage === 'idle' ? -1 : r.stage === 'briefing' || r.stage === 'brief' ? 0 : r.stage === 'rehearsing' ? 1 : 2
 
@@ -59,7 +59,7 @@ export function DressRehearsal({ profileId, customerName, runId }: Props) {
         {r.stage === 'idle' && (
           <motion.div key="idle" className="dr__intro" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <p>
-              Juno briefs you on {first} in under a minute. Then it plays {first}, using what you just told it, so you can run the meeting
+              Spark briefs you on {first} in under a minute. Then it plays {first}, using what you just told it, so you can run the meeting
               before the real one. Afterwards it coaches you: what landed, what you missed, and any promise you should word differently.
             </p>
             <div className="dr__actions">
@@ -71,7 +71,7 @@ export function DressRehearsal({ profileId, customerName, runId }: Props) {
 
         {r.stage === 'briefing' && (
           <motion.div key="briefing" className="dr__wait" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} aria-live="polite">
-            <span className="fu__dots"><i /><i /><i /></span> Juno is preparing your briefing…
+            <span className="fu__dots"><i /><i /><i /></span> Spark is preparing your briefing…
           </motion.div>
         )}
 
@@ -81,7 +81,7 @@ export function DressRehearsal({ profileId, customerName, runId }: Props) {
               <span className={`dr__wave${r.speaker === 'juno' ? ' is-on' : ''}`} aria-hidden><i /><i /><i /><i /><i /></span>
               <p className="dr__script">{r.brief.script}</p>
             </div>
-            {r.brief.thin && <p className="dr__thin">The debrief was short, so {first} will feel fairly general. The more you tell Juno, the more lifelike the rehearsal.</p>}
+            {r.brief.thin && <p className="dr__thin">The debrief was short, so {first} will feel fairly general. The more you tell Spark, the more lifelike the rehearsal.</p>}
             <ul className="dr__points">
               {r.brief.points.map((p, i) => (
                 <motion.li key={p.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 * i, duration: 0.35 }}>
@@ -187,7 +187,7 @@ function Stage({ r, first }: { r: ReturnType<typeof useRehearsal>; first: string
           <span>{first[0]?.toUpperCase()}</span>
         </button>
         <div className="dr__state" aria-live="polite"><span />{label}</div>
-        <p className="dr__sim">Simulation: {first} is played by Juno from your debrief</p>
+        <p className="dr__sim">Simulation: {first} is played by Spark from your debrief</p>
         {r.beat === 'hearing' && r.caption && <p className="dr__caption">{r.caption}</p>}
         {r.hint && <p className="dr__hint">{r.hint}</p>}
       </div>

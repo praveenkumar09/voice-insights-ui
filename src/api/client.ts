@@ -95,14 +95,14 @@ export interface JunoTurnRequest {
 export interface FactFindReadiness {
   captured: number
   total: number
-  /** The count right after the dictation, before Juno's questions. */
+  /** The count right after the dictation, before Spark's questions. */
   baseline?: number | null
   /** Fields still missing, most valuable first. */
   missing: string[]
 }
 
 export interface JunoTurnResponse {
-  /** Debrief with Juno only: the fact-find readiness after this turn. */
+  /** Debrief with Spark only: the fact-find readiness after this turn. */
   readiness?: FactFindReadiness | null
   say: string
   consent: 'granted' | 'declined' | 'unclear' | null
@@ -117,19 +117,19 @@ export interface JunoTurnResponse {
   open?: boolean | null
 }
 
-/** Debrief with Juno: Juno talks with the advisor, after the advisor's own dictation. */
+/** Debrief with Spark: Spark talks with the advisor, after the advisor's own dictation. */
 export interface JunoDebriefRequest {
   profileId?: string | null
-  /** What the advisor said before handing over to Juno. */
+  /** What the advisor said before handing over to Spark. */
   dictation: string
-  /** Juno and the advisor since the hand-over (empty for Juno's opening turn). */
+  /** Spark and the advisor since the hand-over (empty for Spark's opening turn). */
   turns: { role: 'juno' | 'advisor'; text: string }[]
   lang?: LangId
 }
 
 export type JunoTone = 'warm' | 'gentle' | 'upbeat' | 'curious' | 'reassuring'
 
-/** Is Juno's neural voice available? (If not, the browser's own voice is used.) */
+/** Is Spark's neural voice available? (If not, the browser's own voice is used.) */
 export async function junoVoiceStatus(): Promise<{ enabled: boolean; voices: { female: string; male: string } }> {
   try {
     const res = await fetch(`${API_BASE}/api/juno/voice`, { headers: authHeaders() })
@@ -154,18 +154,18 @@ export async function junoSpeak(text: string, voice: 'female' | 'male', tone: st
   }
 }
 
-/** What Juno should say next. This is the only thing the endpoint does — it cannot start an analysis. */
+/** What Spark should say next. This is the only thing the endpoint does — it cannot start an analysis. */
 export async function junoTurn(req: JunoTurnRequest): Promise<JunoTurnResponse> {
   const res = await fetch(`${API_BASE}/api/juno/turn`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(req),
   })
-  if (!res.ok) throw new Error(await errorMessage(res, `Juno could not respond (${res.status})`))
+  if (!res.ok) throw new Error(await errorMessage(res, `Spark could not respond (${res.status})`))
   return res.json()
 }
 
-/** What Juno says to the advisor next. Like junoTurn, it cannot start an analysis. Gives up after 25 s so a stalled server never leaves Juno silent. */
+/** What Spark says to the advisor next. Like junoTurn, it cannot start an analysis. Gives up after 25 s so a stalled server never leaves Spark silent. */
 export async function junoDebriefTurn(req: JunoDebriefRequest): Promise<JunoTurnResponse> {
   const ctl = new AbortController()
   const timer = window.setTimeout(() => ctl.abort(), 25000)
@@ -176,14 +176,14 @@ export async function junoDebriefTurn(req: JunoDebriefRequest): Promise<JunoTurn
       body: JSON.stringify(req),
       signal: ctl.signal,
     })
-    if (!res.ok) throw new Error(await errorMessage(res, `Juno could not respond (${res.status})`))
+    if (!res.ok) throw new Error(await errorMessage(res, `Spark could not respond (${res.status})`))
     return await res.json()
   } finally {
     window.clearTimeout(timer)
   }
 }
 
-/** Fire and forget: lets the server get ready for Juno's first line while the last words are still being transcribed. */
+/** Fire and forget: lets the server get ready for Spark's first line while the last words are still being transcribed. */
 export function junoDebriefPrepare(profileId: string, dictation: string): void {
   void fetch(`${API_BASE}/api/juno/debrief-prepare`, {
     method: 'POST',
@@ -400,7 +400,7 @@ export async function reviewAdvicePack(runId: string): Promise<AdvicePack> {
   return res.json()
 }
 
-/** Juno's fixed lines (greeting, consent questions, goodbyes, acknowledgements) in a language. */
+/** Spark's fixed lines (greeting, consent questions, goodbyes, acknowledgements) in a language. */
 export async function junoPhrases(lang: LangId): Promise<JunoPhrases | null> {
   try {
     const res = await fetch(`${API_BASE}/api/juno/phrases?lang=${lang}`, { headers: authHeaders() })
@@ -411,16 +411,16 @@ export async function junoPhrases(lang: LangId): Promise<JunoPhrases | null> {
 }
 
 
-// ── Talk it through with Juno ──────────────────────────────────────────────────────────────────────────────────────
+// ── Talk it through with Spark ──────────────────────────────────────────────────────────────────────────────────────
 
-/** Where one of Juno's statements comes from: what the customer shared, the agents' analysis, compliance, or a product document. */
+/** Where one of Spark's statements comes from: what the customer shared, the agents' analysis, compliance, or a product document. */
 export interface AskSource {
   id: string
   kind: 'customer' | 'analysis' | 'compliance' | 'document' | 'calc'
   label: string
   text: string
   file?: string | null
-  /** Matched by the server rather than named by Juno: the closest source in the file. */
+  /** Matched by the server rather than named by Spark: the closest source in the file. */
   inferred?: boolean
 }
 
@@ -552,7 +552,7 @@ export async function clearAskHistory(runId: string): Promise<void> {
 }
 
 /**
- * Asks Juno a question and calls {@code onEvent} for every sentence as it is written (and for done / error). Resolves when the
+ * Asks Spark a question and calls {@code onEvent} for every sentence as it is written (and for done / error). Resolves when the
  * stream ends; aborting {@code signal} stops the answer at once, which is how an interruption works.
  */
 export async function askJuno(runId: string, question: string, onEvent: (e: AskEvent) => void, signal: AbortSignal): Promise<void> {
@@ -592,7 +592,7 @@ export async function askJuno(runId: string, question: string, onEvent: (e: AskE
 
 export interface RehearsalBrief {
   customerName: string
-  /** What Juno says aloud. */
+  /** What Spark says aloud. */
   script: string
   /** The same briefing as cards: who they are, what matters, what was said, still open, open with. */
   points: { label: string; text: string }[]
@@ -651,7 +651,7 @@ export interface SpokenCorrection {
   /** The field to change, or "none" when the words were not a correction. */
   field: 'customerName' | 'age' | 'occupation' | 'dependents' | 'budgetNotes' | 'none'
   value: string
-  /** Juno's one-line reply. */
+  /** Spark's one-line reply. */
   say: string
 }
 
@@ -665,7 +665,7 @@ export async function junoCorrection(profileId: string, utterance: string): Prom
   return res.json()
 }
 
-// ── Juno mode: "Hey Juno, open Follow-up" ──
+// ── Spark mode: "Hey Spark, open Follow-up" ──
 
 export interface JunoActionParam {
   type: 'enum' | 'string'
@@ -675,7 +675,7 @@ export interface JunoActionParam {
 export interface JunoActionSpec {
   id: string
   description: string
-  /** open: navigation. change: changes or copies data (Juno asks first). guide: points at something. info: reads something out. */
+  /** open: navigation. change: changes or copies data (Spark asks first). guide: points at something. info: reads something out. */
   risk: 'open' | 'change' | 'guide' | 'info'
   params?: Record<string, JunoActionParam>
 }
@@ -683,7 +683,7 @@ export interface JunoActionSpec {
 export interface JunoCommandResult {
   action: string
   params: Record<string, string>
-  /** A short announcement of what Juno is doing, or its reply when it cannot. */
+  /** A short announcement of what Spark is doing, or its reply when it cannot. */
   say: string
   /** For an action that changes data: the yes/no question. Otherwise empty. */
   ask: string
@@ -699,7 +699,7 @@ export async function junoCommand(utterance: string, screen: string, customerNam
   return res.json()
 }
 
-// ── Juno reads aloud ──
+// ── Spark reads aloud ──
 
 export type ReadDoc = 'brief' | 'report' | 'fact-find' | 'record-of-advice' | 'follow-up' | 'crm' | 'next-meeting' | 'pack'
 

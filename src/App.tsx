@@ -1,3 +1,4 @@
+import { SparkBot } from './components/brand/SparkBot'
 import { useState } from 'react'
 import { AdminRunDetailScreen } from './screens/AdminRunDetailScreen'
 import { AdminScreen } from './screens/AdminScreen'
@@ -32,7 +33,7 @@ function AppShell() {
   const { theme, toggleTheme } = useTheme()
   const signedIn = auth.isAuthenticated
 
-  // What Juno can do from anywhere in the app.
+  // What Spark can do from anywhere in the app.
   useJunoScreen(signedIn ? (inAdmin ? 'Admin' : view.name === 'orchestration' ? 'The suggestion workspace' : 'The home screen') : null)
   useJunoAction(signedIn && view.name !== 'capture' ? { id: 'go_home', description: 'Go to the home screen', risk: 'open', run: () => setView({ name: 'capture' }) } : null)
   useJunoAction(signedIn && !inAdmin ? { id: 'open_admin', description: 'Open Admin', risk: 'open', run: () => setView({ name: 'admin' }) } : null)
@@ -48,9 +49,9 @@ function AppShell() {
       <ReadAloudActions enabled={signedIn} />
       <header className={`app-header${auth.isAuthenticated ? '' : ' app-header--hidden'}`}>
         <div className="app-header__brand">
-          <img className="app-header__logo" src="/aia-voice-insights-logo.png" alt="AIA Voice Insights" />
+          <span className="app-header__logo"><SparkBot variant="mark" label="AIA Spark" /></span>
           <div className="app-header__text">
-            <h1>Voice Insights</h1>
+            <h1>AIA Spark</h1>
             <p>Live conversation &rarr; agentic product suggestions</p>
           </div>
         </div>

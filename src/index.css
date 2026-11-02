@@ -167,7 +167,6 @@ button {
      keeps the branding in frame across very different aspect ratios,
      including a vertical/portrait monitor where cover-by-height crops a lot
      of width away. */
-  background: url('/aia-voice-insights-background.png') 25% center / cover no-repeat;
   overflow: hidden;
   color: #1c1c24;
 }

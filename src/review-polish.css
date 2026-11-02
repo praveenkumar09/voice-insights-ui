@@ -1,5 +1,5 @@
 /* ── The debrief review, in the app's own livelier language ─────────────────────────────────────────
-   Loads after design.css. The page was correct but flat: white cards on white. It now borrows what the Admin page and the Juno home
+   Loads after design.css. The page was correct but flat: white cards on white. It now borrows what the Admin page and the Spark home
    already do — the crimson hero with drifting glows, tinted tiles, soft accents on cards, a staggered entrance — and keeps the calm
    reading column, the one corner radius and "colour only where it means something" from design.css. */
 @keyframes rv-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }

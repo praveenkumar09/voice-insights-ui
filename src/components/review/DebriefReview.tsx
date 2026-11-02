@@ -42,7 +42,7 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 /**
- * The page after a debrief with Juno, in three levels. A glance: who the customer is, in five seconds. A review: only the few things
+ * The page after a debrief with Spark, in three levels. A glance: who the customer is, in five seconds. A review: only the few things
  * that need a person, one card at a time. The details: every field, the Life Map and the transcript, one tap away. One button at the
  * bottom changes with where the advisor is, and only a real click by a person can approve.
  */
@@ -157,7 +157,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
   }
   const micBusy = voice.phase === 'starting' || voice.phase === 'thinking' || applying
 
-  // Spoken in the summary Juno reads aloud (no longer repeated as chips in the header: Their world shows them).
+  // Spoken in the summary Spark reads aloud (no longer repeated as chips in the header: Their world shows them).
   const wants = (copilot?.lifeMap?.dreams ?? []).slice(0, 2).map((d) => d.label)
   const worries = (copilot?.lifeMap?.worries ?? []).slice(0, 2).map((w) => w.label)
   const initial = (profile.customerName?.trim()[0] ?? '?').toUpperCase()
@@ -173,7 +173,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
 
   const spring = reduce ? { duration: 0 } : { type: 'spring' as const, stiffness: 420, damping: 38 }
 
-  // What Juno can do on this page.
+  // What Spark can do on this page.
   const TAB_BY_NAME: Record<string, Tab> = { summary: 'summary', details: 'details' }
   useJunoScreen(`The debrief review for ${profile.customerName ?? 'the customer'}, ${tab} tab${queue.length ? `, ${queue.length} thing${queue.length === 1 ? '' : 's'} to check` : ', everything checked'}`)
   useJunoAction({ id: 'open_tab', description: 'Open a tab: Summary or Details', risk: 'open', params: { tab: { type: 'enum', values: Object.keys(TAB_BY_NAME) } }, run: (p) => { setTab(TAB_BY_NAME[p.tab]) } })
@@ -195,7 +195,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
       return `${queue.length ? `${queue.length} thing${queue.length === 1 ? ' is' : 's are'} still to check, but you can approve anyway. ` : ''}Press Approve when you’re ready. I can’t press it for you.`
     },
   })
-  // "Hey Juno, add Ethan as his son": adds the person to the Life map and saves it (Juno asks for a yes first, as it changes the record).
+  // "Hey Spark, add Ethan as his son": adds the person to the Life map and saves it (Spark asks for a yes first, as it changes the record).
   const RELATIVES = ['wife', 'husband', 'partner', 'daughter', 'son', 'child', 'mother', 'father', 'parent', 'sibling', 'other']
   useJunoAction({
     id: 'add_person', description: 'Add a family member to the life map and save it, by name and relationship (wife, husband, son, daughter, mother, father, sibling…)', risk: 'change',
@@ -211,7 +211,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
       return `Added ${name} as ${relation} and saved the map.`
     },
   })
-  // "Hey Juno, the income is six thousand a month": fills in or changes one customer detail and saves it (after a yes).
+  // "Hey Spark, the income is six thousand a month": fills in or changes one customer detail and saves it (after a yes).
   useJunoAction({
     id: 'set_detail', risk: 'change', params: { field: { type: 'enum', values: ['income', 'budget', 'existing_cover', 'age', 'occupation', 'dependants'] }, value: { type: 'string' } },
     description: 'Fill in or change a customer detail and save it: income, budget, existing cover, age, occupation or dependants',
@@ -246,7 +246,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
         <span className="rv__glow rv__glow--b" aria-hidden />
         <span className="rv__avatar" aria-hidden>{initial}</span>
         <div className="rv__who">
-          <span className="rv__eyebrow">Debrief with Juno</span>
+          <span className="rv__eyebrow">Debrief with Spark</span>
           <InlineEdit className="rv__name" display={profile.customerName ?? ''} value={profile.customerName ?? ''} label="Customer name" placeholder="Add a name" onSave={saveName} fly />
           <div className="rv__meta">
             <InlineEdit display={profile.age != null ? `${profile.age} years old` : ''} value={profile.age != null ? String(profile.age) : ''} label="Age" numeric placeholder="Add age" onSave={(v) => save({ age: Number(v) })} fly />
@@ -292,7 +292,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
           )}
           {elapsedMs != null && (
             <div className="rv__fact" title={`Planning assumption: a manual write-up takes about ${MANUAL_MINUTES} minutes. To be measured in the pilot.`}>
-              <dt>Time with Juno</dt>
+              <dt>Time with Spark</dt>
               <dd>{duration(elapsedMs)}<small> · about {MANUAL_MINUTES} min by hand</small></dd>
             </div>
           )}
@@ -363,7 +363,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
         <div className="rv__bar" role="region" aria-label="Next step">
           <div className="rv__bar-text">
             <b>{queue.length > 0 ? `${queue.length} to check` : 'Ready to approve'}</b>
-            <small>Only you can start the analysis. Juno can’t.</small>
+            <small>Only you can start the analysis. Spark can’t.</small>
           </div>
           <div className="rv__bar-actions">
             <AnimatePresence mode="wait" initial={false}>

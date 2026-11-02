@@ -1,13 +1,13 @@
 import type { JunoAction } from '../components/juno/mode/JunoMode'
 
 /**
- * "Hey Juno, click Start talking": every button on the screen as something Juno can press, without registering each one by hand.
+ * "Hey Spark, click Start talking": every button on the screen as something Spark can press, without registering each one by hand.
  *
  * The page is read at the moment of the request, so the list is always what is really there. Three rules keep it safe:
  *  - what starts the analysis (Approve, Get Suggestions) is never offered: only a person's own press counts, as before. Log out has its own
  *    action that asks first, so it is left out here too;
  *  - a button whose label saves, sends, copies, removes or resets something goes into a second action that asks "Do you want me to…?" first;
- *  - Juno's own controls (the capsule) are not part of the page it can press.
+ *  - Spark's own controls (the capsule) are not part of the page it can press.
  */
 const NEVER = /approve|get suggestions|get recommendations|preparing|log ?out|sign ?out/i
 const ASK_FIRST = /\b(delete|remove|discard|reset|clear|save|send|submit|copy|apply|update|confirm|publish|share|replace|overwrite|sign up|create|new debrief)\b/i

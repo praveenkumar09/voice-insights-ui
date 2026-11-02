@@ -35,7 +35,7 @@ interface Props {
   profileId?: string | null
   /** The advisor's own briefing (markdown), shown as the pack's Advisory report section. */
   reportMarkdown?: string | null
-  /** Which section is open, when the page above wants to choose it ("Hey Juno, open the advisory report"). */
+  /** Which section is open, when the page above wants to choose it ("Hey Spark, open the advisory report"). */
   part?: Part
   onPartChange?: (p: Part) => void
   /** The run's agents have finished — until then there is nothing to build a pack from. */
@@ -63,7 +63,7 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
     params: { section: { type: 'enum', values: Object.keys(PARTS).filter((k) => PARTS[k] !== part) } },
     run: (p) => { setPart(PARTS[p.section]) },
   })
-  // "Hey Juno, the customer's retirement age is 55": fills one fact-find field and saves the pack (Juno asks for a yes first).
+  // "Hey Spark, the customer's retirement age is 55": fills one fact-find field and saves the pack (Spark asks for a yes first).
   const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
   const allFields = pack?.factFind?.flatMap((sec, si) => sec.fields.map((f, fi) => ({ f, si, fi }))) ?? []
   const missingLabels = allFields.filter((x) => x.f.source === 'missing').map((x) => x.f.label)
@@ -125,7 +125,7 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
     }
   }, [runId, ready])
 
-  // The advisor's discussion with Juno about the suggestions belongs in the pack; it is read fresh each time.
+  // The advisor's discussion with Spark about the suggestions belongs in the pack; it is read fresh each time.
   useEffect(() => {
     if (!ready) return
     let alive = true
@@ -274,7 +274,7 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
         <NavButton active={part === 'record'} onClick={() => setPart('record')} n={2} title="Record of advice" meta={pack.recordOfAdvice ? `${pack.recordOfAdvice.items.length} product${pack.recordOfAdvice.items.length === 1 ? '' : 's'}` : 'Unavailable'} />
         <NavButton active={part === 'followUp'} onClick={() => setPart('followUp')} n={3} title="Follow-up" meta="WhatsApp · email" />
         <NavButton active={part === 'crm'} onClick={() => setPart('crm')} n={4} title="CRM note & tasks" meta={pack.crm ? `${pack.crm.tasks.length} tasks` : 'Unavailable'} />
-        {(discussion.length > 0 || scenarios.length > 0 || part === 'discussion') && <NavButton active={part === 'discussion'} onClick={() => setPart('discussion')} n={6} title="Discussion with Juno" meta={discussion.length || scenarios.length ? `${discussion.length} question${discussion.length === 1 ? '' : 's'}${scenarios.length ? ` · ${scenarios.length} what-if${scenarios.length === 1 ? '' : 's'}` : ''}` : 'None yet'} />}
+        {(discussion.length > 0 || scenarios.length > 0 || part === 'discussion') && <NavButton active={part === 'discussion'} onClick={() => setPart('discussion')} n={6} title="Discussion with Spark" meta={discussion.length || scenarios.length ? `${discussion.length} question${discussion.length === 1 ? '' : 's'}${scenarios.length ? ` · ${scenarios.length} what-if${scenarios.length === 1 ? '' : 's'}` : ''}` : 'None yet'} />}
         {profileId && <NavButton active={part === 'rehearse'} onClick={() => setPart('rehearse')} n={8} title="Rehearse" meta="Practise the next meeting" />}
         {reportMarkdown && <NavButton active={part === 'report'} onClick={() => setPart('report')} n={7} title="Advisory report" meta="Your internal briefing" />}
         <NavButton active={part === 'meeting'} onClick={() => setPart('meeting')} n={5} title="Next meeting" meta={pack.nextMeeting ? `${pack.nextMeeting.questionsToAsk.length} questions` : 'Unavailable'} />
@@ -393,12 +393,12 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
           <section className="ap-section">
             <div className="ap-section__head">
               <div>
-                <h4>Discussion with Juno</h4>
-                <p>Your questions about the suggestions and Juno’s answers, each with the sources it rested on. Juno suggests; you decide. Included in the PDF.</p>
+                <h4>Discussion with Spark</h4>
+                <p>Your questions about the suggestions and Spark’s answers, each with the sources it rested on. Spark suggests; you decide. Included in the PDF.</p>
               </div>
             </div>
             {discussion.length === 0 ? (
-              <p className="panel-empty">You haven’t talked the suggestions through with Juno yet. Open the <b>Suggestion</b> tab and ask it why it suggested what it did — the discussion is saved here.</p>
+              <p className="panel-empty">You haven’t talked the suggestions through with Spark yet. Open the <b>Suggestion</b> tab and ask it why it suggested what it did — the discussion is saved here.</p>
             ) : (
               <ol className="ap-disc">
                 {discussion.map((t) => {
@@ -407,7 +407,7 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
                   return (
                     <li key={t.turn} className="glass-card ap-disc__turn">
                       <div className="ap-disc__q"><span>You asked</span><p>{t.question}</p></div>
-                      <div className="ap-disc__a"><span>Juno answered</span><p>{t.answer}</p></div>
+                      <div className="ap-disc__a"><span>Spark answered</span><p>{t.answer}</p></div>
                       {srcs.length > 0 && (
                         <div className="ap-disc__src">
                           {srcs.map((s) => <em key={s.id} className={`is-${s.kind}${s.inferred ? ' is-inferred' : ''}`} title={s.text}>{labels.get(s.id) ?? chipLabel(s)}</em>)}
@@ -421,12 +421,12 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
             {scenarios.length > 0 && (
               <>
                 <h4 className="ap-wi__title">What-ifs explored</h4>
-                <p className="ap-wi__note">Scenarios the advisor ran with Juno. They are explored, not the customer’s actual situation, and the suggestions above were not changed by them.</p>
+                <p className="ap-wi__note">Scenarios the advisor ran with Spark. They are explored, not the customer’s actual situation, and the suggestions above were not changed by them.</p>
                 <ol className="ap-disc">
                   {scenarios.map((w) => (
                     <li key={w.id} className="glass-card ap-disc__turn">
                       <div className="ap-disc__q"><span>What if</span><p>{w.changes.map(changeLine).join(' · ')}</p></div>
-                      <div className="ap-disc__a"><span>Juno’s read</span><p>{w.result?.summary}</p></div>
+                      <div className="ap-disc__a"><span>Spark’s read</span><p>{w.result?.summary}</p></div>
                       <table className="ap-wi">
                         <thead><tr><th>Product</th><th>Original</th><th>With the change</th></tr></thead>
                         <tbody>
@@ -565,7 +565,7 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
                 </div>
                 {profileId && (
                   <button type="button" className="cta-btn ap-rehearse-cta" onClick={() => setPart('rehearse')}>
-                    Rehearse this meeting with Juno
+                    Rehearse this meeting with Spark
                   </button>
                 )}
                 <div className="ap-two">

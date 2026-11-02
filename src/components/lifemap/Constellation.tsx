@@ -8,7 +8,7 @@ import './constellation.css'
 interface Props {
   customerName?: string | null
   lifeMap?: LifeMapData | null
-  /** Juno is listening: the customer's ring breathes and the tag says Live. */
+  /** Spark is listening: the customer's ring breathes and the tag says Live. */
   live?: boolean
   /** The map shows the advisor's edits that are not saved yet. */
   unsaved?: boolean
@@ -22,7 +22,7 @@ const Shield = () => (
  * The customer's world as a tree: their ring at the top and, joined to it by hairlines, one column for them and one for each person they
  * mention. Every column is the same width and the same height in its row, so it always looks balanced however much each person has;
  * a hope or worry sits in it as a pill, with the product that answers it underneath. New people grow out of the ring and the lines draw
- * to them as Juno hears them.
+ * to them as Spark hears them.
  */
 export function Constellation({ customerName, lifeMap, live = false, unsaved = false }: Props) {
   const reduce = useReducedMotion()
@@ -103,7 +103,7 @@ export function Constellation({ customerName, lifeMap, live = false, unsaved = f
     <section className={`tw tw--live cs${live ? ' is-live' : ''}`} aria-label="Their world">
       <header className="tw__head">
         <div>
-          <h3>Their world {live && <span className="tw__live" aria-label="Updating as Juno listens"><i />Live</span>}{unsaved && <span className="tw__unsaved">Your changes, not saved yet</span>}</h3>
+          <h3>Their world {live && <span className="tw__live" aria-label="Updating as Spark listens"><i />Live</span>}{unsaved && <span className="tw__unsaved">Your changes, not saved yet</span>}</h3>
           <p>{[`${counts.people} ${counts.people === 1 ? 'person' : 'people'}`, `${counts.hopes} ${counts.hopes === 1 ? 'hope' : 'hopes'}`, `${counts.worries} ${counts.worries === 1 ? 'concern' : 'concerns'}`].join('  ·  ')}</p>
         </div>
       </header>

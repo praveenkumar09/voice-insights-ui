@@ -1,0 +1,109 @@
+/* ── Sign-in: AIA Spark ───────────────────────────────────────────────────────────────────────────────
+   A live scene (SparkScene.tsx) instead of a flat picture: Spark floats, blinks, waves its spark and follows the
+   pointer. The screen root carries --px/--py (pointer) and is-typing / is-busy / is-success (what the form is doing).
+   Loads last; overrides the older artwork background in index.css. */
+
+.auth-screen {
+  background:
+    radial-gradient(900px 640px at 30% 46%, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(1000px 700px at 8% 112%, rgba(211, 17, 69, 0.22), transparent 62%),
+    radial-gradient(800px 560px at 98% -8%, rgba(211, 17, 69, 0.12), transparent 60%),
+    linear-gradient(180deg, #f7f8fb 0%, #e6e8ef 100%);
+  --px: 0;
+  --py: 0;
+  --spark-red: #d31145;
+}
+:root[data-theme='dark'] .auth-screen {
+  background:
+    radial-gradient(900px 640px at 30% 46%, rgba(211, 17, 69, 0.3), rgba(211, 17, 69, 0) 70%),
+    radial-gradient(1000px 700px at 8% 112%, rgba(211, 17, 69, 0.34), transparent 62%),
+    radial-gradient(800px 560px at 98% -8%, rgba(255, 90, 130, 0.14), transparent 60%),
+    linear-gradient(180deg, #1a0910 0%, #08040a 100%);
+}
+:root[data-theme='dark'] .auth-screen::after { display: none; }
+:root[data-theme='dark'] .auth-screen__overlay { background: radial-gradient(ellipse 62% 75% at 82% 50%, rgba(10, 4, 8, 0.45), rgba(10, 4, 8, 0) 60%); }
+
+/* ── Scene ── */
+.spark-scene { position: absolute; left: 0; top: 0; width: 66%; height: 100%; pointer-events: none; }
+.sp-tagline { font: 600 38px 'Avenir Next', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.01em; fill: #2a2b37; }
+:root[data-theme='dark'] .sp-tagline { fill: #f6eef1; }
+
+.sp-float { animation: sp-float 5.6s ease-in-out infinite; }
+.sp-shadow { transform-box: fill-box; transform-origin: center; animation: sp-shadow 5.6s ease-in-out infinite; }
+.sp-rays { transform-box: view-box; transform-origin: 500px 330px; animation: sp-spin 180s linear infinite; }
+.sp-ring { transform-box: fill-box; transform-origin: center; animation: sp-spin 70s linear infinite; }
+.sp-wave { transform-box: view-box; transform-origin: 350px 454px; animation: sp-wave 3.6s ease-in-out infinite; }
+.sp-hand-spark { transform-box: fill-box; transform-origin: center; animation: sp-pulse 2.4s ease-in-out infinite; }
+.sp-antenna { transform-box: fill-box; transform-origin: center; animation: sp-pulse 3.1s ease-in-out infinite 0.6s; }
+.sp-chest { transform-box: fill-box; transform-origin: center; animation: sp-pulse 2.8s ease-in-out infinite 0.3s; }
+.sp-thrust { transform-box: fill-box; transform-origin: center; animation: sp-thrust 1.6s ease-in-out infinite; }
+.sp-eyes { transform-box: fill-box; transform-origin: center; animation: sp-blink 6s infinite; }
+.sp-twinkle { animation: sp-twinkle 3.8s ease-in-out infinite; }
+.sp-face { transform: translate(calc(var(--px) * 10px), calc(var(--py) * 8px)); transition: transform 0.28s ease-out; }
+.sp-smile { transform-box: fill-box; transform-origin: center; transition: transform 0.3s ease; }
+
+/* what the form is doing, mirrored by Spark */
+.is-typing .sp-face { transform: translate(calc(var(--px) * 5px + 16px), 3px); }
+.is-typing .sp-smile { transform: scale(1.25); }
+.is-typing .sp-hand-spark { animation-duration: 1.2s; }
+.is-busy .sp-ring { animation-duration: 6s; }
+.is-busy .sp-halo { animation: sp-flicker 0.9s ease-in-out infinite; }
+.is-busy .sp-thrust { animation-duration: 0.6s; }
+.is-success .sp-hand-spark { animation: sp-flare 0.9s ease-out forwards; }
+.is-success .sp-wave { animation-duration: 0.9s; }
+
+@keyframes sp-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@keyframes sp-shadow { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.86); opacity: 0.7; } }
+@keyframes sp-spin { to { transform: rotate(360deg); } }
+@keyframes sp-wave { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(7deg); } }
+@keyframes sp-pulse { 0%, 100% { transform: scale(1); opacity: 0.92; } 50% { transform: scale(1.08); opacity: 1; } }
+@keyframes sp-thrust { 0%, 100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.12, 1.3); opacity: 1; } }
+@keyframes sp-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes sp-twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes sp-flicker { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes sp-flare { 0% { transform: scale(1); } 45% { transform: scale(1.9); opacity: 1; } 100% { transform: scale(1.1); opacity: 1; } }
+
+/* ── Card ── */
+.auth-card { width: min(420px, 100%); }
+.auth-card__inner {
+  position: relative; overflow: hidden;
+  background: rgba(255, 255, 255, 0.66); border: 1px solid rgba(255, 255, 255, 0.92); border-radius: 28px; padding: 34px 32px 26px;
+  box-shadow: 0 44px 80px -34px rgba(156, 12, 52, 0.38), 0 0 0 1px rgba(211, 17, 69, 0.08), inset 0 1px 0 #fff;
+}
+.auth-card__inner::before {
+  content: ''; position: absolute; left: 32px; right: 32px; top: 0; height: 3px; border-radius: 0 0 6px 6px;
+  background: linear-gradient(90deg, #d31145, #ff7a9a 60%, #ff9a6f);
+}
+.auth-card__brand { display: block; margin: 4px 0 20px; }
+.auth-card__inner h2 { font-size: 1.75rem; font-weight: 750; letter-spacing: -0.025em; margin: 0; }
+.auth-card__sub { margin: 6px 0 22px; font-size: 0.95rem; line-height: 1.45; color: rgba(28, 28, 36, 0.62); }
+.auth-field input { height: 50px; border-radius: 14px; border: 1px solid rgba(28, 28, 40, 0.13); background: rgba(255, 255, 255, 0.86); font-size: 0.98rem; padding: 0 16px; }
+.auth-field input:focus { border-color: #d31145; background: #fff; box-shadow: 0 0 0 4px rgba(211, 17, 69, 0.14); outline: none; }
+.auth-submit {
+  height: 52px; border-radius: 999px; border: none; color: #fff; font-weight: 700; font-size: 1rem; letter-spacing: -0.005em;
+  background: linear-gradient(135deg, #ff4d78 0%, #d31145 55%, #a30d36 100%);
+  box-shadow: 0 18px 30px -14px rgba(211, 17, 69, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.auth-submit:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
+.auth-links button { color: rgba(28, 28, 36, 0.62); }
+.auth-links button:hover { color: #d31145; }
+
+:root[data-theme='dark'] .auth-card__inner { background: rgba(26, 12, 18, 0.62); border-color: rgba(255, 255, 255, 0.12); box-shadow: 0 44px 80px -30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 90, 130, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+:root[data-theme='dark'] .auth-card__sub { color: rgba(246, 238, 241, 0.62); }
+:root[data-theme='dark'] .auth-field input { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.14); color: #f6eef1; }
+:root[data-theme='dark'] .auth-field input:focus { background: rgba(255, 255, 255, 0.11); border-color: #ff5d85; box-shadow: 0 0 0 4px rgba(255, 93, 133, 0.2); }
+:root[data-theme='dark'] .auth-links button:hover { color: #ff7a9a; }
+
+/* ── Small screens: Spark on top, the card below ── */
+@media (max-width: 900px) {
+  .auth-screen { align-items: flex-end; justify-content: center; padding: 20px; }
+  .spark-scene { width: 100%; height: 58%; }
+  .auth-card { width: min(440px, 100%); }
+  .auth-card__inner { padding: 26px 24px 20px; }
+}
+@media (max-height: 640px) and (min-width: 901px) { .auth-card__inner { padding: 24px 28px 18px; } .auth-card__sub { margin-bottom: 14px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  [class^='sp-'], [class*=' sp-'], .auth-stagger { animation: none !important; }
+  .sp-face { transition: none; }
+}

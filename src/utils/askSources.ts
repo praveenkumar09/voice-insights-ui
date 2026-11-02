@@ -1,6 +1,6 @@
 import type { AskSource } from '../api/client'
 
-// How Juno's sources are named, on the chips under an answer and in the advice pack.
+// How Spark's sources are named, on the chips under an answer and in the advice pack.
 export const KIND_LABEL: Record<AskSource['kind'], string> = {
   customer: 'Customer',
   analysis: 'Analysis',

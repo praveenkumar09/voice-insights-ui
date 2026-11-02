@@ -18,10 +18,10 @@ export function printAdvicePack(pack: AdvicePack, customerName?: string | null, 
         .map((t) => {
           const labels = chipLabels(Object.values(t.sources ?? {}))
           const src = Object.values(t.sources ?? {}).map((s) => labels.get(s.id) ?? chipLabel(s))
-          return `<div class="card"><div class="lab">The advisor asked</div><div>${nl(t.question)}</div><div class="lab">Juno answered</div><div>${nl(t.answer)}</div>${src.length ? `<div class="muted">Sources: ${esc(src.join(' · '))}</div>` : ''}</div>`
+          return `<div class="card"><div class="lab">The advisor asked</div><div>${nl(t.question)}</div><div class="lab">Spark answered</div><div>${nl(t.answer)}</div>${src.length ? `<div class="muted">Sources: ${esc(src.join(' · '))}</div>` : ''}</div>`
         })
         .join('')
-    : '<p class="muted">The advisor did not discuss the suggestions with Juno.</p>'
+    : '<p class="muted">The advisor did not discuss the suggestions with Spark.</p>'
   const whatIfs = scenarios.length
     ? `<h3>What-ifs explored <small>(not the customer’s actual situation; the suggestions were not changed)</small></h3>` +
       scenarios
@@ -29,7 +29,7 @@ export function printAdvicePack(pack: AdvicePack, customerName?: string | null, 
           const rows = (w.result?.products ?? [])
             .map((p) => `<tr><td>${esc(p.name)}</td><td>${p.before ? `#${p.before} ${esc(p.relevanceBefore ?? '')}` : 'Not shortlisted'}</td><td>${p.after ? `#${p.after} ${esc(p.relevanceAfter ?? '')}` : 'Not shortlisted'}${p.why ? `<div class="muted">${esc(p.why)}</div>` : ''}</td></tr>`)
             .join('')
-          return `<div class="card"><div class="lab">What if</div><div>${esc(w.changes.map(changeLine).join(' · '))}</div><div class="lab">Juno’s read</div><div>${nl(w.result?.summary ?? '')}</div><table><tr><td class="k">Product</td><td class="k">Original</td><td class="k">With the change</td></tr>${rows}</table></div>`
+          return `<div class="card"><div class="lab">What if</div><div>${esc(w.changes.map(changeLine).join(' · '))}</div><div class="lab">Spark’s read</div><div>${nl(w.result?.summary ?? '')}</div><table><tr><td class="k">Product</td><td class="k">Original</td><td class="k">With the change</td></tr>${rows}</table></div>`
         })
         .join('')
     : ''
@@ -120,8 +120,8 @@ ${nm.gapsToFill.length ? `<h4>Information still missing</h4><ul>${nm.gapsToFill.
 <h2>3 · Customer follow-up</h2>${follow}
 <h2>4 · CRM note and tasks</h2>${crmHtml}
 <h2>5 · Next-meeting brief</h2>${meeting}
-<h2>6 · Discussion with Juno <small>(internal — the advisor questioning the suggestions)</small></h2>
-<p class="muted">Juno answered from this customer’s file and the product documents. It suggests; the advisor decides.</p>${talk}${whatIfs}
+<h2>6 · Discussion with Spark <small>(internal — the advisor questioning the suggestions)</small></h2>
+<p class="muted">Spark answered from this customer’s file and the product documents. It suggests; the advisor decides.</p>${talk}${whatIfs}
 </body></html>`
 
   const frame = document.createElement('iframe')

@@ -70,7 +70,7 @@ export function HowJunoDecidedDrawer({ open, onClose, children }: DrawerProps) {
     }
   }, [open, onClose])
 
-  // "Hey Juno, close this" while it is open.
+  // "Hey Spark, close this" while it is open.
   useJunoAction(open ? { id: 'close_panel', description: `Close the ${AGENT_NAME} side panel`, risk: 'open', run: () => { onClose() } } : null)
 
   // Portalled to <body>: the page's entrance animation would otherwise become the containing block of this fixed panel.

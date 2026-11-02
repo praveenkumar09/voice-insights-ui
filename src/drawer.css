@@ -1,4 +1,4 @@
-/* The "How Juno decided" side panel, and the little link in the hero that opens it. */
+/* The "How Spark decided" side panel, and the little link in the hero that opens it. */
 .hero__how { border: 0; background: none; color: #fff; font: inherit; font-size: 13px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 6px 4px; }
 .hero__how:hover { opacity: .85; }
 .hero__how:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 6px; }

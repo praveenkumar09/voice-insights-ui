@@ -1,5 +1,5 @@
-/* ── Talk it through with Juno ───────────────────────────────────────────
-   Reuses Juno's dark glass stage (.jn) and orb. Presence on the left (orb, what Juno is doing, what the advisor is saying),
+/* ── Talk it through with Spark ───────────────────────────────────────────
+   Reuses Spark's dark glass stage (.jn) and orb. Presence on the left (orb, what Spark is doing, what the advisor is saying),
    the conversation on the right, each answer with chips for the sources behind it. */
 
 .ask { margin-top: 26px; margin-bottom: 8px; }

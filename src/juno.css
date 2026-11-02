@@ -1,4 +1,4 @@
-/* ── Juno: the AI host console ─────────────────────────────────────────
+/* ── Spark: the AI host console ─────────────────────────────────────────
    A glassy stage that follows the app theme: dark in dark mode, light in light mode. Presence on the left (orb, captions), live understanding on the right.
    Everything that moves uses transform and opacity (plus the canvas); reduced motion falls back to a still glow. */
 
@@ -94,7 +94,7 @@
 .jn__state { position: absolute; bottom: 0; display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(8px); }
 .jn__state-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: jn-blink 1.4s ease-in-out infinite; }
 
-/* What Juno says and hears */
+/* What Spark says and hears */
 .jn__talk { width: 100%; flex: 1; display: flex; justify-content: center; align-items: flex-start; padding-top: 20px; }
 .jn__live, .jn__idle { width: min(680px, 100%); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .jn__speaker, .jn__eyebrow { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
@@ -228,8 +228,8 @@
 .jn__pill.is-on { color: var(--ink); border-color: rgba(61, 224, 176, 0.55); background: rgba(61, 224, 176, 0.12); }
 .jn__pill.is-muted { color: var(--gold); border-color: rgba(255, 212, 121, 0.45); background: rgba(255, 212, 121, 0.1); }
 
-/* ── Debrief with Juno: keep the whole stage on one screen ───────────────────────────────────────────────
-   The stage used to grow with the right-hand panel (six topics, each with wrapping chips), pushing Juno's caption and
+/* ── Debrief with Spark: keep the whole stage on one screen ───────────────────────────────────────────────
+   The stage used to grow with the right-hand panel (six topics, each with wrapping chips), pushing Spark's caption and
    the hand-over button below the fold. Now the presence column sets the height and the panel scrolls inside it. */
 /* `clip`, not `hidden`: the decorative background overflows the box, and a hidden-overflow box can still be scrolled
    sideways or up by focus, which shifted the whole stage out of place. */

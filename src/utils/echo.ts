@@ -1,7 +1,7 @@
 /**
- * Juno's own voice coming back through the microphone. The microphone is closed while Juno speaks, but the speech service answers a
- * second or two after the audio, and a speaker leaks into a microphone whatever the echo cancellation: the words of Juno's last answer
- * can arrive as if the advisor had said them. A line made (almost) only of Juno's own recent words, in the same order, is that echo.
+ * Spark's own voice coming back through the microphone. The microphone is closed while Spark speaks, but the speech service answers a
+ * second or two after the audio, and a speaker leaks into a microphone whatever the echo cancellation: the words of Spark's last answer
+ * can arrive as if the advisor had said them. A line made (almost) only of Spark's own recent words, in the same order, is that echo.
  * Short lines are never judged: "why?" or "stop" may well be the advisor.
  */
 const words = (s: string) => s.toLowerCase().replace(/[’']/g, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)

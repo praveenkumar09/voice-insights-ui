@@ -1,4 +1,6 @@
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from 'react'
+import { SparkScene } from '../components/login/SparkScene'
+import { SparkWordmark } from '../components/brand/SparkWordmark'
 import { ThemeToggle } from '../components/ThemeToggle'
 import type { Theme } from '../hooks/useTheme'
 
@@ -18,6 +20,12 @@ const TITLES: Record<Mode, string> = {
   login: 'Welcome back',
   signup: 'Create your account',
   forgot: 'Reset your password',
+}
+
+const SUBTITLES: Record<Mode, string> = {
+  login: 'Sign in to pick up where you left off.',
+  signup: 'Use your AIA email to get started.',
+  forgot: 'Choose a new password for your account.',
 }
 
 const SUBMIT_LABELS: Record<Mode, string> = {
@@ -40,6 +48,16 @@ export function LoginScreen({ onLogin, onSignup, onResetPassword, theme, onToggl
   const [busy, setBusy] = useState(false)
   const [success, setSuccess] = useState(false)
   const [resetNotice, setResetNotice] = useState(false)
+  const [typing, setTyping] = useState(false)
+  const screen = useRef<HTMLDivElement>(null)
+
+  /** Spark's face drifts toward the pointer: written as CSS variables so React never re-renders on mouse move. */
+  function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    const el = screen.current
+    if (!el) return
+    el.style.setProperty('--px', String(((e.clientX / window.innerWidth) * 2 - 1).toFixed(3)))
+    el.style.setProperty('--py', String(((e.clientY / window.innerHeight) * 2 - 1).toFixed(3)))
+  }
 
   function switchMode(next: Mode) {
     setMode(next)
@@ -89,15 +107,24 @@ export function LoginScreen({ onLogin, onSignup, onResetPassword, theme, onToggl
   }
 
   return (
-    <div className="auth-screen">
+    <div
+      ref={screen}
+      className={`auth-screen${typing ? ' is-typing' : ''}${busy ? ' is-busy' : ''}${success ? ' is-success' : ''}`}
+      onPointerMove={onPointerMove}
+    >
+      <SparkScene />
       <div className="auth-screen__overlay" />
       <ThemeToggle theme={theme} onToggle={onToggleTheme} className="auth-screen__theme" />
 
-      <div className="auth-card">
+      <div className="auth-card" onFocus={() => setTyping(true)} onBlur={() => setTyping(false)}>
         <div className="auth-card__inner" key={mode}>
+          <SparkWordmark className="auth-card__brand auth-stagger" height={22} />
           <h2 className="auth-stagger" style={delay(0)}>
             {TITLES[mode]}
           </h2>
+          <p className="auth-card__sub auth-stagger" style={delay(1)}>
+            {SUBTITLES[mode]}
+          </p>
 
           {resetNotice && mode === 'login' && (
             <p className="auth-card__notice auth-stagger" style={delay(1)}>

@@ -75,7 +75,7 @@ export function DebriefFollowUp({ profileId, customerName = '' }: Props) {
     const c = draft?.conduct
     if (!c) return
     const note = [
-      'Conduct note (debrief with Juno)',
+      'Conduct note (debrief with Spark)',
       ...c.flags.map((x) => `Flagged: "${x.statement}" (${x.advice})`),
       `Recorded as: ${c.recordedAs}`,
       c.correction ? `Clarification sent to the customer: ${c.correction}` : '',

@@ -8,7 +8,7 @@ const STATUS_LABEL: Record<string, string> = { waiting: 'Waiting', working: 'Emb
 /** Postgres writes "2026-10-02 11:50:07.68+00"; the browser needs "2026-10-02T11:50:07.68+00:00". */
 const isoOf = (t: string) => t.replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00')
 
-/** Add policy documents as a zip; they are read, split, embedded and become searchable by Juno and the suggestion agents. */
+/** Add policy documents as a zip; they are read, split, embedded and become searchable by Spark and the suggestion agents. */
 export function AdminKnowledge() {
   const [products, setProducts] = useState<KnowledgeProduct[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,7 +68,7 @@ export function AdminKnowledge() {
         <div className="adm-hero__top">
           <div>
             <span className="adm-hero__eyebrow">Knowledge base</span>
-            <h2>The documents Juno can quote from</h2>
+            <h2>The documents Spark can quote from</h2>
           </div>
           <div className="adm-hero__count"><b>{total.toLocaleString()}</b><span>passages · {products.length} products</span></div>
         </div>

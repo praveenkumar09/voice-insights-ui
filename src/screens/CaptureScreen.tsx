@@ -57,7 +57,7 @@ export function CaptureScreen({ onReady }: Props) {
   const canRecommend = status === 'stopped' && !!profile?.id
   const safe = safeView && mode === 'live'
   const spoken = finalSegments.join(' ')
-  // After a debrief with Juno the transcript, the facts to confirm and the follow-up become one sign-off document.
+  // After a debrief with Spark the transcript, the facts to confirm and the follow-up become one sign-off document.
   const signOff = withJuno && status === 'stopped' && juno.stage === 'finished'
   const lifeMapNode = (
     <LifeMap
@@ -94,10 +94,10 @@ export function CaptureScreen({ onReady }: Props) {
   }
 
   const MODE_BY_NAME: Record<string, HomeMode> = { after_the_meeting: 'debrief', with_the_customer: 'live', debrief_with_juno: 'juno' }
-  const MODE_NAME: Record<HomeMode, string> = { debrief: 'After the meeting', live: 'With the customer', juno: 'Debrief with Juno' }
+  const MODE_NAME: Record<HomeMode, string> = { debrief: 'After the meeting', live: 'With the customer', juno: 'Debrief with Spark' }
   useJunoScreen(signOff ? 'The debrief review page' : `The home screen, ${MODE_NAME[mode]} mode${busy ? ' (recording in progress)' : ''}`)
   useJunoAction({
-    id: 'switch_mode', description: 'Switch the home screen mode: After the meeting, With the customer, or Debrief with Juno', risk: 'open',
+    id: 'switch_mode', description: 'Switch the home screen mode: After the meeting, With the customer, or Debrief with Spark', risk: 'open',
     params: { mode: { type: 'enum', values: Object.keys(MODE_BY_NAME) } },
     run: (p) => {
       if (busy) return 'Finish the recording first, then I can switch modes.'
@@ -169,7 +169,7 @@ export function CaptureScreen({ onReady }: Props) {
       }[status]
 
   const recommendCta = canRecommend && (
-    // After a debrief with Juno only a real press by a person counts: a scripted click is ignored.
+    // After a debrief with Spark only a real press by a person counts: a scripted click is ignored.
     <button className="cta-btn" onClick={(e) => { if (withJuno && !e.isTrusted) return; void handleGetRecommendations() }} disabled={advancing}>
       {advancing ? 'Preparing…' : 'Get Suggestions'}
     </button>
@@ -179,13 +179,13 @@ export function CaptureScreen({ onReady }: Props) {
     <section className="capture-screen">
       {!signOff && <div className="capture-hero">
         <div>
-          <h2 className="capture-hero__title">{debrief ? 'Debrief the meeting' : withJuno ? 'Debrief with Juno' : 'Customer Conversation Intelligence'}</h2>
+          <h2 className="capture-hero__title">{debrief ? 'Debrief the meeting' : withJuno ? 'Debrief with Spark' : 'Customer Conversation Intelligence'}</h2>
           <p className="capture-hero__sub">
             {debrief
-              ? 'Dictate what you learned once the customer has left. Juno turns your summary into suggestions, a report and a proposal.'
+              ? 'Dictate what you learned once the customer has left. Spark turns your summary into suggestions, a report and a proposal.'
               : withJuno
-                ? 'Dictate what happened in your own words. Juno then checks for anything missing and asks a few short questions, so nothing is lost before you start the analysis.'
-                : 'Capture the conversation, let Juno and its specialist agents analyse it, and walk into the next meeting equipped.'}
+                ? 'Dictate what happened in your own words. Spark then checks for anything missing and asks a few short questions, so nothing is lost before you start the analysis.'
+                : 'Capture the conversation, let Spark and its specialist agents analyse it, and walk into the next meeting equipped.'}
           </p>
         </div>
         <div className="capture-hero__controls">

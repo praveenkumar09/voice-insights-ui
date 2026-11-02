@@ -7,7 +7,7 @@ import './theirworld.css'
 interface Props {
   customerName?: string | null
   lifeMap?: LifeMapData | null
-  /** Juno is listening right now: new people and concerns land with a soft glow. */
+  /** Spark is listening right now: new people and concerns land with a soft glow. */
   live?: boolean
   /** Where it sits: "Summary" shows a title and the counts; "live" is a little quieter. */
   variant?: 'summary' | 'live'
@@ -31,7 +31,7 @@ export function TheirWorld({ customerName, lifeMap, live = false, variant = 'sum
     <section className={`tw tw--${variant}${live ? ' is-live' : ''}`} aria-label="Their world">
       <header className="tw__head">
         <div>
-          <h3>Their world {live && <span className="tw__live" aria-label="Updating as Juno listens"><i />Live</span>}</h3>
+          <h3>Their world {live && <span className="tw__live" aria-label="Updating as Spark listens"><i />Live</span>}</h3>
           <p>{empty ? 'Who matters to them, and what they hope for and worry about.' : [plural(counts.people, 'person', 'people'), plural(counts.hopes, 'hope'), plural(counts.worries, 'concern')].join('  ·  ')}</p>
         </div>
       </header>

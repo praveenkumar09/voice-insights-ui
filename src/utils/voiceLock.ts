@@ -1,6 +1,6 @@
 /**
  * Only one voice feature should hold the microphone at a time. A debrief, a rehearsal, an Ask conversation or a spoken correction
- * claims it while it is listening; Juno mode, which listens in the background for "Hey Juno", steps aside while anyone else has it and
+ * claims it while it is listening; Spark mode, which listens in the background for "Hey Spark", steps aside while anyone else has it and
  * comes back when it is released.
  */
 const owners = new Set<string>()

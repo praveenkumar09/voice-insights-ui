@@ -174,7 +174,13 @@ function CampaignEditor({ campaign: c, onChanged, onClose, onDeleted }: { campai
         </div>
 
         <div className="cmp__form">
-          {c.analysisStatus === 'ANALYZING' && <p className="cmp__note"><span className="proposal__spinner" /> Spark is reading the poster. This takes a few seconds.</p>}
+          {c.analysisStatus === 'ANALYZING' && (
+            <p className="cmp__note">
+              <span className="proposal__spinner" />
+              {Date.now() - Date.parse(c.createdAt) > 90_000 ? ' This is taking longer than usual. ' : ' Spark is reading the poster. This takes a few seconds. '}
+              {Date.now() - Date.parse(c.createdAt) > 90_000 && <button className="kb-link" disabled={!!busy} onClick={() => run('reread', () => reanalyseCampaign(c.id), 'Reading the poster again…')}>Read it again</button>}
+            </p>
+          )}
           {c.analysisStatus === 'FAILED' && (
             <p className="cmp__note cmp__note--bad">{c.analysisError ?? 'The poster could not be read.'} <button className="kb-link" disabled={!!busy} onClick={() => run('reread', () => reanalyseCampaign(c.id), 'Reading the poster again…')}>Try again</button></p>
           )}
@@ -251,7 +257,7 @@ function TestMatching({ threshold }: { threshold: number }) {
         <ul className="cmp__results">
           {rows.map((r) => (
             <li key={r.campaignId}>
-              <div className="cmp__res-top"><b>{r.name}</b><span className={`cmp__pill cmp__pill--${r.live ? 'live' : r.status.toLowerCase()}`}>{r.live ? 'Live' : STATUS_LABEL[r.status as Campaign['status']] ?? r.status}</span>
+              <div className="cmp__res-top"><b>{r.name}</b><span className={`cmp__pill cmp__pill--${r.live ? 'live' : r.status.toLowerCase()}`}>{r.live ? 'Live' : r.status === 'ACTIVE' ? 'Live, outside its dates' : STATUS_LABEL[r.status as Campaign['status']] ?? r.status}</span>
                 <span className={r.aboveThreshold ? 'cmp__fit' : 'cmp__nofit'}>{r.aboveThreshold ? 'Close enough to suggest' : 'Not close enough'}</span></div>
               <div className="cmp__bar" title={`Similarity ${r.score.toFixed(2)}`}><i style={{ width: `${Math.max(2, Math.min(100, r.score * 100))}%` }} /><s style={{ left: `${threshold * 100}%` }} /></div>
               <small>Closest to: “{r.bestSignal}”</small>

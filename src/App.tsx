@@ -1,5 +1,6 @@
 import { SparkBot } from './components/brand/SparkBot'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { clearRecent, refreshRecent } from './utils/recentCustomers'
 import { AdminRunDetailScreen } from './screens/AdminRunDetailScreen'
 import { AdminScreen } from './screens/AdminScreen'
 import { CaptureScreen } from './screens/CaptureScreen'
@@ -32,6 +33,9 @@ function AppShell() {
   const auth = useAuth()
   const { theme, toggleTheme } = useTheme()
   const signedIn = auth.isAuthenticated
+
+  // Who the advisor has debriefed lately: the home page cards, and the names Spark listens for.
+  useEffect(() => { if (signedIn) void refreshRecent(); else clearRecent() }, [signedIn])
 
   // What Spark can do from anywhere in the app.
   useJunoScreen(signedIn ? (inAdmin ? 'Admin' : view.name === 'orchestration' ? 'The suggestion workspace' : 'The home screen') : null)

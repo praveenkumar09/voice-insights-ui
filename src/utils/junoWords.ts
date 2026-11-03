@@ -53,3 +53,37 @@ export function parseReadControl(text: string): ReadControl | null {
   if (!t || t.split(/\s+/).length > 4) return null
   return CONTROLS.find(([, re]) => re.test(t))?.[0] ?? null
 }
+
+const wordsOf = (t: string) => t.toLowerCase().replace(/[’']/g, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+
+/**
+ * Which of several people the advisor meant, from what they said. {@code names} are in the order Spark listed them (most recently debriefed
+ * first). Returns the 0-based position, -1 for "neither / never mind", or null when it was not clear. A name wins ("Nick Lee", "Lee"); then
+ * a position ("the first one", "the second", "the other one", "the older one", "the latest").
+ */
+export function parseChoice(text: string, names: string[]): number | null {
+  const heard = wordsOf(text)
+  if (heard.length === 0) return null
+  if (/\b(neither|none|nobody|no one|cancel|never ?mind|forget it)\b/i.test(text)) return -1
+
+  // A name: the person whose name shares the most words with what was said, if that is one person only.
+  const scores = names.map((n) => {
+    const parts = wordsOf(n)
+    return heard.filter((w) => w.length >= 2 && parts.some((p) => p === w)).length
+  })
+  const top = Math.max(...scores)
+  if (top > 0 && scores.filter((x) => x === top).length === 1) return scores.indexOf(top)
+
+  const has = (re: RegExp) => re.test(heard.join(' '))
+  // Words that say which end of the list come before a bare number, because "the other one" and "the older one" both contain "one".
+  if (has(/\b(last|older|oldest|earlier)\b/)) return names.length - 1
+  if (has(/\b(other|another)\b/)) return names.length > 1 ? 1 : null
+  if (has(/\b(first|1st|latest|newest|newer|recent|most recent)\b/)) return 0
+  if (has(/\b(second|2nd)\b/)) return names.length > 1 ? 1 : null
+  if (has(/\b(third|3rd)\b/)) return names.length > 2 ? 2 : null
+  if (has(/\b(fourth|4th)\b/)) return names.length > 3 ? 3 : null
+  if (has(/\b(one|1)\b/)) return 0
+  if (has(/\b(two|2)\b/)) return names.length > 1 ? 1 : null
+  if (has(/\b(three|3)\b/)) return names.length > 2 ? 2 : null
+  return null
+}

@@ -82,14 +82,20 @@ export function JunoCapsule() {
         {j.reading && <ReadingCard r={j.reading} reduce={reduce} spring={spring} />}
 
         {live && (
-          <motion.div key="cap" layout className={`jm__cap jm__cap--${j.phase}${expanded ? ' is-expanded' : ''}`} initial={reduce ? false : { opacity: 0, y: -14, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.94 }} transition={spring}>
+          <motion.div key="cap" layout className={`jm__cap jm__cap--${j.phase}${expanded ? ' is-expanded' : ''}${j.choices ? ' jm__cap--choosing' : ''}`} initial={reduce ? false : { opacity: 0, y: -14, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.94 }} transition={spring}>
             <button className="jm__main" onClick={() => j.phase === 'listening' && setOpen((v) => !v)} aria-expanded={j.phase === 'listening' ? open : undefined} disabled={j.phase !== 'listening'}>
               <Orb phase={j.phase} level={j.phase === 'awake' ? j.amplitude : 0} />
               <span className="jm__text">
                 {j.phase === 'speaking' || j.phase === 'confirming' ? j.message : j.phase === 'awake' && j.caption ? <em>“{j.caption}”</em> : LABEL[j.phase]}
               </span>
             </button>
-            {j.phase === 'confirming' && (
+            {(j.phase === 'confirming' || j.phase === 'speaking') && j.choices && (
+              <span className="jm__yesno jm__choices">
+                {j.choices.map((c, i) => <button key={c} className="jm__btn jm__btn--choice" onClick={() => j.choose(i)}><span className="jm__num">{i + 1}</span>{c}</button>)}
+                <button className="jm__btn jm__btn--quiet" onClick={() => j.choose(-1)}>Neither</button>
+              </span>
+            )}
+            {j.phase === 'confirming' && !j.choices && (
               <span className="jm__yesno">
                 <button className="jm__btn jm__btn--primary" onClick={() => j.answer(true)}>Yes</button>
                 <button className="jm__btn" onClick={() => j.answer(false)}>No</button>

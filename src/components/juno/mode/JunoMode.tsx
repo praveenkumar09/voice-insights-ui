@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
-import { getReading, junoCommand, type JunoActionSpec, type ReadDoc } from '../../../api/client'
+import { getReading, junoCommand, type JunoActionSpec, type ReadDoc, type Reading } from '../../../api/client'
 import { useVoiceCapture } from '../../../hooks/useVoiceCapture'
 import { parseReadControl, parseWake, parseYesNo, stripWake, type ReadControl } from '../../../utils/junoWords'
 import { createPlayer, headphonesConnected, splitSentences, type Player } from '../../../utils/readAloud'
 import { chime, prewarmSpeech, speakAndWait, stopSpeaking } from '../../../utils/speak'
 import { matchLocal, vocabularyFor } from '../../../utils/junoLocal'
+import { recentFirstNames } from '../../../utils/recentCustomers'
 import { isEcho } from '../../../utils/echo'
 import { pageButtonActions } from '../../../utils/pageButtons'
 import { voiceLock } from '../../../utils/voiceLock'
@@ -42,6 +43,14 @@ interface Ctx {
   reading: ReadingState | null
   /** Starts reading. Rejects with a plain message if there is nothing to read. */
   read: (runId: string, doc: ReadDoc, name?: string) => Promise<void>
+  /** Starts reading a briefing that has already been fetched (for example a customer's brief from memory). */
+  readLoaded: (data: Reading) => Promise<void>
+  /** Spark asks a question aloud and returns what the advisor says next (null if nothing is said in time). Spark mode must be on. */
+  ask: (question: string, options?: string[]) => Promise<string | null>
+  /** While Spark asks which of several: the options, shown as buttons in the capsule (null otherwise). */
+  choices: string[] | null
+  /** Taps option i (0-based), or -1 for "neither". */
+  choose: (i: number) => void
   readControl: (c: ReadControl) => void
   phase: JunoPhase
   /** What the advisor is saying right now (before it is final). */
@@ -105,6 +114,8 @@ const IDLE_OFF_MS = 15 * 60 * 1000
 const RECYCLE_MS = 12 * 60 * 1000
 const AWAKE_WAIT_MS = 9000
 const CONFIRM_WAIT_MS = 10000
+/** Choosing between people takes longer than a yes or no. */
+const CHOICE_WAIT_MS = 15000
 const UNMUTE_DELAY_MS = 250
 /** After a bare "Hey Spark" while reading, the next line is taken as the command for this long. */
 const ARMED_MS = 6000
@@ -143,6 +154,8 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
 
   // reading aloud
   const [reading, setReadingState] = useState<ReadingState | null>(null)
+  const [choices, setChoices] = useState<string[] | null>(null)
+  const tapResolve = useRef<((v: string) => void) | null>(null)
   const readingRef = useRef<ReadingState | null>(null)
   const setReading = useCallback((r: ReadingState | null) => { readingRef.current = r; setReadingState(r) }, [])
   const readJob = useRef<{ player: Player | null; jump: number | null; stopped: boolean } | null>(null)
@@ -266,10 +279,9 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     }
   }, [endReading, setReading])
 
-  const read = useCallback(async (runId: string, doc: ReadDoc, name?: string) => {
+  const startReading = useCallback(async (data: Reading, doc: ReadDoc, name?: string) => {
     if (readJob.current) endReading()
     stopSpeaking()
-    const data = await getReading(runId, doc)
     const sections = data.sections.filter((x) => x.text.trim())
     if (sections.length === 0) throw new Error('There is nothing to read for that yet.')
     const job = { player: null as Player | null, jump: null as number | null, stopped: false }
@@ -345,6 +357,14 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     })()
   }, [capture, endReading, readControl, setPhase, setReading])
 
+  const read = useCallback(async (runId: string, doc: ReadDoc, name?: string) => {
+    if (readJob.current) endReading()
+    stopSpeaking()
+    await startReading(await getReading(runId, doc), doc, name)
+  }, [endReading, startReading])
+
+  const readLoaded = useCallback((data: Reading) => startReading(data, 'brief'), [startReading])
+
   // ── handling a request ──
   const handleCommand = useCallback(async (utterance: string) => {
     const wasReading = !!readingRef.current
@@ -412,6 +432,29 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
       backToListening()
     }
   }, [backToListening, capture, endReading, nextUtterance, readControl, say, setPhase]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Spark asks a question and listens for the answer, like the yes/no before a change. Used when a request needs one more thing ("which Nick?"). */
+  const ask = useCallback(async (question: string, options?: string[]): Promise<string | null> => {
+    // A tap on one of the options (shown from the start) can answer while Spark is still talking, and cuts it short.
+    const tap = new Promise<string>((resolve) => { tapResolve.current = resolve })
+    setChoices(options && options.length > 0 ? options : null)
+    try {
+      const first = await Promise.race([say(question).then(() => null), tap])
+      if (first !== null) { console.debug('[juno] ask: tapped while speaking', first); stopSpeaking(); capture.setMicMuted(false); return first }
+      setPhase('confirming')
+      capture.sendConfirming(true)
+      const heard = await Promise.race([nextUtterance(options ? CHOICE_WAIT_MS : CONFIRM_WAIT_MS), tap])
+      if (waiter.current) { waiter.current = null; if (waitTimer.current) window.clearTimeout(waitTimer.current) } // a tap won: nobody is waiting for speech any more
+      console.debug('[juno] ask: answer', JSON.stringify(heard))
+      return heard
+    } finally {
+      tapResolve.current = null
+      capture.sendConfirming(false)
+      setChoices(null)
+      // Answered (or timed out): do not leave the question and its buttons on screen while the next thing loads.
+      if (phaseRef.current === 'confirming' || phaseRef.current === 'speaking') { setMessage(''); setPhase('thinking') }
+    }
+  }, [capture, nextUtterance, say, setPhase])
 
   /** Heard its name with nothing after it: a soft chime, then the next thing said is the request. */
   const awaken = useCallback(async () => {
@@ -482,7 +525,7 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
     prewarmSpeech(['Done.'])
     let last = ''
     const sync = () => {
-      const phrases = vocabularyFor(available())
+      const phrases = vocabularyFor(available(), recentFirstNames())
       const key = phrases.join('|')
       if (key === last) return
       last = key
@@ -547,6 +590,11 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
   const declineConsent = useCallback(() => setPhase('off'), [setPhase])
 
   const answer = useCallback((yes: boolean) => { deliver(yes ? 'yes' : 'no') }, [])
+  const choose = useCallback((i: number) => {
+    const v = i < 0 ? 'neither' : String(i + 1)
+    if (waiter.current) deliver(v)
+    else tapResolve.current?.(v)
+  }, [])
 
   // The session opened (or fell over).
   useEffect(() => {
@@ -608,9 +656,9 @@ export function JunoModeProvider({ children, customerName }: { children: ReactNo
   useEffect(() => () => { readJob.current && (readJob.current.stopped = true, readJob.current.player?.stop()); capture.reset(); stopSpeaking() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const value = useMemo<Ctx>(() => ({
-    enabled, reading, read, readControl, phase, caption: capture.partialText, message, amplitude: capture.amplitude, notice,
+    enabled, reading, read, readLoaded, ask, choices, choose, readControl, phase, caption: capture.partialText, message, amplitude: capture.amplitude, notice,
     toggle, acceptConsent, declineConsent, answer, examples, announce, register, registerScreen,
-  }), [enabled, reading, read, readControl, phase, capture.partialText, capture.amplitude, message, notice, toggle, acceptConsent, declineConsent, answer, examples, announce, register, registerScreen])
+  }), [enabled, reading, read, readLoaded, ask, choices, choose, readControl, phase, capture.partialText, capture.amplitude, message, notice, toggle, acceptConsent, declineConsent, answer, examples, announce, register, registerScreen])
 
   return <JunoModeContext.Provider value={value}>{children}</JunoModeContext.Provider>
 }

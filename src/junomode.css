@@ -101,3 +101,11 @@
 .jm__ico:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px; }
 @media (max-width: 480px) { .jm__cap--reading { flex-wrap: wrap; justify-content: center; } .jm__read { flex-basis: calc(100% - 50px); } }
 @media (prefers-reduced-motion: reduce) { .jm-orb i, .jm-orb, .jm__cap::before, .jm__cap::after { animation: none !important; transition: none !important; } }
+
+/* Asking "which one?": the question and the orb on the first row, the options on a full-width row below, so the text is never squeezed. */
+.jm__cap--choosing { flex-wrap: wrap; row-gap: 10px; min-width: min(500px, calc(100vw - 24px)); max-width: calc(100vw - 24px); padding: 10px 12px 12px 14px; border-radius: 28px; }
+.jm__cap--choosing .jm__main { flex: 1 1 100%; }
+.jm__choices { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+.jm__btn--choice { flex: 1 1 auto; display: inline-flex; align-items: center; gap: 10px; justify-content: flex-start; min-height: 42px; padding: 0 16px 0 8px; line-height: 1.2; text-align: left; }
+.jm__num { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 13px; font-weight: 700; color: #fff; background: #d31145; }
+.jm__choices .jm__btn--quiet { flex: 0 0 auto; padding: 0 14px; }

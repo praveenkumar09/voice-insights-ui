@@ -715,6 +715,48 @@ export async function getReading(runId: string, doc: ReadDoc): Promise<Reading> 
   return res.json()
 }
 
+// ── Customer memory: who the advisor has debriefed, and a spoken-ready brief on one of them ──
+export interface MemoryCandidate {
+  /** The person's latest debrief (the id to ask a brief for). */
+  id: string
+  name: string
+  age: number | null
+  occupation: string | null
+  lastDebriefAt: string
+  /** "today", "yesterday", "on Tuesday", "on 18 October": as a person would say it. */
+  lastDebriefSpoken: string
+  debriefs: number
+  hasSuggestions: boolean
+}
+export interface MemoryBrief {
+  /** found: the reading is set. choose: several people fit, ask which. none: nobody fits, say is set. */
+  status: 'found' | 'choose' | 'none'
+  say: string | null
+  customer: MemoryCandidate | null
+  reading: Reading | null
+  candidates: MemoryCandidate[]
+}
+
+export async function getRecentDebriefs(limit = 6): Promise<MemoryCandidate[]> {
+  const res = await fetch(`${API_BASE}/api/memory/recent?limit=${limit}`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `Could not load recent debriefs (${res.status})`))
+  return res.json()
+}
+
+/** "Brief me on Nick": the brief, or the people to choose between, or nothing. */
+export async function getMemoryBrief(name: string): Promise<MemoryBrief> {
+  const res = await fetch(`${API_BASE}/api/memory/customers/brief?name=${encodeURIComponent(name)}`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `I couldn’t look that up just now (${res.status})`))
+  return res.json()
+}
+
+/** The brief for the person a debrief belongs to. */
+export async function getMemoryBriefFor(profileId: string): Promise<MemoryBrief> {
+  const res = await fetch(`${API_BASE}/api/memory/customers/${encodeURIComponent(profileId)}/brief`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await errorMessage(res, `I couldn’t find that debrief (${res.status})`))
+  return res.json()
+}
+
 // ── Admin: knowledge base (policy documents → vectors) ──
 export interface KnowledgeFile { category: string; sourceFile: string; chunks: number }
 export interface KnowledgeProduct { productName: string; files: number; chunks: number; updatedAt: string | null; documents: KnowledgeFile[] }

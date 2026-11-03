@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { saveCustomerProfile } from '../api/client'
+import { RecentDebriefs } from '../components/home/RecentDebriefs'
 import { JunoStage, JunoTranscript } from '../components/juno/JunoStage'
 import { useJuno } from '../hooks/useJuno'
 import { useJunoAction, useJunoScreen } from '../components/juno/mode/JunoMode'
@@ -78,6 +79,8 @@ export function CaptureScreen({ onReady }: Props) {
           noVoice={typeof speechSynthesis === 'undefined'}
         />
       )}
+
+      {!signOff && !started && <RecentDebriefs />}
 
       {!signOff && !started && (
         <ol className="home-steps" aria-label="How it works">

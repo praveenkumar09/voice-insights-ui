@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { updateLifeMap, updateTranscript, wsVoiceUrl } from '../api/client'
+import { getToken, updateLifeMap, updateTranscript, wsVoiceUrl } from '../api/client'
 import type { CopilotInsights, CustomerProfile, LifeMapData, SignalPoint } from '../types'
 import { voiceLock } from '../utils/voiceLock'
 
@@ -427,6 +427,9 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
           setTimeout(() => reject(new Error('Connection to voice service timed out')), 8000)
         })
 
+        // Whose debrief this is: sent as the first message (not in the URL) so the server remembers it under this advisor from the start.
+        const token = getToken()
+        if (token) ws.send(JSON.stringify({ type: 'auth', token }))
         readyRef.current = false
         if (options.assistant && commandsRef.current.length > 0) ws.send(JSON.stringify({ type: 'commands', phrases: commandsRef.current }))
         await attachMic(ws)

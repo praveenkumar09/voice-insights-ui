@@ -34,3 +34,62 @@
 .capture-screen { gap: 18px; }
 .capture-hero { margin-bottom: 0; }
 @media (min-width: 901px) { .capture-hero__sub { font-size: 0.98rem; } }
+
+/* ── Recently debriefed: a rail of ringed avatars and one panel ─────────────────────────────────────────
+   The ring is the information: crimson = suggestions are ready, grey = a debrief only. Dots under the panel's text count the debriefs. */
+.recent { display: grid; gap: 14px; }
+.recent__head h3 { margin: 0; font-size: 1.25rem; font-weight: 750; letter-spacing: -0.02em; }
+.recent__head p { margin: 4px 0 0; font-size: 0.92rem; color: var(--ink-soft); }
+
+.recent__rail { display: flex; gap: 6px; overflow-x: auto; padding: 14px 4px 10px; margin: 0 -4px; scroll-snap-type: x proximity; scrollbar-width: none; }
+.recent__rail::-webkit-scrollbar { display: none; }
+.recent__who {
+  flex: none; scroll-snap-align: start; width: 92px; display: grid; justify-items: center; gap: 3px; padding: 0; border: none; background: none; color: inherit; cursor: pointer; font: inherit;
+}
+.recent__ring {
+  display: grid; place-items: center; width: 68px; height: 68px; border-radius: 50%; padding: 3px; background: rgba(var(--tint-rgb), 0.16);
+  transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.22s ease, background 0.22s ease;
+}
+.recent__who.is-ready .recent__ring { background: conic-gradient(from 200deg, #ff4d78, #d31145 40%, #ff9a6f 75%, #ff4d78); }
+.recent__face {
+  display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; color: #b30f3b;
+  background: radial-gradient(circle at 35% 25%, #fff, #f6eef1 70%); box-shadow: inset 0 0 0 3px rgba(var(--glass-rgb), 0.9);
+}
+:root[data-theme='dark'] .recent__face { background: radial-gradient(circle at 35% 25%, #3a2a31, #241a1f 70%); color: #ff8fa9; }
+.recent__who:not(.is-ready) .recent__face { color: var(--ink-soft); }
+.recent__who:hover .recent__ring { transform: translateY(-2px); }
+.recent__who.is-on .recent__ring { transform: scale(1.1); box-shadow: 0 14px 26px -12px rgba(211, 17, 69, 0.65); }
+.recent__who.is-on:not(.is-ready) .recent__ring { box-shadow: 0 12px 24px -14px rgba(var(--shadow-rgb), 0.5); background: rgba(var(--tint-rgb), 0.3); }
+.recent__name { margin-top: 6px; max-width: 100%; font-size: 0.9rem; font-weight: 600; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent__who.is-on .recent__name { color: var(--ink); font-weight: 750; }
+.recent__when { font-size: 0.74rem; color: var(--ink-faint); }
+.recent__who:focus-visible { outline: none; }
+.recent__who:focus-visible .recent__ring { outline: 3px solid rgba(211, 17, 69, 0.4); outline-offset: 3px; }
+
+.recent__focus {
+  display: flex; align-items: center; gap: 12px 22px; flex-wrap: wrap; padding: 16px 20px; border-radius: 22px;
+  background: rgba(var(--glass-rgb), 0.7); border: 1px solid rgba(var(--tint-rgb), 0.08); box-shadow: inset 0 1px 0 var(--glass-sheen), 0 18px 40px -30px rgba(var(--shadow-rgb), 0.35);
+  animation: recent-in 0.28s ease both;
+}
+.recent__facts { display: grid; gap: 2px; min-width: 0; flex: 1 1 220px; }
+.recent__facts strong { font-size: 1.12rem; font-weight: 750; letter-spacing: -0.015em; }
+.recent__facts span { font-size: 0.92rem; color: var(--ink-soft); }
+.recent__history { display: inline-flex; align-items: center; gap: 10px; font-size: 0.86rem; color: var(--ink-soft); }
+.recent__dots { display: inline-flex; gap: 4px; }
+.recent__dots i { width: 6px; height: 6px; border-radius: 50%; background: #d31145; opacity: 0.85; }
+.recent__dots i:nth-child(n + 2) { opacity: 0.55; } .recent__dots i:nth-child(n + 4) { opacity: 0.3; }
+.recent__state { font-size: 0.78rem; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: rgba(var(--tint-rgb), 0.06); color: var(--ink-soft); }
+.recent__state.is-ready { background: rgba(27, 175, 122, 0.14); color: #0f7a55; }
+:root[data-theme='dark'] .recent__state.is-ready { color: #5fd8a8; }
+.recent__play {
+  display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 22px; border: none; border-radius: 999px; cursor: pointer; font-size: 0.95rem; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, #ff4d78, #d31145 60%, #a30d36); box-shadow: 0 12px 22px -10px rgba(211, 17, 69, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.3); transition: transform 0.15s ease, filter 0.15s ease;
+}
+.recent__play:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
+.recent__play:disabled { opacity: 0.55; cursor: default; }
+.recent__error { margin: 0; font-size: 0.9rem; color: #b3261e; }
+@keyframes recent-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (max-width: 640px) { .recent__focus { padding: 14px 16px; } .recent__play { width: 100%; justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .recent__focus { animation: none; } .recent__ring { transition: none; } }
+
+.jm__choices { display: flex; flex-wrap: wrap; gap: 8px; }

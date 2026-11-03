@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { relevanceBand, relevanceLabel } from '../../utils/relevance'
 import type { AgentState } from '../../hooks/useRecommendationStream'
-import type { AgentKey, CustomerPersonaResult, ProductScoringResult, ProductShortlistResult, RagValidationResult } from '../../types'
+import { CampaignSuggestions } from './CampaignSuggestions'
+import type { AgentKey, CampaignResult, CustomerPersonaResult, ProductScoringResult, ProductShortlistResult, RagValidationResult } from '../../types'
 
 /** The suggestion itself, up front: the shortlisted products, ranked, with how relevant each is and the reasons in plain words. */
 export function ReportSpotlight({ steps, onOpenHow }: { steps: Record<AgentKey, AgentState>; onOpenHow?: () => void }) {
@@ -10,6 +11,7 @@ export function ReportSpotlight({ steps, onOpenHow }: { steps: Record<AgentKey, 
   const scoring = steps.productScoring.status === 'done' ? (steps.productScoring.result as ProductScoringResult) : null
   const validation = steps.ragValidation.status === 'done' ? (steps.ragValidation.result as RagValidationResult) : null
   const persona = steps.persona.status === 'done' ? (steps.persona.result as CustomerPersonaResult) : null
+  const campaigns = steps.campaign.status === 'done' ? (steps.campaign.result as CampaignResult) : null
   if (!shortlist?.shortlistedProducts?.length) return null
 
   return (
@@ -59,6 +61,7 @@ export function ReportSpotlight({ steps, onOpenHow }: { steps: Record<AgentKey, 
           )
         })}
       </div>
+      <CampaignSuggestions result={campaigns} />
     </section>
   )
 }

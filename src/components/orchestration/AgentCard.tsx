@@ -6,6 +6,7 @@ import type { AgentState } from '../../hooks/useRecommendationStream'
 import type {
   AffordabilityResult,
   AgentKey,
+  CampaignResult,
   ComplianceCheckResult,
   CustomerPersonaResult,
   MergedInsights,
@@ -286,6 +287,25 @@ function AgentResultView({ agentKey, result, runId }: { agentKey: AgentKey; resu
           </ul>
           {r.issues.length > 0 && <Section title="Issues to resolve" items={r.issues} />}
           <p className="agent-card__rationale">{r.rationale}</p>
+        </div>
+      )
+    }
+    case 'campaign': {
+      const r = result as CampaignResult
+      return (
+        <div className="agent-card__result">
+          {r.matches?.length ? (
+            <ul className="agent-card__list">
+              {r.matches.map((m) => (
+                <li key={m.campaignId}>
+                  <strong>{m.name}</strong> ({m.strength}): {m.reason} <em>“{m.quote}”</em>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="agent-card__rationale">{r.note ?? (r.active > 0 ? 'None of the live campaigns fit what the customer said.' : 'No campaigns are live.')}</p>
+          )}
+          <p className="agent-card__rationale">{r.active} live · {r.candidates} close in meaning{r.verified ? ' · checked' : ''} · {r.tookMs} ms</p>
         </div>
       )
     }

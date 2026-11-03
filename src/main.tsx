@@ -26,6 +26,7 @@ import './spark-login.css'
 import './spark-bot.css'
 import './home.css'
 import './admin-bu.css'
+import './campaigns.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

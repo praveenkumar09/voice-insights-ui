@@ -33,7 +33,7 @@ export function OrchestratorCanvas({ runId, steps }: Props) {
         <span className="phases__conductor-icon">{done === total ? <CheckIcon /> : done > 0 || states.includes('running') ? <SpinnerIcon /> : <span />}</span>
         <div>
           <strong>{AGENT_NAME}</strong>
-          <small>{done === total ? 'Orchestrator · all 11 agents have reported back' : done > 0 || states.includes('running') ? `Orchestrator · coordinating 11 specialist agents · ${done} complete` : 'Orchestrator · ready to dispatch 11 specialist agents'}</small>
+          <small>{done === total ? `Orchestrator · all ${total} agents have reported back` : done > 0 || states.includes('running') ? `Orchestrator · coordinating ${total} specialist agents · ${done} complete` : `Orchestrator · ready to dispatch ${total} specialist agents`}</small>
         </div>
       </div>
 

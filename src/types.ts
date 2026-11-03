@@ -99,6 +99,56 @@ export interface RecommendationSummaryResult {
   keyTalkingPoints: string[]
 }
 
+/** A campaign an admin uploaded as a poster (see the Admin → Campaigns tab). */
+export interface Campaign {
+  id: string
+  name: string
+  status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'
+  analysisStatus: 'ANALYZING' | 'READY' | 'FAILED'
+  analysisError: string | null
+  summary: string | null
+  themes: string[]
+  benefits: string[]
+  customerSignals: string[]
+  minAge: number | null
+  maxAge: number | null
+  audienceNote: string | null
+  startsOn: string | null
+  endsOn: string | null
+  businessUnits: string[]
+  languages: string[]
+  callToAction: string | null
+  terms: string | null
+  verbatimText: string | null
+  confidence: 'high' | 'medium' | 'low' | null
+  hasImage: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** One campaign suggested for a customer by the campaign agent. */
+export interface CampaignMatch {
+  campaignId: string
+  name: string
+  strength: 'strong' | 'related' | 'worth discussing'
+  reason: string
+  /** Something the customer (or the advisor's notes) actually said. */
+  quote: string
+  validUntil: string | null
+  themes: string[]
+  callToAction: string | null
+  language: string | null
+}
+
+export interface CampaignResult {
+  matches: CampaignMatch[]
+  active: number
+  candidates: number
+  verified: boolean
+  tookMs: number
+  note: string | null
+}
+
 export interface ComplianceCheckItem {
   check: string
   passed: boolean
@@ -201,6 +251,7 @@ export type AgentKey =
   | 'summary'
   | 'complianceCheck'
   | 'salesReport'
+  | 'campaign'
 
 export type AgentStatus = 'idle' | 'running' | 'done' | 'failed'
 

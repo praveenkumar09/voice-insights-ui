@@ -23,6 +23,11 @@ export const AGENT_META: Record<AgentKey, AgentMeta> = {
     purpose: 'Prevent unsuitable suggestions.',
     question: 'What can this customer realistically afford?',
   },
+  campaign: {
+    label: 'Campaign Agent',
+    purpose: 'Find live campaigns that match what the customer is interested in.',
+    question: 'Which campaigns could fit this customer?',
+  },
   merge: {
     label: 'Synthesis Agent',
     purpose: 'Combine need, risk and affordability into one customer picture.',
@@ -96,7 +101,7 @@ export interface Phase {
 }
 
 export const PHASES: Phase[] = [
-  { id: 'understand', n: 1, title: 'Understand', blurb: 'Three specialists read the customer at the same time', agents: ['need', 'risk', 'affordability'] },
+  { id: 'understand', n: 1, title: 'Understand', blurb: 'Specialists read the customer at the same time; the Campaign Agent works beside the rest and never holds them up', agents: ['need', 'risk', 'affordability', 'campaign'] },
   { id: 'decide', n: 2, title: 'Decide', blurb: 'Combine the picture, segment the customer, rank every product', agents: ['merge', 'persona', 'productScoring', 'productShortlist'] },
   { id: 'verify', n: 3, title: 'Verify', blurb: 'Check each claim against product documents and compliance rules', agents: ['ragValidation', 'complianceCheck'] },
   { id: 'communicate', n: 4, title: 'Communicate', blurb: 'Turn the analysis into words an advisor can use', agents: ['summary', 'salesReport'] },

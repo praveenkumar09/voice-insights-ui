@@ -1,4 +1,5 @@
 import type {
+  CampaignResult,
   AffordabilityResult,
   AgentKey,
   ComplianceCheckResult,
@@ -64,6 +65,10 @@ export function agentHeadline(agent: AgentKey, result: unknown): string | null {
       case 'summary': {
         const r = result as RecommendationSummaryResult
         return `${r.keyTalkingPoints?.length ?? 0} talking points ready for the advisor`
+      }
+      case 'campaign': {
+        const r = result as CampaignResult
+        return r.matches?.length ? r.matches.map((m) => m.name).join(' · ') : r.active > 0 ? 'No campaign fits this customer' : 'No live campaigns'
       }
       case 'salesReport': {
         const r = result as SalesReportResult

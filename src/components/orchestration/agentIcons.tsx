@@ -12,6 +12,7 @@ const P: Record<AgentKey, string> = {
   complianceCheck: 'M12 3l2.4 2.1 3.2-.3.9 3.1 2.8 1.6-1.2 3 1.2 3-2.8 1.6-.9 3.1-3.2-.3L12 21l-2.4-2.1-3.2.3-.9-3.1L2.7 14.5l1.2-3-1.2-3 2.8-1.6.9-3.1 3.2.3L12 3zm-3 9l2 2 4-4',
   summary: 'M4 5h16v11H9l-5 4V5zm4 4h8m-8 3h5',
   salesReport: 'M6 3h9l4 4v14H6V3zm3 8h7m-7 3h7m-7 3h4',
+  campaign: 'M3 11v3a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1zm13-3a5 5 0 0 1 0 8m2.500-10.500a8.500 8.500 0 0 1 0 13',
 }
 
 /** Small stroke icon for each agent — drawn on a 24px grid, coloured by its parent. */

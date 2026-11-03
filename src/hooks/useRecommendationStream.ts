@@ -21,6 +21,7 @@ export const PIPELINE_ORDER: AgentKey[] = [
   'complianceCheck',
   'summary',
   'salesReport',
+  'campaign', // runs beside the chain, not in it
 ]
 
 const TERMINAL_AGENT: AgentKey = 'salesReport'

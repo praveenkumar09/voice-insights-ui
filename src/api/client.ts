@@ -94,6 +94,56 @@ export async function saveSettings(businessUnit: string, languages: LangId[]): P
   return body as AppSettings
 }
 
+// ── Campaigns (Admin) ──────────────────────────────────────────────────────────────────────────────────────
+
+export interface CampaignOverview {
+  campaigns: import('../types').Campaign[]
+  businessUnit: string
+  businessUnitName: string
+  minSimilarity: number
+}
+
+export interface CampaignProbe {
+  campaignId: string
+  name: string
+  status: string
+  score: number
+  live: boolean
+  aboveThreshold: boolean
+  bestSignal: string
+  matchedOn: string
+}
+
+async function campaignJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}/api/campaigns${path}`, { ...init, headers: { ...authHeaders(), ...(init?.headers ?? {}) } })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((body as { error?: string }).error ?? `Request failed (${res.status})`)
+  return body as T
+}
+
+export const listCampaigns = () => campaignJson<CampaignOverview>('')
+export const getCampaign = (id: string) => campaignJson<import('../types').Campaign>(`/${id}`)
+export function uploadCampaign(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  return campaignJson<import('../types').Campaign>('', { method: 'POST', body: form })
+}
+export const reanalyseCampaign = (id: string) => campaignJson<import('../types').Campaign>(`/${id}/reanalyse`, { method: 'POST' })
+export const saveCampaign = (id: string, fields: Partial<import('../types').Campaign>) =>
+  campaignJson<import('../types').Campaign>(`/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) })
+export const activateCampaign = (id: string) => campaignJson<import('../types').Campaign>(`/${id}/activate`, { method: 'POST' })
+export const pauseCampaign = (id: string) => campaignJson<import('../types').Campaign>(`/${id}/pause`, { method: 'POST' })
+export const archiveCampaign = (id: string) => campaignJson<import('../types').Campaign>(`/${id}/archive`, { method: 'POST' })
+export async function deleteCampaign(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/campaigns/${id}`, { method: 'DELETE', headers: authHeaders() })
+  if (!res.ok) throw new Error(`Could not delete (${res.status})`)
+}
+export const probeCampaigns = (text: string) =>
+  campaignJson<{ results: CampaignProbe[]; threshold: number }>('/probe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+/** The poster as an image address that works in an <img> (the session token rides in the query). */
+export const campaignImageUrl = (id: string, kind: 'main' | 'thumb' = 'main', version?: string) =>
+  withTokenParam(`${API_BASE}/api/campaigns/${id}/image?kind=${kind}${version ? `&v=${encodeURIComponent(version)}` : ''}`)
+
 export function wsVoiceUrl(mode: 'live' | 'debrief' | 'juno-debrief' | 'ask' = 'live'): string {
   return `${wsBase()}/ws/voice${mode === 'live' ? '' : `?mode=${mode}`}`
 }

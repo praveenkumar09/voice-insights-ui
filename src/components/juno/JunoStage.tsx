@@ -6,6 +6,7 @@ import { nativeSentenceList, revealPieces, useEnabledLanguages } from '../../uti
 import type { CopilotInsights, CustomerProfile } from '../../types'
 import { useJunoAction } from './mode/JunoMode'
 import { quoteFor } from '../../utils/debriefMarks'
+import { asksForPeriod } from '../../utils/quickAnswers'
 import { rememberChips } from '../../utils/flyIn'
 
 type FieldMode = 'idle' | 'listening' | 'speaking' | 'thinking' | 'done'
@@ -260,7 +261,7 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
                   )}
                   {stage === 'discovery' && listening && (
                     <div className="jn__quick" role="group" aria-label="Quick answers">
-                      {/\b(month|year|monthly|yearly|annual)/i.test(line) ? (
+                      {asksForPeriod(line) ? (
                         <>
                           <button onClick={() => k.answerQuick('Per month.')}>Per month</button>
                           <button onClick={() => k.answerQuick('Per year.')}>Per year</button>
@@ -383,7 +384,7 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
                           </motion.span>
                         ))}
                       </AnimatePresence>
-                      {items.length === 0 && <span className="jn__none">{done ? 'Covered' : 'Not mentioned yet'}</span>}
+                      {items.length === 0 && <span className="jn__none">{done ? 'Nothing captured' : 'Not mentioned yet'}</span>}
                     </div>
                     {items[0] && quotes[t.key] && <q className="jn__src">{quotes[t.key]}</q>}
                   </div>

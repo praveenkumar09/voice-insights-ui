@@ -1,3 +1,4 @@
+import { budgetDisplay } from '../../utils/budgetText'
 import { TheirWorld } from '../lifemap/TheirWorld'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -277,7 +278,7 @@ export function DebriefReview({ profile, copilot, segments, turns, readiness, el
           <div className="rv__fact">
             <dt>Budget</dt>
             <dd>
-              <InlineEdit display={profile.budgetNotes ? profile.budgetNotes.replace(/[.\s]+$/, '').replace(/^budget( is| of| around)?\s+/i, '') : ''} value={profile.budgetNotes ?? ''} label="Budget" placeholder="Not mentioned" onSave={saveBudget} />
+              <InlineEdit display={budgetDisplay(profile.budgetNotes)} value={profile.budgetNotes ?? ''} label="Budget" placeholder="Not mentioned" onSave={saveBudget} />
             </dd>
           </div>
           <div className="rv__fact">

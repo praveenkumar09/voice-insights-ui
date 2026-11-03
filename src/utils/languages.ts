@@ -70,6 +70,13 @@ export function revealPieces(text: string, lang: LangId): string[] {
  * are written with the female forms; when Spark's voice is the male one they are switched so the words and the voice agree.
  */
 export function thaiForVoice(text: string, male: boolean): string {
-  if (!male) return text
-  return text.replace(/ค่ะ/g, 'ครับ').replace(/คะ(?![฀-๿])/g, 'ครับ').replace(/ดิฉัน/g, 'ผม')
+  if (male) return text.replace(/ค่ะ/g, 'ครับ').replace(/คะ(?![฀-๿])/g, 'ครับ').replace(/ดิฉัน/g, 'ผม')
+  // The female voice: a model writing Spark's lines may still end with ครับ. A question takes คะ, a statement ค่ะ, and a softener นะ takes คะ.
+  const question = /(ไหม|หรือไม่|หรือเปล่า|เหรอ|อะไร|ไหน|ไหร่|เท่าไร|ใคร|ทำไม|อย่างไร|ยังไง|บ้าง|กี่[฀-๿]*|เมื่อไร)\s*ครับ/g
+  return text
+    .replace(question, (m) => m.replace('ครับ', 'คะ'))
+    .replace(/นะครับ/g, 'นะคะ')
+    .replace(/ครับ(?=\s*\?)/g, 'คะ')
+    .replace(/ครับ/g, 'ค่ะ')
+    .replace(/ผม(?=\s|$|ขอ|จะ|ได้|ยัง|เข้าใจ|ช่วย|พร้อม|ไม่|มี|คิด|สรุป|อยาก|เป็น|ฟัง|จด|บันทึก|ถาม|ต้อง)/g, 'ดิฉัน')
 }

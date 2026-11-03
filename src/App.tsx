@@ -38,6 +38,14 @@ function AppShell() {
   // Who the advisor has debriefed lately: the home page cards, and the names Spark listens for.
   useEffect(() => { if (signedIn) void refreshRecent(); else clearRecent() }, [signedIn])
   useEffect(() => { if (signedIn) void loadTenant() }, [signedIn])
+  // An admin may change the business unit or languages in another tab or on another device: pick it up when this tab is looked at again.
+  useEffect(() => {
+    if (!signedIn) return
+    const again = () => { if (document.visibilityState === 'visible') void loadTenant() }
+    document.addEventListener('visibilitychange', again)
+    window.addEventListener('focus', again)
+    return () => { document.removeEventListener('visibilitychange', again); window.removeEventListener('focus', again) }
+  }, [signedIn])
 
   // What Spark can do from anywhere in the app.
   useJunoScreen(signedIn ? (inAdmin ? 'Admin' : view.name === 'orchestration' ? 'The suggestion workspace' : 'The home screen') : null)

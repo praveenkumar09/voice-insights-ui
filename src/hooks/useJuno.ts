@@ -451,7 +451,7 @@ export function useJuno(voice: Voice) {
     (rawText: string, tone = 'warm', open?: boolean | null, canBarge = false) =>
       new Promise<void>((resolve) => {
         // Spark's own Thai lines follow the voice: the male voice says ครับ and ผม, the female one ค่ะ and ดิฉัน (written lines are always female).
-        const text = langRef.current === 'th' && voiceIdRef.current === 'male' ? thaiForVoice(rawText, true) : rawText
+        const text = langRef.current === 'th' ? thaiForVoice(rawText, voiceIdRef.current === 'male') : rawText
         const v = voiceApi.current
         const g = gen.current
         awaiting.current = false
@@ -744,6 +744,13 @@ export function useJuno(voice: Voice) {
         changedAt = performance.now()
       }
       if (performance.now() - t0 >= 500 && performance.now() - changedAt >= 450 && !cur.partialText) break
+    }
+    // Speech the server has heard but not yet turned into words (a slow answer from the speech service) is waited for, up to 9 seconds, so Spark's
+    // first summary has the whole dictation and does not leave out the last thing the advisor said.
+    for (const until = performance.now() + 9000; performance.now() < until;) {
+      if (await voiceApi.current.pendingSegments() === 0) break
+      await new Promise((r) => window.setTimeout(r, 300))
+      if (g !== gen.current) return
     }
     const v = voiceApi.current
     // The spoken hand-over phrase ("Spark, over to you") is not part of the notes.

@@ -290,6 +290,16 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'confirming', on }))
   }, [])
 
+  /** Resolves with how many heard segments still have no transcript (0 when the answer cannot be had). */
+  const pendingWaiters = useRef<Array<(n: number) => void>>([])
+  const pendingSegments = useCallback((): Promise<number> => new Promise((resolve) => {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN) { resolve(0); return }
+    const timer = window.setTimeout(() => resolve(0), 1500)
+    pendingWaiters.current.push((n) => { window.clearTimeout(timer); resolve(n) })
+    ws.send(JSON.stringify({ type: 'pending' }))
+  }), [])
+
   /** Tells the server which language the conversation is in, so the speech model knows what to expect. */
   const sendLanguage = useCallback((lang: string) => {
     const ws = wsRef.current
@@ -374,6 +384,9 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
               readyRef.current = true
               if (storedFar()) ws.send(JSON.stringify({ type: 'far', on: true })) // stricter command confidence while speaking from a distance
               if (statusRef.current === 'connecting') setStatus('listening')
+              break
+            case 'pending':
+              pendingWaiters.current.splice(0).forEach((f) => f(Number(msg.count ?? 0)))
               break
             case 'utterance_end':
               // The server heard the speaker finish what they were saying (a question for Spark): its words are on the way.
@@ -536,6 +549,6 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
   return {
     status, amplitude, partialText, finalSegments, profile, copilot, signalHistory, errorMessage,
     noiseFilter, setNoiseFilter, backgroundIgnored, farMic, setFarMic, faintVoice,
-    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, setSpeechResumedListener, releaseHeld, sendCommands, sendConfirming, sendLanguage, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
+    start, stop, pause, resume, reset, setMicMuted, setLearning, setRawAmpListener, setUtteranceEndListener, setSpeechResumedListener, releaseHeld, sendCommands, sendConfirming, sendLanguage, pendingSegments, sendAgentSay, sendAdvisorSay, sendConversational, setShortAnswers, commitNow, turnTaken, saveTranscriptEdit, saveLifeMapEdit, patchProfile,
   }
 }

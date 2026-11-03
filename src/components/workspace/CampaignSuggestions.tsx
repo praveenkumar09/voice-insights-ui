@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { campaignImageUrl } from '../../api/client'
+import { PosterLightbox } from './PosterLightbox'
 import type { CampaignMatch, CampaignResult } from '../../types'
 
 const STRENGTH: Record<CampaignMatch['strength'], string> = { strong: 'Strong fit', related: 'Related', 'worth discussing': 'Worth discussing' }
@@ -13,12 +14,7 @@ const when = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00`).toLocale
 export function CampaignSuggestions({ result }: { result: CampaignResult | null }) {
   const [open, setOpen] = useState<CampaignMatch | null>(null)
   const matches = result?.matches ?? []
-  useEffect(() => {
-    if (!open) return
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null) }
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [open])
+  const closeViewer = useCallback(() => setOpen(null), [])
   if (matches.length === 0) return null
 
   return (
@@ -48,14 +44,7 @@ export function CampaignSuggestions({ result }: { result: CampaignResult | null 
         ))}
       </div>
 
-      {open && (
-        <div className="camps__lightbox" role="dialog" aria-modal="true" aria-label={`${open.name} poster`} onClick={() => setOpen(null)}>
-          <div className="camps__lightbox-inner" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="camps__close" onClick={() => setOpen(null)} aria-label="Close">×</button>
-            <img src={campaignImageUrl(open.campaignId, 'main')} alt={`${open.name} poster`} />
-          </div>
-        </div>
-      )}
+      {open && <PosterLightbox campaignId={open.campaignId} name={open.name} onClose={closeViewer} />}
     </section>
   )
 }

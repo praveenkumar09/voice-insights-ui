@@ -5,6 +5,7 @@ import {
 } from '../../api/client'
 import type { Campaign } from '../../types'
 import { useTenant } from '../../utils/tenant'
+import { PosterLightbox } from '../workspace/PosterLightbox'
 
 const STATUS_LABEL: Record<Campaign['status'], string> = { DRAFT: 'Draft', ACTIVE: 'Live', PAUSED: 'Paused', ARCHIVED: 'Archived' }
 const lines = (v: string) => v.split('\n').map((x) => x.trim()).filter(Boolean)
@@ -220,14 +221,7 @@ function CampaignEditor({ campaign: c, onChanged, onClose, onDeleted }: { campai
           </div>
         </div>
       </div>
-      {zoom && (
-        <div className="camps__lightbox" role="dialog" aria-modal="true" onClick={() => setZoom(false)}>
-          <div className="camps__lightbox-inner" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="camps__close" onClick={() => setZoom(false)} aria-label="Close">×</button>
-            <img src={campaignImageUrl(c.id, 'main', c.updatedAt)} alt={`${c.name} poster`} />
-          </div>
-        </div>
-      )}
+      {zoom && <PosterLightbox campaignId={c.id} name={c.name} version={c.updatedAt} onClose={() => setZoom(false)} />}
     </section>
   )
 }

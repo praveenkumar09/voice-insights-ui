@@ -83,5 +83,6 @@
 .camps__lightbox { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 24px; background: rgba(10, 8, 12, 0.72); backdrop-filter: blur(6px); }
 .camps__lightbox-inner { position: relative; max-height: 100%; }
 .camps__lightbox-inner img { display: block; max-height: calc(100vh - 48px); max-width: min(92vw, 760px); border-radius: 16px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); }
+.camps__lightbox-error { margin: 0; max-width: 360px; padding: 22px 24px; border-radius: 16px; background: #fff; color: #14161f; font-size: 0.95rem; line-height: 1.45; }
 .camps__close { position: absolute; top: -14px; right: -14px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: #fff; color: #14161f; font-size: 1.4rem; line-height: 1; cursor: pointer; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3); }
 @media (max-width: 560px) { .camps__cards { grid-template-columns: 1fr; } .camps__poster { flex-basis: 88px; } }

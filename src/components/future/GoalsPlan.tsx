@@ -1,3 +1,4 @@
+import { money } from '../../utils/tenant'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { generateStory } from '../../api/client'
@@ -5,7 +6,6 @@ import type { ProtectionStory, SalesReportResult } from '../../types'
 import { printGoalsPlan } from '../../utils/goalsPlanPdf'
 import { forLabel } from '../../utils/names'
 
-const sgd = (n: number) => `S$${Math.round(n).toLocaleString('en-SG')}`
 
 interface Props {
   runId: string
@@ -178,7 +178,7 @@ function AdequacyCheck({ story }: { story: ProtectionStory }) {
             {rows.map((r) => (
               <tr key={r.name}>
                 <td>{r.name}</td>
-                <td>{sgd(r.benefitAmount!)}</td>
+                <td>{money(r.benefitAmount!, r.currency)}</td>
                 <td>{income > 0 ? (r.benefitAmount! / (income * 12)).toFixed(1) : '—'}</td>
                 <td>{expenses > 0 ? (r.benefitAmount! / (expenses * 12)).toFixed(1) : '—'}</td>
               </tr>

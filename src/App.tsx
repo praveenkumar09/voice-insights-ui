@@ -1,3 +1,4 @@
+import { loadTenant } from './utils/tenant'
 import { SparkBot } from './components/brand/SparkBot'
 import { useEffect, useState } from 'react'
 import { clearRecent, refreshRecent } from './utils/recentCustomers'
@@ -36,6 +37,7 @@ function AppShell() {
 
   // Who the advisor has debriefed lately: the home page cards, and the names Spark listens for.
   useEffect(() => { if (signedIn) void refreshRecent(); else clearRecent() }, [signedIn])
+  useEffect(() => { if (signedIn) void loadTenant() }, [signedIn])
 
   // What Spark can do from anywhere in the app.
   useJunoScreen(signedIn ? (inAdmin ? 'Admin' : view.name === 'orchestration' ? 'The suggestion workspace' : 'The home screen') : null)

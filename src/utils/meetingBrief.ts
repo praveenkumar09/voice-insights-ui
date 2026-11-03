@@ -22,7 +22,7 @@ export function printMeetingBrief(profile: CustomerProfile | null, copilot: Copi
 
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>AIA Spark — Meeting Brief</title>
 <style>
-  body{font:13px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#14161f;margin:36px}
+  body{font:13px/1.5 -apple-system,'Segoe UI','Thonburi','Leelawadee UI','Noto Sans Thai',Helvetica,Arial,sans-serif;color:#14161f;margin:36px}
   h1{font-size:22px;margin:0} h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#d31145;margin:22px 0 8px;border-bottom:1px solid #eee;padding-bottom:4px}
   .sub{color:#666;margin:2px 0 0} .bar{height:4px;background:#d31145;margin-bottom:18px;border-radius:2px}
   table{border-collapse:collapse;width:100%} td{padding:4px 0;vertical-align:top} td:first-child{color:#666;width:130px}

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { junoDebriefPrepare, junoDebriefTurn, junoPhrases, type FactFindReadiness, junoSpeak, junoVoiceStatus, type JunoPhrases, type JunoTurnResponse, type LangId } from '../api/client'
 import type { useVoiceCapture } from './useVoiceCapture'
 import { countWords } from '../utils/wordCount'
+import { isSpaceless, LANGUAGE_INFO, thaiForVoice } from '../utils/languages'
+import { fallbackLanguage, useTenant } from '../utils/tenant'
 
 type Voice = ReturnType<typeof useVoiceCapture>
 
@@ -27,12 +29,7 @@ export const JUNO_TOPICS = [
 export type { LangId }
 
 /** The languages Spark speaks. English is the default; the others are chosen on the stage (before or during the conversation). */
-export const LANGUAGES: { id: LangId; label: string; name: string }[] = [
-  { id: 'en', label: 'EN', name: 'English' },
-  { id: 'zh', label: '中文', name: 'Chinese' },
-  { id: 'ms', label: 'BM', name: 'Bahasa Melayu' },
-  { id: 'ta', label: 'தமிழ்', name: 'Tamil' },
-]
+export const LANGUAGES: { id: LangId; label: string; name: string }[] = LANGUAGE_INFO.map(({ id, label, name }) => ({ id, label, name }))
 
 /** Used only if the server can't be reached for the fixed lines; the real ones (all four languages) come from the server. */
 const EN_PHRASES: JunoPhrases = {
@@ -90,7 +87,7 @@ function endpointMs(text: string, open: boolean, lang: LangId): number {
   const sentenceEnd = /[.!?。！？]["')”]?$/.test(t)
   // The word list is English; for the other languages only punctuation says a sentence trails off.
   if ((lang === 'en' ? TRAILING.test(t) : TRAILING_PUNCT.test(t)) || !sentenceEnd) return END_TRAILING_MS
-  const short = lang === 'zh' ? t.length <= 6 : t.split(/\s+/).length <= 3
+  const short = isSpaceless(lang) ? t.length <= 6 : t.split(/\s+/).length <= 3
   return open ? (short ? END_SHORT_OPEN_MS : END_SENTENCE_OPEN_MS) : short ? END_SHORT_MS : END_SENTENCE_MS
 }
 /** After the last text arrives, wait this long for a trailing piece before replying. */
@@ -133,7 +130,7 @@ const NUDGE_AFTER_MS = 25000
 /** A segment that is only one of Spark's own acknowledgements (heard back through the speakers) is not the advisor. */
 const ACK_ECHO = /^(mm+[\s,-]*(h?m+)?[\s,]*(i see)?|okay,?\s*(got it)?|ok|right,?\s*(thank you|thanks)?|i see,?\s*(okay|thanks)?|alright,?\s*(got it)?|got it|uh[\s-]*huh|mhm)[.!,\s]*$/i
 /** Rough speaking speed (characters per second), used for caption timing when the audio's own timing isn't available. */
-const CPS: Record<LangId, number> = { en: 13.5, zh: 4.5, ms: 13, ta: 11 }
+const CPS: Record<LangId, number> = { en: 13.5, zh: 4.5, ms: 13, ta: 11, th: 11, fil: 13, vi: 14 }
 /** Output devices that are headphones/earpieces: Spark's voice can't leak back into the microphone, so interruption is safe. */
 const HEADSET = /head(set|phone)|airpods|earbuds?|earphones?|buds|bluetooth|beats|jabra|bose|wh-1000|wf-1000/i
 const BARGE_KEY = 'vi_juno_barge'
@@ -191,7 +188,9 @@ export function useJuno(voice: Voice) {
   })
 
   // The language of the conversation: English unless the advisor or advisor chooses another.
-  const [lang, setLangState] = useState<LangId>('en')
+  const tn = useTenant()
+  const tenantKey = `${tn.businessUnit}|${tn.languages.join()}`
+  const [lang, setLangState] = useState<LangId>(() => fallbackLanguage())
   const langRef = useRef<LangId>('en')
   langRef.current = lang
   const [phrases, setPhrases] = useState<JunoPhrases>(EN_PHRASES)
@@ -274,19 +273,31 @@ export function useJuno(voice: Voice) {
     phrasesCache.current.set(l, p)
     return p
   }, [])
+
+  /** Thai lines follow the voice: the male voice says ครับ and ผม, the female one ค่ะ and ดิฉัน. Other languages are unchanged. */
+  const forVoice = useCallback((p: JunoPhrases, l: LangId, id: VoiceId): JunoPhrases => {
+    if (l !== 'th' || id !== 'male') return p
+    const t = (s: string) => thaiForVoice(s, true)
+    return { ...p, greeting: t(p.greeting), declined: t(p.declined), unclear: t(p.unclear), firstQuestion: t(p.firstQuestion), closing: t(p.closing), wrap: t(p.wrap), askAway: t(p.askAway), tellMore: t(p.tellMore), noFigures: t(p.noFigures), nudge: t(p.nudge), missed: t(p.missed), anythingElse: t(p.anythingElse), acks: p.acks.map(t) }
+  }, [])
+  // Spark's lines name the business unit, so a changed setting means they are fetched again.
+  useEffect(() => { phrasesCache.current.clear() }, [tenantKey])
   useEffect(() => {
     let alive = true
-    void loadPhrases(lang).then((p) => alive && setPhrases(p))
+    void loadPhrases(lang).then((p) => alive && setPhrases(forVoice(p, lang, voiceId)))
     return () => { alive = false }
-  }, [lang, loadPhrases])
+  }, [lang, loadPhrases, forVoice, voiceId, tenantKey])
 
   /** Choose the language (before or during the conversation): Spark's next lines are in it. */
   const setLanguage = useCallback((l: LangId) => {
     langRef.current = l
     setLangState(l)
-    void loadPhrases(l).then((p) => { phrasesRef.current = p; setPhrases(p) })
+    void loadPhrases(l).then((p) => { const v = forVoice(p, l, voiceIdRef.current); phrasesRef.current = v; setPhrases(v) })
     voiceApi.current.sendLanguage(l)
-  }, [loadPhrases])
+  }, [loadPhrases, forVoice])
+
+  // A language an admin has turned off cannot stay selected.
+  useEffect(() => { if (!tn.languages.includes(langRef.current)) setLanguage(fallbackLanguage()) }, [tenantKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The browser loads its voices asynchronously.
   useEffect(() => {
@@ -361,7 +372,7 @@ export function useJuno(voice: Voice) {
   /** Splits a line into sentences (short ones joined to the next) so each can be spoken, and fetched, on its own. */
   const sentences = useCallback((text: string) => {
     const parts: { text: string; at: number }[] = []
-    const joinBelow = langRef.current === 'zh' ? 10 : 28 // characters: a very short sentence is joined to the next
+    const joinBelow = isSpaceless(langRef.current) ? 10 : 28 // characters: a very short sentence is joined to the next
     const re = /[^.!?。！？]+[.!?。！？]*\s*/g
     let m: RegExpExecArray | null
     while ((m = re.exec(text))) {
@@ -437,8 +448,10 @@ export function useJuno(voice: Voice) {
 
   /** Spark says something aloud (mic muted meanwhile), with captions paced to the speech. Resolves when finished. */
   const speak = useCallback(
-    (text: string, tone = 'warm', open?: boolean | null, canBarge = false) =>
+    (rawText: string, tone = 'warm', open?: boolean | null, canBarge = false) =>
       new Promise<void>((resolve) => {
+        // Spark's own Thai lines follow the voice: the male voice says ครับ and ผม, the female one ค่ะ and ดิฉัน (written lines are always female).
+        const text = langRef.current === 'th' && voiceIdRef.current === 'male' ? thaiForVoice(rawText, true) : rawText
         const v = voiceApi.current
         const g = gen.current
         awaiting.current = false
@@ -982,13 +995,13 @@ export function useJuno(voice: Voice) {
   /** Back to the start for a new advisor: English again. */
   const reset = useCallback(() => {
     resetState()
-    langRef.current = 'en'
-    setLangState('en')
+    langRef.current = fallbackLanguage()
+    setLangState(fallbackLanguage())
   }, [resetState])
 
   const start = useCallback(async () => {
     resetState()
-    phrasesRef.current = await loadPhrases(langRef.current)
+    phrasesRef.current = forVoice(await loadPhrases(langRef.current), langRef.current, voiceIdRef.current)
     prewarm()
     noiseFloor.current = 0.03 // a fresh conversation starts with a fresh idea of the room
     setStageBoth('connecting')

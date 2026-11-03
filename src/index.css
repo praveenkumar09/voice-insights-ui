@@ -69,7 +69,7 @@ html {
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, 'Thonburi', 'Leelawadee UI', 'Noto Sans Thai', sans-serif;
   -webkit-font-smoothing: antialiased;
   background: var(--app-bg);
   color: var(--ink);

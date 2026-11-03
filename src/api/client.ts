@@ -53,11 +53,52 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   }
 }
 
+export interface BusinessUnitInfo {
+  id: string
+  name: string
+  country: string
+  currency: string
+  symbol: string
+  /** Indicative: how many of this currency one SGD is worth. */
+  perSgd: number
+  incomeExample: string
+  budgetExample: string
+  defaultLanguages: LangId[]
+}
+
+/** The business unit and languages the app is set up for, and what an admin can choose from. */
+export interface AppSettings {
+  businessUnit: string
+  unit: BusinessUnitInfo
+  languages: LangId[]
+  updatedAt: string | null
+  units: BusinessUnitInfo[]
+  available: { code: LangId; name: string }[]
+  minLanguages: number
+}
+
+export async function getSettings(): Promise<AppSettings> {
+  const res = await fetch(`${API_BASE}/api/settings`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(`Settings request failed (${res.status})`)
+  return res.json()
+}
+
+export async function saveSettings(businessUnit: string, languages: LangId[]): Promise<AppSettings> {
+  const res = await fetch(`${API_BASE}/api/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ businessUnit, languages }),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((body as { error?: string }).error ?? `Could not save (${res.status})`)
+  return body as AppSettings
+}
+
 export function wsVoiceUrl(mode: 'live' | 'debrief' | 'juno-debrief' | 'ask' = 'live'): string {
   return `${wsBase()}/ws/voice${mode === 'live' ? '' : `?mode=${mode}`}`
 }
 
-export type LangId = 'en' | 'zh' | 'ms' | 'ta'
+export type LangId = 'en' | 'zh' | 'ms' | 'ta' | 'th' | 'fil' | 'vi'
 
 export interface JunoPhrases {
   language: string

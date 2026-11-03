@@ -332,3 +332,7 @@
 .jn__quick button { font: inherit; font-size: 0.9rem; font-weight: 650; cursor: pointer; padding: 8px 20px; border-radius: 999px; color: var(--ink); background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(8px); transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease; }
 .jn__quick button:hover { transform: translateY(-2px); border-color: rgba(61, 224, 176, 0.6); background: rgba(61, 224, 176, 0.12); }
 .jn__quick small { flex-basis: 100%; color: var(--faint); font-size: 0.72rem; text-align: center; }
+
+/* the language selector now has seven languages: let it wrap and keep the buttons compact */
+.jn__seg--lang { flex-wrap: wrap; justify-content: center; }
+.jn__seg--lang button { min-width: 34px; padding-left: 9px; padding-right: 9px; }

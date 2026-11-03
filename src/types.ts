@@ -122,7 +122,7 @@ export interface ProposalProduct {
 }
 
 export interface ProposalResult {
-  language: 'en' | 'zh' | 'ms' | 'ta'
+  language: import('./api/client').LangId
   title: string
   greeting: string
   summary: string
@@ -147,7 +147,7 @@ export interface ProtectionStory {
   quotes: { text: string; theme: string }[]
   monthlyIncome: number | null
   /** Sum-assured figures found in product documents — used only in the advisor's own adequacy check. */
-  products: { name: string; benefitAmount: number | null; benefitNote: string | null }[]
+  products: { name: string; benefitAmount: number | null; benefitNote: string | null; currency?: string | null }[]
   closing: string
   /** Absent on stories created before "Goals and plan" existed. */
   goals?: PlanGoal[]

@@ -1,3 +1,4 @@
+import { unit } from '../../utils/tenant'
 import { useEffect, useState } from 'react'
 import { saveCustomerProfile } from '../../api/client'
 import type { CopilotInsights, CustomerProfile, LifeMapConcern, LifeMapData, LifeMapPerson } from '../../types'
@@ -105,9 +106,9 @@ function DetailsForm({ profile, onSaved }: { profile: CustomerProfile; onSaved: 
         {field('Name', 'customerName')}
         {field('Age', 'age', { type: 'number' })}
         {field('Occupation', 'occupation')}
-        {field('Income', 'incomeBand', { placeholder: 'e.g. S$6,000–8,000 / month' })}
+        {field('Income', 'incomeBand', { placeholder: `e.g. ${unit().incomeExample}` })}
         {field('Dependants', 'dependents', { type: 'number' })}
-        {field('Budget', 'budgetNotes', { placeholder: 'e.g. around S$400 a month' })}
+        {field('Budget', 'budgetNotes', { placeholder: `e.g. around ${unit().budgetExample}` })}
         {field('Existing cover', 'existingPolicies', { placeholder: 'Comma-separated, or leave blank if none', wide: true })}
       </div>
       <div className="review__tip">

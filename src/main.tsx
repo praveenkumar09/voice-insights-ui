@@ -25,6 +25,7 @@ import './drawer.css'
 import './spark-login.css'
 import './spark-bot.css'
 import './home.css'
+import './admin-bu.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

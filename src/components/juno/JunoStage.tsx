@@ -1,7 +1,8 @@
 import { SparkBot } from '../brand/SparkBot'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef } from 'react'
-import { JUNO_TOPICS, LANGUAGES, type useJuno } from '../../hooks/useJuno'
+import { JUNO_TOPICS, type useJuno } from '../../hooks/useJuno'
+import { nativeSentenceList, revealPieces, useEnabledLanguages } from '../../utils/languages'
 import type { CopilotInsights, CustomerProfile } from '../../types'
 import { useJunoAction } from './mode/JunoMode'
 import { quoteFor } from '../../utils/debriefMarks'
@@ -79,6 +80,7 @@ const TOPIC_ICON: Record<string, JSX.Element> = {
  */
 export function JunoStage({ k, amplitude, partialText, profile, copilot, transcript, noVoice, safe = false }: Props) {
   const { stage, speaking, thinking, listening, covered, line, revealed } = k
+  const langs = useEnabledLanguages()
   const mode: FieldMode = stage === 'finished' ? 'done' : speaking ? 'speaking' : thinking ? 'thinking' : listening ? 'listening' : 'idle'
   const step = stepIndex(stage)
   // "Hey Spark, start the debrief": starts it for real, a moment after Spark has said so (the debrief takes over the microphone).
@@ -97,8 +99,8 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
 
   const words = useMemo(() => {
     let at = 0
-    // Chinese has no spaces between words, so its captions light up a character at a time.
-    const tokens = k.lang === 'zh' ? Array.from(line) : line.split(/(\s+)/)
+    // Chinese and Thai have no spaces between words, so their captions light up a character (cluster) at a time.
+    const tokens = revealPieces(line, k.lang)
     return tokens.map((w) => {
       const start = at
       at += w.length
@@ -181,9 +183,9 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
           ))}
         </ol>
 
-        <div className="jn__tools">
+        <div className="jn__tools" hidden={langs.length < 2}>
           <div className="jn__seg jn__seg--lang" role="group" aria-label="Language">
-            {LANGUAGES.map((l) => (
+            {langs.map((l) => (
               <button key={l.id} className={k.lang === l.id ? 'is-on' : ''} aria-pressed={k.lang === l.id} title={l.name} onClick={() => k.setLanguage(l.id)}>
                 {l.label}
               </button>
@@ -225,7 +227,7 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
                     <li>At most five questions</li>
                     <li>You stay in control</li>
                   </ul>
-                  <p className="jn__langs">Speaks English, 中文, Bahasa Melayu and தமிழ் — choose above</p>
+                  <p className="jn__langs">Speaks {nativeSentenceList()} — choose above</p>
                 </motion.div>
               )}
 

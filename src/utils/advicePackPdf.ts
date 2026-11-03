@@ -1,3 +1,4 @@
+import { unit } from './tenant'
 import type { AskTurn, WhatIfView } from '../api/client'
 import { changeLine } from './whatIf'
 import { chipLabel, chipLabels } from './askSources'
@@ -91,7 +92,7 @@ ${nm.gapsToFill.length ? `<h4>Information still missing</h4><ul>${nm.gapsToFill.
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Advice pack — ${esc(customerName ?? 'customer')}</title>
 <style>
   @page{margin:16mm 14mm}
-  body{font:12.5px/1.55 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#14161f;margin:0}
+  body{font:12.5px/1.55 -apple-system,'Segoe UI','Thonburi','Leelawadee UI','Noto Sans Thai',Helvetica,Arial,sans-serif;color:#14161f;margin:0}
   .bar{height:6px;background:linear-gradient(90deg,#d31145,#9c0c34);border-radius:3px;margin-bottom:18px}
   .brand{display:flex;justify-content:space-between;color:#d31145;font-weight:800;letter-spacing:.04em;font-size:11px;text-transform:uppercase}
   h1{font-size:24px;margin:8px 0 2px;letter-spacing:-.02em}
@@ -112,7 +113,7 @@ ${nm.gapsToFill.length ? `<h4>Information still missing</h4><ul>${nm.gapsToFill.
   .disc{margin-top:12px;font-size:10.5px;color:#777;border-top:1px solid #eee;padding-top:8px}
 </style></head><body>
 <div class="bar"></div>
-<div class="brand"><span>AIA Singapore · Advice pack · prepared with ${AGENT_NAME}</span><span>${esc(new Date().toLocaleDateString())}</span></div>
+<div class="brand"><span>${esc(unit().name)} · Advice pack · prepared with ${AGENT_NAME}</span><span>${esc(new Date().toLocaleDateString())}</span></div>
 <h1>${esc(customerName ?? 'Customer')}</h1>
 <div class="stamp">${reviewed}</div>
 <h2>1 · Fact-find</h2>${factFind || '<p><i>Not generated.</i></p>'}

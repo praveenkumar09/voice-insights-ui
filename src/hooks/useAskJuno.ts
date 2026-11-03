@@ -1,6 +1,8 @@
+import { fallbackLanguage, languageOn } from '../utils/tenant'
+import { detectLang, infoOf } from '../utils/languages'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { isEcho } from '../utils/echo'
-import { askJuno, cancelWhatIf, clearAskHistory, getAskHistory, getAskStarters, getWhatIf, junoSpeak, junoVoiceStatus, runWhatIf, type AskEvent, type AskSource, type AskStarter, type LangId, type WhatIfChange, type WhatIfView } from '../api/client'
+import { askJuno, cancelWhatIf, clearAskHistory, getAskHistory, getAskStarters, getWhatIf, junoSpeak, junoVoiceStatus, runWhatIf, type AskEvent, type AskSource, type AskStarter, type WhatIfChange, type WhatIfView } from '../api/client'
 import { useVoiceCapture } from './useVoiceCapture'
 
 /**
@@ -79,7 +81,8 @@ function save(key: string, value: string) {
   }
 }
 
-const langOf = (t: string): LangId => (/[一-鿿]/.test(t) ? 'zh' : /[஀-௿]/.test(t) ? 'ta' : 'en')
+// the language heard, if it is one that is on; otherwise the fallback
+const langOf = (t: string) => { const l = detectLang(t); return languageOn(l) ? l : fallbackLanguage() }
 
 interface QueueItem {
   sentence?: { messageId: string; key: string; text: string }
@@ -278,7 +281,7 @@ export function useAskJuno(runId: string) {
       } else {
         // The neural voice failed for this line: the browser's own voice keeps the conversation going.
         const u = new SpeechSynthesisUtterance(text)
-        u.lang = langOf(text) === 'zh' ? 'zh-CN' : langOf(text) === 'ta' ? 'ta-IN' : 'en-GB'
+        u.lang = infoOf(langOf(text)).speech
         u.onend = move
         u.onerror = move
         timer = window.setTimeout(move, Math.max(4000, text.length * 90 + 3000))

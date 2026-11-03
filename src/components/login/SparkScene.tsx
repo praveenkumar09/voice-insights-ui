@@ -83,6 +83,8 @@ export function SparkScene() {
         <filter id="spSoft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="26" /></filter>
         <filter id="spDrop" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="22" stdDeviation="16" floodColor="#7a0f2c" floodOpacity=".28" /></filter>
         <path id="spStar" d={STAR} />
+        {/* the head's shape, so its glossy highlight can never overhang the outline */}
+        <clipPath id="spHeadClip"><rect x="96" y="96" width="368" height="292" rx="132" /></clipPath>
       </defs>
 
       {/* fan of light, turning very slowly */}
@@ -165,7 +167,7 @@ export function SparkScene() {
 
           {/* head */}
           <rect x="96" y="96" width="368" height="292" rx="132" fill="url(#spWhite)" stroke="#d3d7e1" strokeWidth="2" />
-          <ellipse cx="190" cy="132" rx="84" ry="22" fill="#fff" opacity=".85" transform="rotate(-14 190 132)" />
+          <ellipse cx="206" cy="134" rx="78" ry="20" fill="#fff" opacity=".85" transform="rotate(-14 206 134)" clipPath="url(#spHeadClip)" />
 
           {/* the face follows the pointer */}
           <g className="sp-face">

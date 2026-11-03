@@ -1,3 +1,4 @@
+import { nativeSentenceList, useEnabledLanguages } from '../utils/languages'
 import { useState } from 'react'
 import { saveCustomerProfile } from '../api/client'
 import { RecentDebriefs } from '../components/home/RecentDebriefs'
@@ -17,14 +18,15 @@ interface Props {
 }
 
 /** What happens after the advisor presses Start: the whole journey in three lines, shown until the first debrief begins. */
-const STEPS = [
-  { title: 'Tell Spark about the meeting', text: 'Speak the way you would brief a colleague. English, Chinese, Malay and Tamil all work, even mixed.' },
+const steps = (languages: string) => [
+  { title: 'Tell Spark about the meeting', text: `Speak the way you would brief a colleague. ${languages} all work, even mixed.` },
   { title: 'Spark checks for gaps', text: 'It asks a few short questions about anything missing or unclear, then reads back what it understood.' },
   { title: 'Review and approve', text: 'Confirm the facts, then get suggestions, a proposal and your advice pack.' },
 ]
 
 /** The home screen: a debrief with Spark. The advisor dictates, Spark checks for gaps, then the advisor reviews and approves. */
 export function CaptureScreen({ onReady }: Props) {
+  useEnabledLanguages() // redraw when an admin changes the languages
   const voice = useVoiceCapture()
   const juno = useJuno(voice)
   const { status, amplitude, partialText, finalSegments, profile, copilot } = voice
@@ -84,7 +86,7 @@ export function CaptureScreen({ onReady }: Props) {
 
       {!signOff && !started && (
         <ol className="home-steps" aria-label="How it works">
-          {STEPS.map((s, i) => (
+          {steps(nativeSentenceList()).map((s, i) => (
             <li key={s.title} className="home-steps__item">
               <span className="home-steps__n" aria-hidden>{i + 1}</span>
               <div>

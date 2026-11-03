@@ -1,3 +1,4 @@
+import { unit } from './tenant'
 import { relevanceLabel } from './relevance'
 import type { ProposalResult } from '../types'
 
@@ -9,6 +10,9 @@ const LABELS = {
   zh: { why: '我们为什么建议它', benefits: '主要保障', premium: '参考保费', next: '建议的下一步', source: '来源' },
   ta: { why: 'நாங்கள் ஏன் இதை யோசனையாகக் கூறுகிறோம்', benefits: 'முக்கிய நன்மைகள்', premium: 'குறிப்பீட்டு பிரீமியம்', next: 'முன்மொழியப்படும் அடுத்த படிகள்', source: 'ஆதாரம்' },
   ms: { why: 'Mengapa kami mencadangkannya', benefits: 'Manfaat utama', premium: 'Premium indikatif', next: 'Langkah seterusnya yang dicadangkan', source: 'Sumber' },
+  th: { why: 'เหตุผลที่เสนอแนะ', benefits: 'ประโยชน์หลัก', premium: 'เบี้ยประกันโดยประมาณ', next: 'ขั้นตอนถัดไปที่เสนอแนะ', source: 'แหล่งที่มา' },
+  fil: { why: 'Bakit namin ito iminumungkahi', benefits: 'Mga pangunahing benepisyo', premium: 'Tinatayang premium', next: 'Mga iminumungkahing susunod na hakbang', source: 'Pinagmulan' },
+  vi: { why: 'Vì sao chúng tôi gợi ý', benefits: 'Lợi ích chính', premium: 'Phí bảo hiểm dự kiến', next: 'Các bước tiếp theo được gợi ý', source: 'Nguồn' },
 } as const
 
 /** Opens the browser print dialog ("Save as PDF") on a branded, customer-ready proposal. */
@@ -17,7 +21,7 @@ export function printProposal(p: ProposalResult, customerName?: string | null) {
   const html = `<!doctype html><html lang="${p.language}"><head><meta charset="utf-8"><title>${esc(p.title)}</title>
 <style>
   @page{margin:18mm 16mm}
-  body{font:13.5px/1.6 -apple-system,'Segoe UI','PingFang SC','Microsoft YaHei','Tamil Sangam MN','Nirmala UI','Latha',Helvetica,Arial,sans-serif;color:#14161f;margin:0}
+  body{font:13.5px/1.6 -apple-system,'Segoe UI','PingFang SC','Microsoft YaHei','Tamil Sangam MN','Nirmala UI','Latha','Thonburi','Leelawadee UI','Noto Sans Thai',Helvetica,Arial,sans-serif;color:#14161f;margin:0}
   .bar{height:6px;background:linear-gradient(90deg,#d31145,#9c0c34);border-radius:3px;margin-bottom:22px}
   .brand{display:flex;justify-content:space-between;align-items:baseline;color:#d31145;font-weight:800;letter-spacing:.04em;font-size:12px;text-transform:uppercase}
   h1{font-size:26px;margin:10px 0 4px;letter-spacing:-.02em}
@@ -34,7 +38,7 @@ export function printProposal(p: ProposalResult, customerName?: string | null) {
   .disc{margin-top:26px;font-size:11px;color:#777;border-top:1px solid #eee;padding-top:10px}
 </style></head><body>
 <div class="bar"></div>
-<div class="brand"><span>AIA Singapore</span><span>${esc(new Date().toLocaleDateString())}</span></div>
+<div class="brand"><span>${esc(unit().name)}</span><span>${esc(new Date().toLocaleDateString())}</span></div>
 <h1>${esc(p.title)}</h1>
 ${customerName ? `<p class="greet"><b>${esc(customerName)}</b></p>` : ''}
 <p class="greet">${esc(p.greeting)}</p>

@@ -71,6 +71,8 @@ export function SparkBot({ mode = 'idle', level = 0, variant = 'full', className
         <filter id={`${id}s`} x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="22" /></filter>
         <filter id={`${id}d`} x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="18" stdDeviation="14" floodColor="#7a0f2c" floodOpacity=".26" /></filter>
         <path id={`${id}star`} d={STAR} />
+        {/* the head's shape, so its glossy highlight can never overhang the outline */}
+        <clipPath id={`${id}hc`}><rect x="96" y="96" width="368" height="292" rx="132" /></clipPath>
       </defs>
 
       {full && <ellipse className="sb-shadow" cx="280" cy="690" rx="130" ry="13" fill="#6d0723" fillOpacity=".32" filter={u('g')} />}
@@ -161,7 +163,7 @@ export function SparkBot({ mode = 'idle', level = 0, variant = 'full', className
           <g className="sb-ear"><circle cx="478" cy="244" r="34" stroke={u('G')} strokeWidth="10" fill="none" /></g>
 
           <rect x="96" y="96" width="368" height="292" rx="132" fill={u('W')} stroke="#d3d7e1" strokeWidth="2" />
-          <ellipse cx="190" cy="132" rx="84" ry="22" fill="#fff" opacity=".85" transform="rotate(-14 190 132)" />
+          <ellipse cx="206" cy="134" rx="78" ry="20" fill="#fff" opacity=".85" transform="rotate(-14 206 134)" clipPath={u('hc')} />
 
           <g className="sb-face">
             <rect x="134" y="144" width="292" height="196" rx="86" fill={u('V')} />

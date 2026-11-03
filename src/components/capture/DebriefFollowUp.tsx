@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { junoFollowUp, type FollowUpDraft, type LangId } from '../../api/client'
-import { LANGUAGES } from '../../hooks/useJuno'
+import { fallbackLanguage } from '../../utils/tenant'
+import { useEnabledLanguages } from '../../utils/languages'
 import { useJunoAction, useJunoScreen } from '../juno/mode/JunoMode'
 
 interface Props {
@@ -14,14 +15,15 @@ interface Props {
  * It is only a draft: the advisor reads it, can edit it, and sends it themselves. Nothing is sent from here.
  */
 export function DebriefFollowUp({ profileId, customerName = '' }: Props) {
-  const [lang, setLang] = useState<LangId>('en')
+  const LANGUAGES = useEnabledLanguages()
+  const [lang, setLang] = useState<LangId>(fallbackLanguage)
   const [draft, setDraft] = useState<FollowUpDraft | null>(null)
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const cache = useRef(new Map<LangId, FollowUpDraft>())
-  const wanted = useRef<LangId>('en')
+  const wanted = useRef<LangId>(fallbackLanguage())
 
   const load = useCallback(
     async (l: LangId) => {
@@ -52,7 +54,7 @@ export function DebriefFollowUp({ profileId, customerName = '' }: Props) {
   )
 
   useEffect(() => {
-    void load('en')
+    void load(fallbackLanguage())
   }, [load])
 
   // The name was corrected on the confirm chips: earlier drafts used the old one.
@@ -102,7 +104,7 @@ export function DebriefFollowUp({ profileId, customerName = '' }: Props) {
   useJunoScreen('The follow-up message for the customer')
   useJunoAction({
     id: 'set_followup_language', description: 'Show the follow-up in English, Mandarin, Malay or Tamil', risk: 'open',
-    params: { language: { type: 'enum', values: ['en', 'zh', 'ms', 'ta'] } },
+    params: { language: { type: 'enum', values: LANGUAGES.map((x) => x.id) } },
     run: (p) => { choose(p.language as LangId); return `Showing it in ${LANGUAGES.find((x) => x.id === p.language)?.name ?? p.language}.` },
   })
   useJunoAction(draft ? { id: 'read_followup', description: 'Read the follow-up message out loud', risk: 'info', run: () => draft.english } : null)

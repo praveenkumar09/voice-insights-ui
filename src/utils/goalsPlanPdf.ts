@@ -1,3 +1,4 @@
+import { unit } from './tenant'
 import type { ProtectionStory } from '../types'
 import { forLabel } from './names'
 
@@ -10,7 +11,7 @@ export function printGoalsPlan(story: ProtectionStory, customerName?: string | n
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Goals and plan</title>
 <style>
   @page{margin:18mm 16mm}
-  body{font:14px/1.6 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#14161f;margin:0}
+  body{font:14px/1.6 -apple-system,'Segoe UI','Thonburi','Leelawadee UI','Noto Sans Thai',Helvetica,Arial,sans-serif;color:#14161f;margin:0}
   .bar{height:6px;background:linear-gradient(90deg,#d31145,#9c0c34);border-radius:3px;margin-bottom:20px}
   .kicker{color:#d31145;font-weight:800;letter-spacing:.12em;font-size:11px;text-transform:uppercase}
   h1{font-size:26px;line-height:1.25;margin:8px 0 10px;letter-spacing:-.02em}
@@ -26,7 +27,7 @@ export function printGoalsPlan(story: ProtectionStory, customerName?: string | n
   .disc{margin-top:26px;font-size:11px;color:#777;border-top:1px solid #eee;padding-top:10px}
 </style></head><body>
 <div class="bar"></div>
-<div class="kicker">AIA Singapore · Goals and plan${customerName ? ` · ${esc(customerName)}` : ''}</div>
+<div class="kicker">${esc(unit().name)} · Goals and plan${customerName ? ` · ${esc(customerName)}` : ''}</div>
 <h1>${esc(story.headline)}</h1>
 <p class="open">${esc(story.opening)}</p>
 ${story.quotes.length ? `<h3>What you told us</h3>${story.quotes.map((q) => `<blockquote>“${esc(q.text)}”<small>${esc(q.theme)}</small></blockquote>`).join('')}` : ''}

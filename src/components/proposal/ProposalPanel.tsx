@@ -1,17 +1,13 @@
 import { relevanceLabel } from '../../utils/relevance'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { generateProposal } from '../../api/client'
+import { generateProposal, type LangId } from '../../api/client'
+import { useEnabledLanguages } from '../../utils/languages'
+import { fallbackLanguage, languageOn } from '../../utils/tenant'
 import type { ProposalResult, SalesReportResult } from '../../types'
 import { printProposal } from '../../utils/proposalPdf'
 
-type Lang = 'en' | 'zh' | 'ms' | 'ta'
-const LANGS: { code: Lang; label: string }[] = [
-  { code: 'en', label: 'English' },
-  { code: 'zh', label: '中文' },
-  { code: 'ms', label: 'Bahasa Melayu' },
-  { code: 'ta', label: 'தமிழ்' },
-]
+type Lang = LangId
 
 interface Props {
   runId: string
@@ -26,6 +22,7 @@ interface Props {
  * languages are regenerated on demand by the same agent method.
  */
 export function ProposalPanel({ runId, report, customerName }: Props) {
+  const LANGS = useEnabledLanguages().map((l) => ({ code: l.id as Lang, label: l.native }))
   const [cache, setCache] = useState<Partial<Record<Lang, ProposalResult>>>({})
   const [lang, setLang] = useState<Lang>('en')
   const [loading, setLoading] = useState(false)
@@ -36,6 +33,9 @@ export function ProposalPanel({ runId, report, customerName }: Props) {
   useEffect(() => {
     if (report?.proposal) setCache((c) => ({ ...c, en: report.proposal! }))
   }, [report])
+
+  // an admin may have turned the current language off: move to the one that is on
+  useEffect(() => { if (!languageOn(lang)) void load(fallbackLanguage()) }, [lang, LANGS.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const proposal = cache[lang]
 

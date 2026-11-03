@@ -1,3 +1,4 @@
+import { nativeList } from '../../utils/languages'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useJunoAction } from '../juno/mode/JunoMode'
 import { DebriefFollowUp } from '../capture/DebriefFollowUp'
@@ -504,7 +505,7 @@ export function AdvicePackPanel({ runId, customerName, profileId, reportMarkdown
               </div>
               {profileId && (
                 <details className="ap-lang">
-                  <summary>Write it in another language (English, 中文, Bahasa Melayu, தமிழ்)</summary>
+                  <summary>Write it in another language ({nativeList()})</summary>
                   <DebriefFollowUp key={profileId} profileId={profileId} customerName={customerName ?? ''} />
                 </details>
               )}

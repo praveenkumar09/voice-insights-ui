@@ -79,7 +79,11 @@
 .camps__strength--strong { background: rgba(23, 191, 99, 0.16); color: var(--good, #0f7a2f); }
 .camps__strength--related { background: rgba(211, 17, 69, 0.1); color: var(--aia-red); }
 .camps__meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.78rem; color: var(--ink-soft); }
-.camps__open { align-self: flex-start; margin-top: 2px; border: 0; background: none; color: var(--aia-red); font-weight: 700; font-size: 0.86rem; cursor: pointer; padding: 4px 0; }
+.camps__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 2px; }
+.camps__open { border: 0; background: none; color: var(--aia-red); font-weight: 700; font-size: 0.86rem; cursor: pointer; padding: 4px 0; }
+.camps__open--spark { padding: 5px 14px; border-radius: 999px; border: 1.5px solid var(--aia-red); }
+.camps__open--spark:hover { background: rgba(211, 17, 69, 0.08); }
+.camps__open:focus-visible { outline: 2px solid var(--aia-red); outline-offset: 2px; border-radius: 6px; }
 .camps__lightbox { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 24px; background: rgba(10, 8, 12, 0.72); backdrop-filter: blur(6px); }
 .camps__lightbox-inner { position: relative; max-height: 100%; }
 .camps__lightbox-inner img { display: block; max-height: calc(100vh - 48px); max-width: min(92vw, 760px); border-radius: 16px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); }

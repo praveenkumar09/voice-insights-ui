@@ -38,7 +38,11 @@ export function CampaignSuggestions({ result }: { result: CampaignResult | null 
                 {m.validUntil && <span>Runs until {when(m.validUntil)}</span>}
                 {m.callToAction && <span>{m.callToAction}</span>}
               </div>
-              <button type="button" className="camps__open" onClick={() => setOpen(m)}>Open poster</button>
+              <div className="camps__actions">
+                <button type="button" className="camps__open" onClick={() => setOpen(m)}>Open poster</button>
+                {/* A placeholder for now: it will open the Spark conversations about this campaign. It deliberately does nothing yet. */}
+                <button type="button" className="camps__open camps__open--spark">Open Spark Conversations</button>
+              </div>
             </div>
           </article>
         ))}

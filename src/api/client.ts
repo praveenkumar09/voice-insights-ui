@@ -94,6 +94,32 @@ export async function saveSettings(businessUnit: string, languages: LangId[]): P
   return body as AppSettings
 }
 
+// ── Voice data (Admin) ─────────────────────────────────────────────────────────────────────────────────────
+
+export interface VoiceDataOverview {
+  tables: { table: string; label: string; rows: number }[]
+  total: number
+  kept: string[]
+}
+
+export async function getVoiceData(): Promise<VoiceDataOverview> {
+  const res = await fetch(`${API_BASE}/api/admin/voice-data`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(`Could not read the voice data (${res.status})`)
+  return res.json()
+}
+
+/** Removes the captured conversations (profiles, runs, packs, questions, what-ifs). Product documents, campaigns and users are never touched. */
+export async function clearVoiceData(): Promise<{ removed: number }> {
+  const res = await fetch(`${API_BASE}/api/admin/voice-data/clear`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ confirm: 'CLEAR' }),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((body as { error?: string }).error ?? `Could not clear (${res.status})`)
+  return body as { removed: number }
+}
+
 // ── Campaigns (Admin) ──────────────────────────────────────────────────────────────────────────────────────
 
 export interface CampaignOverview {
@@ -233,16 +259,22 @@ export async function junoVoiceStatus(): Promise<{ enabled: boolean; voices: { f
 
 /** One spoken line as audio (MP3), or null if the neural voice could not produce it. */
 export async function junoSpeak(text: string, voice: 'female' | 'male', tone: string, lang: LangId = 'en'): Promise<Blob | null> {
-  try {
-    const res = await fetch(`${API_BASE}/api/juno/speak`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ text, voice, tone, lang }),
-    })
-    return res.ok ? await res.blob() : null
-  } catch {
-    return null
+  // One quick retry: a single network blip must not drop Spark onto the browser's own (different) voice mid-conversation.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/api/juno/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ text, voice, tone, lang }),
+      })
+      if (res.ok) return await res.blob()
+      if (res.status < 500 && res.status !== 429) return null // e.g. speech switched off: retrying cannot help
+    } catch {
+      // network blip: try once more
+    }
+    await new Promise((r) => setTimeout(r, 400))
   }
+  return null
 }
 
 /** What Spark should say next. This is the only thing the endpoint does — it cannot start an analysis. */

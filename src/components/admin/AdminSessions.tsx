@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { listCustomers } from '../../api/client'
 import type { CustomerSummary } from '../../types'
 import { initials, timeAgo } from './format'
+import { AdminClearVoiceData } from './AdminClearVoiceData'
 
 const PAGE_SIZE = 10
 
@@ -16,6 +17,7 @@ export function AdminSessions({ onViewRun }: Props) {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -32,7 +34,7 @@ export function AdminSessions({ onViewRun }: Props) {
     return () => {
       cancelled = true
     }
-  }, [page])
+  }, [page, reload])
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -48,6 +50,8 @@ export function AdminSessions({ onViewRun }: Props) {
           <div className="adm-hero__count"><b>{total.toLocaleString()}</b><span>sessions captured</span></div>
         </div>
       </header>
+
+      <AdminClearVoiceData onCleared={() => { setPage(0); setReload((n) => n + 1) }} />
 
       {error && <p className="adm-error">{error}</p>}
       {!items.length && loading && <p className="adm-status">Loading sessions…</p>}

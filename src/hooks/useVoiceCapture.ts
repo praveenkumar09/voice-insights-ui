@@ -110,7 +110,13 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
+  const keepAliveOff = useRef<(() => void) | null>(null)
+  const reopening = useRef(false)
+  const cleanupAudioRef = useRef<() => void>(() => {})
+  const attachMicRef = useRef<(ws: WebSocket) => Promise<void>>(async () => {})
+
   const cleanupAudio = useCallback(() => {
+    keepAliveOff.current?.()
     processorRef.current?.disconnect()
     sourceRef.current?.disconnect()
     sinkRef.current?.disconnect()
@@ -127,6 +133,8 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
     audioContextRef.current = null
     setAmplitude(0)
   }, [])
+
+  cleanupAudioRef.current = cleanupAudio
 
   /** Opens the microphone and streams 24kHz PCM to an open voice websocket (used by start and by resume). */
   const attachMic = useCallback(
@@ -156,6 +164,32 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
         audioContext = new AudioContextCtor({ latencyHint: 'interactive' })
       }
       audioContextRef.current = audioContext
+      // Phones: after Spark's own voice plays, or the page is backgrounded/locked, the browser suspends the audio context or ends the mic
+      // track, and the microphone then looks "turned off" until the advisor taps again. Wake it up ourselves, and re-open it if it ended.
+      keepAliveOff.current?.()
+      const track = stream.getAudioTracks()[0]
+      const wake = () => {
+        if (streamRef.current !== stream) return
+        const c = audioContextRef.current
+        if (c && c.state !== 'running' && c.state !== 'closed') void c.resume().catch(() => {})
+        if (track && track.readyState === 'ended' && !reopening.current && statusRef.current === 'listening' && ws.readyState === WebSocket.OPEN) {
+          reopening.current = true
+          cleanupAudioRef.current()
+          void attachMicRef.current(ws).catch(() => {}).finally(() => { reopening.current = false })
+        }
+      }
+      audioContext.onstatechange = wake
+      if (track) track.onended = wake
+      const events: (keyof DocumentEventMap)[] = ['visibilitychange', 'pointerdown', 'touchend']
+      events.forEach((ev) => document.addEventListener(ev, wake, { passive: true }))
+      window.addEventListener('pageshow', wake)
+      const timer = window.setInterval(wake, 2000)
+      keepAliveOff.current = () => {
+        events.forEach((ev) => document.removeEventListener(ev, wake))
+        window.removeEventListener('pageshow', wake)
+        window.clearInterval(timer)
+        keepAliveOff.current = null
+      }
       // Chrome can leave a context created after an awaited permission prompt in
       // 'suspended' — onaudioprocess then never fires and no audio is ever sent.
       if (audioContext.state === 'suspended') await audioContext.resume()
@@ -224,6 +258,8 @@ export function useVoiceCapture(options: { assistant?: boolean } = {}) {
     },
     [],
   )
+
+  attachMicRef.current = attachMic
 
   /** Stops (or resumes) sending the microphone to the server — used so Spark never transcribes its own voice. */
   const setMicMuted = useCallback((muted: boolean) => {

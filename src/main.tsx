@@ -28,6 +28,7 @@ import './home.css'
 import './admin-bu.css'
 import './campaigns.css'
 import './admin-cvd.css'
+import './languagepicker.css'
 import './mobile-polish.css'
 
 createRoot(document.getElementById('root')!).render(

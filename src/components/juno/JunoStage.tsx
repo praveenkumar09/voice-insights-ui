@@ -2,12 +2,14 @@ import { SparkBot } from '../brand/SparkBot'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef } from 'react'
 import { JUNO_TOPICS, type useJuno } from '../../hooks/useJuno'
-import { nativeSentenceList, revealPieces, useEnabledLanguages } from '../../utils/languages'
+import { nativeList, nativeSentenceList, revealPieces, useEnabledLanguages } from '../../utils/languages'
 import type { CopilotInsights, CustomerProfile } from '../../types'
 import { useJunoAction } from './mode/JunoMode'
 import { quoteFor } from '../../utils/debriefMarks'
 import { asksForPeriod } from '../../utils/quickAnswers'
 import { rememberChips } from '../../utils/flyIn'
+import { fill, stageText } from '../../utils/stageText'
+import { LanguagePicker, OPEN_LANGUAGE_EVENT } from './LanguagePicker'
 
 type FieldMode = 'idle' | 'listening' | 'speaking' | 'thinking' | 'done'
 
@@ -41,14 +43,14 @@ function stepIndex(stage: Spark['stage']): number {
 }
 
 /** What Spark has actually picked up for each topic, straight from the live analysis. */
-function topicFacts(key: string, p: CustomerProfile | null, c: CopilotInsights | null): string[] {
+function topicFacts(key: string, p: CustomerProfile | null, c: CopilotInsights | null, T: ReturnType<typeof stageText>): string[] {
   const map = c?.lifeMap
   switch (key) {
     case 'about':
-      return [p?.customerName, p?.age ? `${p.age} years old` : null, p?.occupation].filter(Boolean) as string[]
+      return [p?.customerName, p?.age ? fill(T.yearsOld, { n: p.age }) : null, p?.occupation].filter(Boolean) as string[]
     case 'family': {
       const people = (map?.people ?? []).map((x) => (x.name ? `${x.name} · ${x.relation}` : x.relation))
-      return people.length ? people : p?.dependents != null ? [`${p.dependents} dependant${p.dependents === 1 ? '' : 's'}`] : []
+      return people.length ? people : p?.dependents != null ? [fill(p.dependents === 1 ? T.dependantOne : T.dependantMany, { n: p.dependents })] : []
     }
     case 'goals':
       return (map?.dreams ?? []).map((d) => d.label)
@@ -82,6 +84,9 @@ const TOPIC_ICON: Record<string, JSX.Element> = {
 export function JunoStage({ k, amplitude, partialText, profile, copilot, transcript, noVoice, safe = false }: Props) {
   const { stage, speaking, thinking, listening, covered, line, revealed } = k
   const langs = useEnabledLanguages()
+  const T = useMemo(() => stageText(k.lang), [k.lang])
+  const dot = k.lang === 'zh' ? '。' : '.'
+  const TOPIC_LABEL: Record<string, string> = { about: T.topicAbout, family: T.topicFamily, goals: T.topicGoals, concerns: T.topicConcerns, money: T.topicMoney, cover: T.topicCover }
   const mode: FieldMode = stage === 'finished' ? 'done' : speaking ? 'speaking' : thinking ? 'thinking' : listening ? 'listening' : 'idle'
   const step = stepIndex(stage)
   // "Hey Spark, start the debrief": starts it for real, a moment after Spark has said so (the debrief takes over the microphone).
@@ -110,20 +115,20 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
   }, [line, k.lang])
 
   const stateLabel =
-    stage === 'idle' ? 'Ready'
-    : stage === 'connecting' ? 'Waking up'
-    : stage === 'finished' ? 'Ready to review'
-    : stage === 'wrapup' ? 'Reading back'
-    : stage === 'dictate' && !partialText ? 'Waiting for you'
-    : stage === 'dictate' ? 'Listening'
-    : speaking ? 'Speaking'
-    : thinking ? 'Thinking'
-    : listening ? 'Listening'
-    : 'Ready'
+    stage === 'idle' ? T.stReady
+    : stage === 'connecting' ? T.stWaking
+    : stage === 'finished' ? T.stReview
+    : stage === 'wrapup' ? T.stReading
+    : stage === 'dictate' && !partialText ? T.stWaiting
+    : stage === 'dictate' ? T.stListening
+    : speaking ? T.stSpeaking
+    : thinking ? T.stThinking
+    : listening ? T.stListening
+    : T.stReady
 
   const facts = useMemo(
-    () => Object.fromEntries(JUNO_TOPICS.map((t) => [t.key, topicFacts(t.key, profile, copilot)])),
-    [profile, copilot],
+    () => Object.fromEntries(JUNO_TOPICS.map((t) => [t.key, topicFacts(t.key, profile, copilot, T)])),
+    [profile, copilot, T],
   )
   // A topic counts as covered once Spark has facts for it from the dictation, or once it has been asked about and answered.
   const isDone = (key: string) => covered.includes(key) || (facts[key]?.length ?? 0) > 0
@@ -153,10 +158,10 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
         <div className="jn__slim jn__slim--dot">
           <span className="jn__dot" aria-hidden />
           <div className="jn__slim-text">
-            <b>Debrief complete</b>
-            <small>{k.readiness ? `${k.readiness.captured} of ${k.readiness.total} fact-find fields captured` : `${progress} of ${JUNO_TOPICS.length} topics have details`}</small>
+            <b>{T.complete}</b>
+            <small>{k.readiness ? fill(T.capturedOf, { a: k.readiness.captured, b: k.readiness.total }) : fill(T.topicsOf, { a: progress, b: JUNO_TOPICS.length })}</small>
           </div>
-          <button className="jn__ghost" onClick={k.reset}>New debrief</button>
+          <button className="jn__ghost" onClick={k.reset}>{T.newDebrief}</button>
         </div>
       </section>
     )
@@ -171,27 +176,21 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
           <span className="jn__mark" aria-hidden><SparkBot variant="mark" /></span>
           <div>
             <b>Spark</b>
-            <small>Your debrief assistant</small>
+            <small>{T.assistant}</small>
           </div>
         </div>
 
-        <ol className="jn__steps" aria-label="Conversation progress">
-          {STEPS.map((label, i) => (
-            <li key={label} className={i < step ? 'is-done' : i === step ? 'is-now' : ''}>
+        <ol className="jn__steps" aria-label={T.progress}>
+          {STEPS.map((_, i) => (
+            <li key={i} className={i < step ? 'is-done' : i === step ? 'is-now' : ''}>
               <span className="jn__step-node">{i < step ? '✓' : i + 1}</span>
-              <em>{label}</em>
+              <em>{[T.step0, T.step1, T.step2, T.step3][i]}</em>
             </li>
           ))}
         </ol>
 
         <div className="jn__tools" hidden={langs.length < 2}>
-          <div className="jn__seg jn__seg--lang" role="group" aria-label="Language">
-            {langs.map((l) => (
-              <button key={l.id} className={k.lang === l.id ? 'is-on' : ''} aria-pressed={k.lang === l.id} title={l.name} onClick={() => k.setLanguage(l.id)}>
-                {l.label}
-              </button>
-            ))}
-          </div>
+          <LanguagePicker langs={langs} value={k.lang} onChange={k.setLanguage} />
         </div>
       </header>
 
@@ -212,32 +211,32 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
             <AnimatePresence mode="wait">
               {stage === 'idle' && (
                 <motion.div key="idle" className="jn__idle" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-                  <span className="jn__eyebrow">Debrief with Spark</span>
-                  <h3>Brief Spark, then let it check for gaps</h3>
-                  <p>
-                    Tell Spark about the meeting in your own words. When you hand over, Spark says what it understood and asks a
-                    few short questions about anything missing or unclear — then reads it back for you to review.
-                  </p>
+                  <span className="jn__eyebrow">{T.eyebrow}</span>
+                  <h3>{T.headline}</h3>
+                  <p>{T.intro}</p>
                   <button className="jn__start" onClick={k.start}>
                     <span className="jn__start-glow" />
                     <svg viewBox="0 0 24 24" aria-hidden><path d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3zm6-3a6 6 0 01-12 0M12 18v3" /></svg>
-                    Start the debrief
+                    {T.start}
                   </button>
                   <ul className="jn__promises">
-                    <li>Dictate freely</li>
-                    <li>At most five questions</li>
-                    <li>You stay in control</li>
+                    <li>{T.promise1}</li>
+                    <li>{T.promise2}</li>
+                    <li>{T.promise3}</li>
                   </ul>
-                  <p className="jn__langs">Speaks {nativeSentenceList()} — choose above</p>
+                  <p className="jn__langs">
+                    {fill(T.speaks, { list: k.lang === 'en' ? nativeSentenceList() : nativeList() })}
+                    {langs.length > 1 && <> · <button type="button" className="jn__langlink" onClick={() => window.dispatchEvent(new Event(OPEN_LANGUAGE_EVENT))}>{T.changeLang}</button></>}
+                  </p>
                 </motion.div>
               )}
 
               {live && (
                 <motion.div key="live" className="jn__live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <span className="jn__speaker">{thinking ? 'Spark is thinking' : stage === 'dictate' ? 'Your turn' : 'Spark'}</span>
+                  <span className="jn__speaker">{thinking ? T.sparkThinking : stage === 'dictate' ? T.yourTurn : 'Spark'}</span>
                   <p className="jn__line" aria-live="polite">
-                    {stage === 'connecting' && !line ? <span className="jn__muted is-on">Connecting the microphone…</span>
-                      : stage === 'dictate' ? <span className="jn__muted is-on">Tell me about the meeting, the way you would brief a colleague. Tap “Done, over to Spark” when you have finished.</span>
+                    {stage === 'connecting' && !line ? <span className="jn__muted is-on">{T.connecting}</span>
+                      : stage === 'dictate' ? <span className="jn__muted is-on">{T.dictateHelp}</span>
                       : words.map((x, i) => (
                         <span key={i} className={x.start < revealed || !speaking ? 'is-on' : ''}>{x.w}</span>
                       ))}
@@ -245,55 +244,55 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
 
                   <div className={`jn__you${partialText || listening || thinking ? ' is-on' : ''}`} style={{ ['--lvl' as string]: Math.min(1, amplitude * 3) }}>
                     {thinking ? (
-                      <span className="jn__dots" aria-label="Spark is thinking"><i /><i /><i /></span>
+                      <span className="jn__dots" aria-label={T.sparkThinking}><i /><i /><i /></span>
                     ) : partialText ? (
                       <><span className="jn__mic"><i /><i /><i /><i /></span><span>{partialText}</span></>
                     ) : listening ? (
-                      <><span className="jn__mic"><i /><i /><i /><i /></span><span className="jn__muted">{stage === 'dictate' ? 'Listening — speak naturally, pause any time' : 'Listening — say “skip” or “that’s enough” any time'}</span></>
+                      <><span className="jn__mic"><i /><i /><i /><i /></span><span className="jn__muted">{stage === 'dictate' ? T.listenDictate : T.listenAsk}</span></>
                     ) : null}
                   </div>
 
                   {stage === 'discovery' && (
-                    <div className="jn__qdots" aria-label={`Question ${Math.min(questionsAsked, 5)} of up to 5`}>
+                    <div className="jn__qdots" aria-label={fill(T.questionOf, { n: Math.min(questionsAsked, 5) })}>
                       {Array.from({ length: 5 }, (_, i) => <i key={i} className={i < questionsAsked ? 'is-on' : ''} />)}
-                      <span>Question {Math.min(Math.max(questionsAsked, 1), 5)} of up to 5</span>
+                      <span>{fill(T.questionOf, { n: Math.min(Math.max(questionsAsked, 1), 5) })}</span>
                     </div>
                   )}
                   {stage === 'discovery' && listening && (
                     <div className="jn__quick" role="group" aria-label="Quick answers">
                       {asksForPeriod(line) ? (
                         <>
-                          <button onClick={() => k.answerQuick('Per month.')}>Per month</button>
-                          <button onClick={() => k.answerQuick('Per year.')}>Per year</button>
+                          <button onClick={() => k.answerQuick(T.perMonth + dot)}>{T.perMonth}</button>
+                          <button onClick={() => k.answerQuick(T.perYear + dot)}>{T.perYear}</button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => k.answerQuick('Yes.')}>Yes</button>
-                          <button onClick={() => k.answerQuick('No.')}>No</button>
+                          <button onClick={() => k.answerQuick(T.yes + dot)}>{T.yes}</button>
+                          <button onClick={() => k.answerQuick(T.no + dot)}>{T.no}</button>
                         </>
                       )}
-                      <button onClick={() => k.answerQuick('Not discussed.')}>Not discussed</button>
-                      <small>or just answer out loud</small>
+                      <button onClick={() => k.answerQuick(T.notDiscussed + dot)}>{T.notDiscussed}</button>
+                      <small>{T.orAnswer}</small>
                     </div>
                   )}
 
                   {stage === 'dictate' && (
                     <button className="jn__start jn__start--go" onClick={k.handOver}>
                       <span className="jn__start-glow" />
-                      Done, over to Spark
+                      {T.handOver}
                     </button>
                   )}
 
-                  <button className="jn__end" onClick={k.end}>{stage === 'dictate' ? 'Skip Spark’s questions and review' : 'That’s enough, go to review'}</button>
-                  {stage === 'dictate' && <small className="jn__hint">Hands-free: just say “Spark, over to you”.</small>}
+                  <button className="jn__end" onClick={k.end}>{stage === 'dictate' ? T.skipDictate : T.thatsEnough}</button>
+                  {stage === 'dictate' && k.lang === 'en' && <small className="jn__hint">{T.handsFree}</small>}
                 </motion.div>
               )}
 
               {stage === 'error' && (
                 <motion.div key="error" className="jn__idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <h3>Spark lost the connection</h3>
-                  <p>What you dictated so far is kept. You can start again.</p>
-                  <button className="jn__ghost" onClick={k.reset}>Start over</button>
+                  <h3>{T.lostTitle}</h3>
+                  <p>{T.lostBody}</p>
+                  <button className="jn__ghost" onClick={k.reset}>{T.startOver}</button>
                 </motion.div>
               )}
 
@@ -317,10 +316,10 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
               aria-pressed={k.bargeEnabled}
               title={k.headset ? 'Headphones detected: you can interrupt Spark.' : 'Let yourself interrupt Spark. Works best with headphones; on speakers Spark can hear itself.'}
             >
-              {k.bargeEnabled ? 'Interrupt: on' : 'Interrupt: off'}
+              {k.bargeEnabled ? T.interruptOn : T.interruptOff}
             </button>
             <button className={`jn__pill${k.silent || noVoice ? ' is-muted' : ''}`} onClick={k.toggleSilent} aria-pressed={k.silent} title={k.silent ? 'Spark is silent — captions only' : 'Mute Spark (captions stay)'}>
-              {k.silent || noVoice ? 'Captions only' : 'Voice on'}
+              {k.silent || noVoice ? T.captionsOnly : T.voiceOn}
             </button>
           </div>
         </div>
@@ -329,8 +328,8 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
         <aside ref={asideRef} className="jn__insight" aria-label="What Spark has">
           <div className="jn__insight-head">
             <div>
-              <span className="jn__eyebrow">Fact-find ledger</span>
-              <h4>What Spark has so far</h4>
+              <span className="jn__eyebrow">{T.ledgerEyebrow}</span>
+              <h4>{T.ledgerTitle}</h4>
             </div>
             <div className="jn__ring" aria-label={ringLabel}>
               <svg viewBox="0 0 44 44">
@@ -350,10 +349,10 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
             </div>
             <small>
               {!k.readiness
-                ? 'Starts when you hand over to Spark'
+                ? T.startsWhen
                 : k.readiness.baseline != null && k.readiness.captured > k.readiness.baseline
                   ? `+${k.readiness.captured - k.readiness.baseline} from Spark’s questions${k.readiness.missing[0] ? ` · next: ${k.readiness.missing[0]}` : ''}`
-                  : k.readiness.missing[0] ? `Next most valuable: ${k.readiness.missing[0]}` : 'Every field captured'}
+                  : k.readiness.missing[0] ? fill(T.nextValuable, { x: k.readiness.missing[0] }) : T.everyField}
             </small>
           </div>
 
@@ -373,8 +372,8 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
                   </span>
                   <div className="jn__learn-body">
                     <div className="jn__learn-title">
-                      {t.label}
-                      {active && <em>{stage === 'dictate' ? 'not mentioned yet' : 'Spark may ask about this'}</em>}
+                      {TOPIC_LABEL[t.key] ?? t.label}
+                      {active && <em>{stage === 'dictate' ? T.notYet : T.mayAsk}</em>}
                     </div>
                     <div className="jn__chips">
                       <AnimatePresence initial={false}>
@@ -384,7 +383,7 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
                           </motion.span>
                         ))}
                       </AnimatePresence>
-                      {items.length === 0 && <span className="jn__none">{done ? 'Nothing captured' : 'Not mentioned yet'}</span>}
+                      {items.length === 0 && <span className="jn__none">{done ? T.nothingCaptured : T.notMentioned}</span>}
                     </div>
                     {items[0] && quotes[t.key] && <q className="jn__src">{quotes[t.key]}</q>}
                   </div>
@@ -395,20 +394,20 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
 
           {k.readiness && k.readiness.missing.length > 0 && (
             <div className="jn__open" aria-label="Still open">
-              <small>Still open</small>
+              <small>{T.stillOpen}</small>
               <ul>{k.readiness.missing.slice(0, 5).map((m) => <li key={m}>{m}</li>)}</ul>
             </div>
           )}
 
           {copilot && (
             <div className={`jn__comply${copilot.complianceFlags.length ? ' has-flags' : ''}`} aria-label="Compliance watch">
-              <small>Compliance watch</small>
+              <small>{T.compliance}</small>
               {copilot.complianceFlags.length === 0 ? (
-                <span className="jn__comply-ok">✓ No risky statements heard</span>
+                <span className="jn__comply-ok">{T.noRisky}</span>
               ) : (
                 copilot.complianceFlags.map((f, i) => (
                   <div className={`jn__flag jn__flag--${f.severity}`} key={`${f.statement}-${i}`}>
-                    <b>{f.severity === 'high' ? 'High risk' : 'Caution'}</b>
+                    <b>{f.severity === 'high' ? T.highRisk : T.caution}</b>
                     <q>{f.statement}</q>
                     <span>{f.advice}</span>
                   </div>
@@ -420,7 +419,7 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
           {copilot && !safe && (
             <div className="jn__pulse">
               <div>
-                <small>Customer mood, as you describe it</small>
+                <small>{T.mood}</small>
                 <b>{copilot.sentiment.label}</b>
                 <span>{copilot.sentiment.emotion}</span>
               </div>
@@ -433,7 +432,8 @@ export function JunoStage({ k, amplitude, partialText, profile, copilot, transcr
 }
 
 /** The conversation as chat bubbles: Spark on the left, the advisor on the right. */
-export function JunoTranscript({ turns }: { turns: Spark['turns'] }) {
+export function JunoTranscript({ turns, lang = 'en' }: { turns: Spark['turns']; lang?: Spark['lang'] }) {
+  const T = stageText(lang)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = ref.current
@@ -441,15 +441,15 @@ export function JunoTranscript({ turns }: { turns: Spark['turns'] }) {
   }, [turns.length])
   return (
     <div className="glass-card jn-chat">
-      <div className="glass-card__label">Conversation</div>
+      <div className="glass-card__label">{T.conversation}</div>
       {turns.length === 0 ? (
-        <p className="panel-empty">Spark's questions and your answers appear here once you hand over to Spark.</p>
+        <p className="panel-empty">{T.convEmpty}</p>
       ) : (
         <div className="jn-chat__list" ref={ref}>
           <AnimatePresence initial={false}>
             {turns.map((t) => (
               <motion.div key={t.id} className={`jn-bubble jn-bubble--${t.role === 'juno' ? 'juno' : 'customer'}`} initial={{ opacity: 0, y: 12, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3 }}>
-                <small>{t.role === 'juno' ? 'Spark' : 'You'}</small>
+                <small>{t.role === 'juno' ? 'Spark' : T.you}</small>
                 {t.text}
               </motion.div>
             ))}

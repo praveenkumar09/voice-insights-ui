@@ -97,11 +97,26 @@ const NO_TEXT_MS = 4000
 /** How long we expect a committed answer to take to come back as text. */
 const IN_FLIGHT_MS = 2500
 /** "Spark, over to you" (or "your turn", "go ahead"): hands the debrief to Spark without touching the screen. */
-const HANDOVER = /\b(?:juno|juneau|junior|jeno|jonno)\b[\s,.!:-]*(?:over to you|your turn|go ahead|please go ahead|you can (?:start|go|begin)|over to you now)|(?:over to you|your turn)[\s,.!-]*\b(?:juno|juneau|junior|jeno|jonno)\b/i
+const HANDOVER = /\b(?:spark|sparks|sparc|juno|juneau|junior|jeno|jonno)\b[\s,.!:-]*(?:over to you|your turn|go ahead|please go ahead|you can (?:start|go|begin)|over to you now)|(?:over to you|your turn)[\s,.!-]*\b(?:spark|sparks|sparc|juno|juneau|junior|jeno|jonno)\b/i
 /**
  * The speech model often hears "Spark" as something else ("you know"), so a line that is only "Over to you." / "Your turn." is
  * accepted as the hand-over too. It has to be the whole line, so "…then I handed it over to you" never triggers it.
  */
+/**
+ * The hand-over, whatever the speech model made of the name. "Spark" is heard as "Psst", "Park", "Sparks", "Spock"... and a hand-over that
+ * only counted when the name was spelt right failed most of the time. A short line (six words or fewer) that says "over to you" or "your
+ * turn" is the hand-over: nobody dictates a customer note that short and that shaped (verbs like "handed" and "passed" rule it out).
+ */
+const HANDOVER_PHRASE = /\b(?:over to you|your turn)\b/i
+/** "I handed it over to you", "passed over to you": ordinary dictation, not the command. */
+const NOT_A_COMMAND = /\b(?:hand(?:ed|s|ing)?|pass(?:ed|es|ing)?|turn(?:ed|s|ing)|sign(?:ed|s)?|gave|give|sent|send|moved?)\b/i
+export const isHandoverLine = (seg: string) => {
+  const words = seg.trim().split(/\s+/).filter(Boolean)
+  return words.length > 0 && words.length <= 6 && HANDOVER_PHRASE.test(seg) && !NOT_A_COMMAND.test(seg)
+}
+/** Real dictation has to come first, so a stray line heard from a quiet room can never hand over an empty note. */
+const MIN_WORDS_BEFORE_HANDOVER = 6
+
 const HANDOVER_ALONE = /^\W*(?:(?:ok|okay|right|so|alright)\W+)?(?:over to you|your turn|go ahead|you can (?:start|go|begin)(?: now)?|over to you now)\W*$/i
 /** A greeting or sign-off is never an answer to a debrief question: the speech model produces them ("Hi.") from room noise. */
 const NOT_AN_ANSWER = /^(?:\W*(?:hi|hello|hey|bye|goodbye|thanks?|thank you)\b\W*)+$/i
@@ -754,7 +769,7 @@ export function useJuno(voice: Voice) {
     }
     const v = voiceApi.current
     // The spoken hand-over phrase ("Spark, over to you") is not part of the notes.
-    dictationRef.current = [...v.finalSegments.filter((seg) => !HANDOVER_ALONE.test(seg)), v.partialText]
+    dictationRef.current = [...v.finalSegments.filter((seg) => !HANDOVER_ALONE.test(seg) && !isHandoverLine(seg)), v.partialText]
       .join(' ').replace(new RegExp(HANDOVER.source, 'gi'), ' ').replace(/\s+/g, ' ').trim()
     try {
       const res = await junoDebriefTurn({ profileId: v.profile?.id, dictation: dictationRef.current, turns: [], lang: langRef.current })
@@ -777,7 +792,9 @@ export function useJuno(voice: Voice) {
   useEffect(() => {
     if (stageRef.current !== 'dictate' || dictated.length === 0) return
     // The speech model often splits "Spark, over to you" into two lines ("Spark." / "Over to you."), so the last two are read together.
-    if (HANDOVER.test(dictated.slice(-2).join(' ')) || dictated.slice(-3).some((seg) => HANDOVER_ALONE.test(seg))) void handOver()
+    const spokenWords = dictated.filter((seg) => !isHandoverLine(seg)).join(' ').split(/\s+/).filter(Boolean).length
+    if (spokenWords < MIN_WORDS_BEFORE_HANDOVER) return
+    if (HANDOVER.test(dictated.slice(-2).join(' ')) || dictated.slice(-3).some((seg) => HANDOVER_ALONE.test(seg) || isHandoverLine(seg))) void handOver()
   }, [dictated, handOver])
 
   /** The advisor tapped Yes / No / Not discussed: a one-word spoken answer is easily lost as noise, a tap never is. */

@@ -1,4 +1,5 @@
-import { nativeSentenceList, useEnabledLanguages } from '../utils/languages'
+import { nativeList, nativeSentenceList, useEnabledLanguages } from '../utils/languages'
+import { fill, stageText } from '../utils/stageText'
 import { useState } from 'react'
 import { saveCustomerProfile } from '../api/client'
 import { RecentDebriefs } from '../components/home/RecentDebriefs'
@@ -18,10 +19,10 @@ interface Props {
 }
 
 /** What happens after the advisor presses Start: the whole journey in three lines, shown until the first debrief begins. */
-const steps = (languages: string) => [
-  { title: 'Tell Spark about the meeting', text: `Speak the way you would brief a colleague. ${languages} all work, even mixed.` },
-  { title: 'Spark checks for gaps', text: 'It asks a few short questions about anything missing or unclear, then reads back what it understood.' },
-  { title: 'Review and approve', text: 'Confirm the facts, then get suggestions, a proposal and your advice pack.' },
+const steps = (T: ReturnType<typeof stageText>, languages: string) => [
+  { title: T.how1t, text: fill(T.how1x, { list: languages }) },
+  { title: T.how2t, text: T.how2x },
+  { title: T.how3t, text: T.how3x },
 ]
 
 /** The home screen: a debrief with Spark. The advisor dictates, Spark checks for gaps, then the advisor reviews and approves. */
@@ -29,6 +30,7 @@ export function CaptureScreen({ onReady }: Props) {
   useEnabledLanguages() // redraw when an admin changes the languages
   const voice = useVoiceCapture()
   const juno = useJuno(voice)
+  const T = stageText(juno.lang)
   const { status, amplitude, partialText, finalSegments, profile, copilot } = voice
   const [advancing, setAdvancing] = useState(false)
 
@@ -62,10 +64,8 @@ export function CaptureScreen({ onReady }: Props) {
       {!signOff && (
         <div className="capture-hero">
           <div>
-            <h2 className="capture-hero__title">Debrief with Spark</h2>
-            <p className="capture-hero__sub">
-              Dictate what happened in your own words. Spark then checks for anything missing and asks a few short questions, so nothing is lost before you start the analysis.
-            </p>
+            <h2 className="capture-hero__title">{T.eyebrow}</h2>
+            <p className="capture-hero__sub">{T.heroSub}</p>
           </div>
         </div>
       )}
@@ -86,7 +86,7 @@ export function CaptureScreen({ onReady }: Props) {
 
       {!signOff && !started && (
         <ol className="home-steps" aria-label="How it works">
-          {steps(nativeSentenceList()).map((s, i) => (
+          {steps(T, juno.lang === 'en' ? nativeSentenceList() : nativeList()).map((s, i) => (
             <li key={s.title} className="home-steps__item">
               <span className="home-steps__n" aria-hidden>{i + 1}</span>
               <div>
@@ -122,7 +122,7 @@ export function CaptureScreen({ onReady }: Props) {
       {!signOff && started && (
         <div className="capture-grid">
           <div className="capture-grid__col">
-            {juno.turns.length > 0 && <JunoTranscript turns={juno.turns} />}
+            {juno.turns.length > 0 && <JunoTranscript turns={juno.turns} lang={juno.lang} />}
             <TranscriptPanel
               partialText={partialText}
               finalSegments={finalSegments}

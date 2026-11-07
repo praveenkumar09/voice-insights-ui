@@ -1,0 +1,64 @@
+/* ── Language picker ───────────────────────────────────────────────────────────────────────────────────────
+   A single pill in the Spark stage; a popover grid on a laptop, a bottom sheet on a phone. The panel is drawn on <body> (the stage clips
+   its children), so it uses the app's own tokens, which follow light and dark. */
+.lp__trigger {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px 0 12px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 0.82rem; font-weight: 650; letter-spacing: -0.005em; color: var(--ink); background: var(--glass); border: 1px solid var(--edge);
+  backdrop-filter: blur(10px); transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.lp__trigger:hover { border-color: rgba(211, 17, 69, 0.45); transform: translateY(-1px); }
+.lp__trigger:focus-visible { outline: 2px solid #d31145; outline-offset: 2px; }
+.lp__trigger.is-open { border-color: rgba(211, 17, 69, 0.6); box-shadow: 0 0 0 4px rgba(211, 17, 69, 0.12); }
+.lp__trigger svg { flex: none; opacity: 0.85; }
+.lp__current { white-space: nowrap; }
+.lp__chev { display: inline-grid; place-items: center; opacity: 0.6; transition: transform 0.2s ease; }
+.lp__trigger.is-open .lp__chev { transform: rotate(180deg); }
+
+.lp__layer { position: fixed; inset: 0; z-index: 90; }
+.lp__scrim { position: absolute; inset: 0; background: transparent; }
+
+.lp__panel {
+  position: fixed; width: min(420px, calc(100vw - 24px)); padding: 16px; border-radius: 22px; color: var(--ink);
+  background: var(--surface-solid); border: 1px solid var(--hairline);
+  box-shadow: 0 30px 70px -20px rgba(var(--shadow-rgb), 0.45), 0 2px 0 rgba(255, 255, 255, 0.5) inset;
+  transform-origin: top right; animation: lp-pop 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+.lp__grab { display: none; }
+.lp__head { display: grid; gap: 2px; padding: 2px 4px 12px; }
+.lp__head b { font-size: 1.02rem; font-weight: 750; letter-spacing: -0.015em; }
+.lp__head span { font-size: 0.82rem; color: var(--ink-soft); }
+
+.lp__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.lp__opt {
+  position: relative; display: grid; gap: 2px; text-align: left; min-height: 60px; align-content: center; padding: 11px 38px 11px 14px; border-radius: 14px; cursor: pointer;
+  font: inherit; color: var(--ink); background: rgba(var(--tint-rgb), 0.04); border: 1px solid var(--hairline);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.lp__opt:hover { background: rgba(var(--tint-rgb), 0.08); transform: translateY(-1px); }
+.lp__opt:focus-visible { outline: 2px solid #d31145; outline-offset: 1px; }
+.lp__native { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; }
+.lp__name { font-size: 0.76rem; color: var(--ink-soft); }
+.lp__opt.is-on { background: linear-gradient(135deg, rgba(211, 17, 69, 0.12), rgba(211, 17, 69, 0.05)); border-color: rgba(211, 17, 69, 0.55); }
+.lp__tick { position: absolute; top: 50%; right: 12px; width: 22px; height: 22px; margin-top: -11px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #d31145; box-shadow: 0 6px 14px -6px rgba(211, 17, 69, 0.8); }
+.lp__tick svg { width: 13px; height: 13px; }
+
+@keyframes lp-pop { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes lp-sheet { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes lp-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* the link under the Start button */
+.jn__langlink { font: inherit; font-size: inherit; font-weight: 650; color: #d31145; background: none; border: 0; padding: 2px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; min-height: 28px; }
+:root[data-theme='dark'] .jn__langlink { color: #ff8fa9; }
+
+/* phone: a bottom sheet */
+@media (max-width: 640px) {
+  .lp__scrim { background: rgba(10, 6, 18, 0.5); backdrop-filter: blur(3px); animation: lp-fade 0.2s ease both; }
+  .lp__panel {
+    top: auto !important; right: 0 !important; left: 0; bottom: 0; width: 100%; max-height: 82dvh; overflow-y: auto; overscroll-behavior: contain;
+    padding: 10px 16px calc(18px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; border-bottom: 0; transform-origin: bottom; animation: lp-sheet 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+  .lp__grab { display: block; width: 40px; height: 4px; border-radius: 4px; margin: 2px auto 12px; background: rgba(var(--tint-rgb), 0.22); }
+  .lp__opt { min-height: 64px; }
+  .lp__trigger { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { .lp__panel, .lp__scrim { animation: none; } }

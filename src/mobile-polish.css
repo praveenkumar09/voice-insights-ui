@@ -10,6 +10,8 @@ html, body { overflow-x: hidden; }
   .app-header__logo { width: 38px; height: 38px; border-radius: 10px; }
   .app-header__text h1 { font-size: 1.02rem; }
   .app-header__text p { display: none; }
+  .app-header__text h1 { white-space: nowrap; }
+  .app-header__brand { flex: 0 1 auto; }
   .app-header__actions { gap: 6px; flex: none; }
   .app-header__admin-link { padding: 0 12px; min-height: 40px; font-size: 0.78rem; border-radius: 10px; }
   .app-header__email { display: none; }
@@ -22,7 +24,8 @@ html, body { overflow-x: hidden; }
 
   /* the Spark stage */
   .jn { border-radius: 20px; margin-bottom: 4px; }
-  .jn__bar { padding: 10px 12px; gap: 8px; }
+  .jn__bar { padding: 10px 12px; gap: 10px; grid-template-columns: 1fr auto; align-items: center; }
+  .jn__steps { order: 3; }
   .jn__presence { padding: 10px 14px 18px; }
   .jn__orb-zone { min-height: 0 !important; gap: 12px; }
   .jn__orb-zone .sb-stage { width: min(190px, 52vw); }
@@ -49,6 +52,16 @@ html, body { overflow-x: hidden; }
 
   /* touch targets */
   button { touch-action: manipulation; }
+}
+
+@media (max-width: 460px) {
+  /* the logo already carries the name; the room goes to the controls */
+  .app-header__text { display: none; }
+  .app-header { justify-content: space-between; }
+  .app-header__brand { flex: none; }
+  .app-header__actions { min-width: 0; }
+  /* the Spark-mode switch keeps its dot but drops its label, so Admin's "Back to Home" fits beside it */
+  .app-header .jm-btn { min-width: 40px; min-height: 40px; padding: 0 10px; font-size: 0; justify-content: center; gap: 0; }
 }
 
 @media (max-width: 380px) {
